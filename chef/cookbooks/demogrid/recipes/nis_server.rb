@@ -1,0 +1,101 @@
+# -------------------------------------------------------------------------- #
+# Copyright 2010, University of Chicago                                      #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+# -------------------------------------------------------------------------- #
+
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# RECIPE: NIS Server
+#
+# Set up an organization's NIS server.
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+class Chef::Resource
+  include FileHelper
+end
+
+# The subnet attribute is part of the generated topology.rb file,
+# and contains the organization's subnet IP address.
+subnet = node[:subnet]
+
+
+# Packages we need
+
+package "nis" do
+  action :install
+end
+
+package "portmap" do
+  action :install
+end
+
+
+# Only allow access to the nodes in that organization's subnet
+
+ruby_block "hosts.allow" do
+  block do
+    add_line("/etc/hosts.allow", "portmap ypserv ypbind : #{subnet}/24")
+  end
+end
+
+ruby_block "hosts.deny" do
+  block do
+    add_line("/etc/hosts.deny", "portmap ypserv ypbind : ALL")
+  end
+end
+
+cookbook_file "/etc/default/nis" do
+  source "nis"
+  mode 0644
+  owner "root"
+  group "root"
+end
+
+ruby_block "yp.conf" do
+  block do
+    add_line("/etc/yp.conf", "domain grid.example.org server #{node[:demogrid_hostname]}")
+  end
+end
+
+ruby_block "ypserv.securenets" do
+  block do
+    add_line("/etc/ypserv.securenets", "255.255.255.0	#{subnet}")
+  end
+end
+
+
+# Restart services so the changes take effect.
+
+execute "ypinit" do
+ user "root"
+ group "root"
+ command "echo | /usr/lib/yp/ypinit -m"
+ action :run
+end
+
+execute "portmap_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/portmap restart"
+ action :run
+end
+
+execute "nis_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/nis restart"
+ action :run
+end

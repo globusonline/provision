@@ -1,0 +1,19 @@
+[general]
+organizations: a b
+myproxy: yes
+
+[organization-a]
+grid-users: 2
+grid-users-auth: certs
+nongrid-users: 2
+gridftp: yes
+lrm: condor
+cluster-nodes: 2
+
+[organization-b]
+grid-users: 2
+grid-users-auth: myproxy
+nongrid-users: 2
+gridftp: yes
+lrm: torque
+cluster-nodes: 2

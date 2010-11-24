@@ -1,0 +1,76 @@
+#! /bin/sh
+##**************************************************************
+##
+## Copyright (C) 1990-2007, Condor Team, Computer Sciences Department,
+## University of Wisconsin-Madison, WI.
+## 
+## Licensed under the Apache License, Version 2.0 (the "License"); you
+## may not use this file except in compliance with the License.  You may
+## obtain a copy of the License at
+## 
+##    http://www.apache.org/licenses/LICENSE-2.0
+## 
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+##
+##**************************************************************
+
+
+#
+# chkconfig: 3 90 99
+# description: Condor batch system
+#
+# condor script for SysV-style init boot scripts.  
+#
+# Usually this would be installed as /etc/init.d/condor with soft
+# links put in from /etc/rc*.d to point back to /etc/init.d/condor to
+# determine when Condor should be started and stopped.  Exact
+# directories or details of the links you should use will vary from
+# platform to platform. 
+#
+# To customize, all you need to do is edit the MASTER line below.
+# The PS line should be the full path and arguments to a ps command
+# that dumps out all running processes.  This should be correct on all
+# platforms.
+#
+# Author: Derek Wright <wright@cs.wisc.edu> 2/27/98
+#
+
+MASTER=/usr/local/condor-7.4.3/sbin/condor_master
+PS="/bin/ps auwx"
+
+case $1 in
+'start')
+    if [ -x $MASTER ]; then
+        echo "Starting up Condor"
+        $MASTER
+    else
+        echo "$MASTER is not executable.  Skipping Condor startup."
+        exit 1
+    fi
+    ;;
+
+'stop')
+    pid=`$PS | grep condor_master | grep -v grep | awk '{print $2}'`
+    if [ -n "$pid" ]; then 
+        # send SIGQUIT to the condor_master, which initiates its fast
+        # shutdown method.  The master itself eventually start sending
+        # SIGKILL to all its children if they're not gone after
+        # SHUTDOWN_FAST_TIMEOUT seconds, as defined in the Condor
+        # configuration file.
+        echo "Shutting down Condor (fast-shutdown mode)"
+        kill -QUIT $pid
+    else
+        echo "Condor not running"
+    fi	
+    ;;
+
+*)
+    echo "Usage: condor {start|stop}"
+    ;;
+
+esac
+

@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+from demogrid.cli import demogrid_register_host_chef
+import sys
+
+c = demogrid_register_host_chef(sys.argv)
+c.run()

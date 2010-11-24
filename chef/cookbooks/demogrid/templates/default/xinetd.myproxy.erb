@@ -1,0 +1,10 @@
+service myproxy-server
+{
+  socket_type  = stream
+  protocol     = tcp
+  wait         = no
+  user         = root
+  server       = <%= @globus_location %>/sbin/myproxy-server
+  env	       = GLOBUS_LOCATION=<%= @globus_location %> LD_LIBRARY_PATH=<%= @globus_location %>/lib
+  disable      = no
+}
