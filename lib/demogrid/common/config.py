@@ -5,6 +5,7 @@ class DemoGridConfig(object):
     
     GENERAL_SEC = "general"
     ORGANIZATIONS_OPT = "organizations"
+    MYPROXY_OPT = "myproxy"
     
     ORGANIZATION_SEC = "organization-"
     GRIDUSERS_OPT = "grid-users"
@@ -13,6 +14,15 @@ class DemoGridConfig(object):
     GRIDFTP_OPT = "gridftp"
     LRM_OPT = "lrm"
     CLUSTER_NODES_OPT = "cluster-nodes"
+
+    EC2_SEC = "ec2"
+    AMI_OPT = "ami"
+    SNAP_OPT = "snap"
+    KEYPAIR_OPT = "keypair"
+    KEYFILE_OPT = "keyfile"
+    INSTYPE_OPT = "instance_type"
+    ZONE_OPT = "availability_zone"
+
     
     def __init__(self, configfile):
         self.config = ConfigParser.ConfigParser()
@@ -44,6 +54,9 @@ class DemoGridConfig(object):
         org_sec = self.__get_org_sec(org_name)
         lrm = self.config.get(org_sec, self.LRM_OPT)
         return lrm != "none"
+
+    def has_auth_node(self):
+        return self.config.getboolean(self.GENERAL_SEC, self.MYPROXY_OPT)
         
     def get_org_lrm(self, org_name):
         org_sec = self.__get_org_sec(org_name)
@@ -55,6 +68,26 @@ class DemoGridConfig(object):
         
     def __get_org_sec(self, org_name):
         return self.ORGANIZATION_SEC + org_name
+    
+    def get_ami(self):
+        return self.config.get(self.EC2_SEC, self.AMI_OPT)
+    
+    def get_snap(self):
+        return self.config.get(self.EC2_SEC, self.SNAP_OPT)
+
+    def get_keypair(self):
+        return self.config.get(self.EC2_SEC, self.KEYPAIR_OPT)
+
+    def get_keyfile(self):
+        return self.config.get(self.EC2_SEC, self.KEYFILE_OPT)
+    
+    def get_instance_type(self):
+        return self.config.get(self.EC2_SEC, self.INSTYPE_OPT)
+    
+    def get_ec2_zone(self):
+        return self.config.get(self.EC2_SEC, self.ZONE_OPT)        
+    
+
     
     
 class DemoGridHostsFile(object):
