@@ -47,13 +47,19 @@ end
 
 ruby_block "hosts.allow" do
   block do
-    add_line("/etc/hosts.allow", "portmap ypserv ypbind : #{subnet}/24")
+    if subnet
+      add_line("/etc/hosts.allow", "portmap ypserv ypbind : #{subnet}/24")
+    else
+      add_line("/etc/hosts.allow", "portmap ypserv ypbind : ALL")
+    end
   end
 end
 
 ruby_block "hosts.deny" do
   block do
-    add_line("/etc/hosts.deny", "portmap ypserv ypbind : ALL")
+    if subnet
+      add_line("/etc/hosts.deny", "portmap ypserv ypbind : ALL")
+    end
   end
 end
 
@@ -72,7 +78,9 @@ end
 
 ruby_block "ypserv.securenets" do
   block do
-    add_line("/etc/ypserv.securenets", "255.255.255.0	#{subnet}")
+    if subnet
+      add_line("/etc/ypserv.securenets", "255.255.255.0 #{subnet}")
+    end
   end
 end
 

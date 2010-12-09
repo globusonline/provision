@@ -39,6 +39,15 @@ package "nfs-kernel-server" do
 end
 
 
+# Configuration file with fixed port
+cookbook_file "/etc/default/nfs-kernel-server" do
+  source "nfs-kernel-server"
+  mode 0644
+  owner "root"
+  group "root"
+end
+
+
 # Create the directory for the home directories
 directory "/export/home" do
   owner "root"
@@ -52,9 +61,17 @@ end
 # Only allow access to machines in the organization's subnet.
 ruby_block "add_lines" do
   block do
-    add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : #{subnet}/24")
-    add_line("/etc/hosts.deny", "mountd nfsd statd lockd rquotad : ALL")
-    add_line("/etc/exports", "/export/home #{subnet}/24(rw,no_subtree_check,sync)")
+    if subnet
+      add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : #{subnet}/24")
+      add_line("/etc/hosts.deny", "mountd nfsd statd lockd rquotad : ALL")
+    else
+      add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : ALL")
+    end
+    if subnet
+      add_line("/etc/exports", "/export/home #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
+    else
+      add_line("/etc/exports", "/export/home (rw,root_squash,no_subtree_check,sync)")
+    end
   end
 end
 
