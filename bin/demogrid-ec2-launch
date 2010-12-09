@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+from demogrid.cli import demogrid_ec2_launch
+import sys
+
+c = demogrid_ec2_launch(sys.argv)
+c.run()
