@@ -4,7 +4,7 @@ import os.path
 from OpenSSL import crypto, SSL
 import sys
 import shutil
-
+from demogrid.common.topology import DGGrid, DGOrganization, DGNode, DGOrgUser
 
 try:
     from mako.template import Template
@@ -68,9 +68,10 @@ class Preparator(object):
         sys.stdout.flush()
         
         self.topology = self.generate_topology()
-        self.gen_hosts_file()
+        self.topology.gen_hosts_file(self.generated_dir + "/hosts", 
+                                     extra_entries = [("%s.0.1" % self.config.get_subnet(), "master.%s" % self.DOMAIN)])
         self.gen_hosts_csv_file()
-        self.gen_topology_attributes_file()
+        self.topology.gen_ruby_file(self.generated_dir + "/topology.rb")
         self.gen_uvb_master_conf()
         self.gen_uvb_confs()
         self.gen_vagrant_file()
@@ -105,10 +106,11 @@ class Preparator(object):
     def generate_topology(self):
         grid = DGGrid()
         
-        auth_node = DGNode(role = self.GRID_AUTH_ROLE,
-                           ip =   self.__gen_IP(self.GRID_MANAGEMENT_SUBNET, self.GRID_AUTH_HOST),
-                           hostname = self.__gen_hostname(self.GRID_AUTH_HOSTNAME))
-        grid.add_node(auth_node)
+        if self.config.has_auth_node():
+            auth_node = DGNode(role = self.GRID_AUTH_ROLE,
+                               ip =   self.__gen_IP(self.GRID_MANAGEMENT_SUBNET, self.GRID_AUTH_HOST),
+                               hostname = self.__gen_hostname(self.GRID_AUTH_HOSTNAME))
+            grid.add_node(auth_node)
         
         org_subnet = self.ORG_SUBNET_START
         for org_name in self.config.organizations:
@@ -137,6 +139,7 @@ class Preparator(object):
                                  hostname = self.__gen_hostname(self.SERVER_HOSTNAME, org = org_name),
                                  org = org)            
             grid.add_org_node(org, server_node)
+            org.server = server_node
             
             login_node =  DGNode(role = self.LOGIN_ROLE,
                                  ip =   self.__gen_IP(org_subnet, self.LOGIN_HOST),
@@ -165,6 +168,7 @@ class Preparator(object):
                                          hostname = self.__gen_hostname(self.GATEKEEPER_HOSTNAME, org = org_name),
                                          org = org)                        
                 grid.add_org_node(org, gatekeeper_node)
+                org.lrm = gatekeeper_node
 
                 clusternode_host = self.LRM_NODE_HOST_START
                 for i in range(self.config.get_org_num_clusternodes(org_name)):
@@ -178,6 +182,24 @@ class Preparator(object):
                     clusternode_host += 1
             
             org_subnet += 1
+        
+        nodes = grid.get_nodes()
+        for node in nodes:        
+            attrs = node.attrs
+            attrs["demogrid_hostname"] = "\"%s\"" % node.hostname.split(".")[0]
+            attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
+            if node.org != None:
+                attrs["org"] = "\"%s\"" % node.org.name
+                attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
+            
+        grid.save(self.generated_dir + "/topology.dat")
+        
+        nodes = grid.get_nodes()
+        for n in nodes:
+            if node.org != None:
+                attrs = node.attrs
+                attrs["subnet"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 0)
+                attrs["org_server"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 1)
             
         return grid
         
@@ -215,33 +237,7 @@ ff02::3 ip6-allhosts
         hosts_csvfile.write(hosts_csv)
         hosts_csvfile.close()
         
-    def gen_topology_attributes_file(self):
-        topology = ""
-      
-        nodes = self.topology.get_nodes()
-        for n in nodes:
-            attrs = self.__gen_chef_attrs(n)
-            topology += "if node.name == \"%s\"\n" % n.hostname
-            for k,v in attrs.items():
-                topology += "  node.normal[:%s] = %s\n" % (k,v)
-            topology += "end\n\n"            
-
-	for org in self.topology.organizations.values():
-            topology += "default[:orgusers][\"%s\"] = [\n" % org.name
-            for u in org.users:
-                topology += "{ :login       => \"%s\",\n" % u.login
-                topology += "  :description => \"%s\",\n" % u.description
-                if u.gridenabled:
-                    topology += "  :gridenabled => true,\n"
-                    topology += "  :auth_type   => :%s}" % u.auth_type
-                else:
-                    topology += "  :gridenabled => false}"
-                topology += ",\n"
-            topology += "]\n"
-
-        topologyfile = open(self.generated_dir + "/topology.rb", "w")
-        topologyfile.write(topology)
-        topologyfile.close()        
+   
         
     def gen_uvb_master_conf(self):
         uvb_dir = self.generated_dir + self.UVB_DIR
@@ -374,7 +370,6 @@ ff02::3 ip6-allhosts
       
         nodes = self.topology.get_nodes()
         for n in nodes:
-            attrs = self.__gen_chef_attrs(n)
             name = n.hostname.split(".")[0].replace("-", "_")
             vagrant += "  config.vm.define :%s do |%s_config|\n" % (name, name)
             vagrant += "    %s_config.vm.box = \"lucid32\"\n" % name
@@ -384,7 +379,7 @@ ff02::3 ip6-allhosts
             vagrant += "    %s_config.chef.add_role \"%s\"\n" % (name, n.role)
             vagrant += "    %s_config.vm.network(\"%s\", :netmask => \"255.255.0.0\")\n" % (name, n.ip)            
             vagrant += "    %s_config.chef.json.merge!({\n" % name         
-            for k,v in attrs.items():
+            for k,v in n.attrs.items():
                 vagrant += "      :%s => %s,\n" % (k,v)
             vagrant += "    })\n"       
             vagrant += "  end\n\n"           
@@ -434,7 +429,7 @@ ff02::3 ip6-allhosts
             return "%s-%s.%s" % (org, name, self.DOMAIN)
         
     def __gen_chef_attrs(self, node):
-        attrs = {}
+        attrs = node.attrs
         attrs["demogrid_hostname"] = "\"%s\"" % node.hostname.split(".")[0]
         attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
         if node.org != None:
@@ -442,7 +437,6 @@ ff02::3 ip6-allhosts
             attrs["subnet"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 0)
             attrs["org_server"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 1)
             attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
-        return attrs
     
     def __gen_certificate(self, cn, serial, issuer_cert, issuer_key):
         k = crypto.PKey()
@@ -483,63 +477,5 @@ ff02::3 ip6-allhosts
             key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
             key_file.close()        
     
-class DGGrid(object):    
-    
-    def __init__(self):
-        self.grid_nodes = []
-        self.organizations = {}
-        
-    def add_organization(self, org):
-        self.organizations[org.name] = org
-
-    def add_org_node(self, org, node):
-        self.grid_nodes.append(node)
-
-    def add_node(self, node):
-        self.grid_nodes.append(node)
-        
-    def get_nodes(self):
-        nodes = self.grid_nodes[:]
-        for org in self.organizations.values():
-            nodes += org.get_nodes()
-        return nodes
-    
-    def get_users(self):
-        users = []
-        for org in self.organizations.values():
-            users += org.get_users()
-        return users    
-    
-class DGOrganization(object):    
-    def __init__(self, name, subnet):
-        self.name = name
-        self.subnet = subnet
-        self.nodes = []
-        self.users = []
-
-    def add_node(self, node):
-        self.nodes.append(node)
-        
-    def get_nodes(self):
-        return self.nodes
-        
-    def add_user(self, user):
-        self.users.append(user)   
-        
-    def get_users(self):
-        return self.users
-    
-class DGNode(object):
-    def __init__(self, role, ip, hostname, org = None):
-        self.role = role
-        self.ip = ip
-        self.hostname = hostname
-        self.org = org
-        
-class DGOrgUser(object):
-    def __init__(self, login, description, gridenabled, auth_type=None):
-        self.login = login
-        self.description = description
-        self.gridenabled = gridenabled
-        self.auth_type = auth_type    
+ 
         
