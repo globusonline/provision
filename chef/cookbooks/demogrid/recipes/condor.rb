@@ -58,7 +58,7 @@ end
 # Condor tarball. This also sets up the init scripts, but does not set up
 # Condor itself.
 if ! File.exists?(node[:condor][:dir])
-	cookbook_file "/tmp/#{condor_tarball}" do
+	cookbook_file "/var/tmp/#{condor_tarball}" do
 	  source "#{condor_tarball}"
 	  mode 0755
 	  owner "root"
@@ -68,7 +68,7 @@ if ! File.exists?(node[:condor][:dir])
 	execute "tar" do
 	  user "root"
 	  group "root"
-	  command "tar xzf /tmp/#{condor_tarball} --directory /usr/local"
+	  command "tar xzf /var/tmp/#{condor_tarball} --directory /usr/local"
 	  action :run
 	end
 

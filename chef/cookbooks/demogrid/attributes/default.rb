@@ -18,6 +18,7 @@
 # For now, only directories where software is going to be installed.
 
 default[:globus][:dir] = "/usr/local/globus-5.0.2"
+default[:globus][:srcdir] = "/var/tmp/gt5.0.2-all-source-installer"
 default[:globus][:simpleCA] = "/home/globus/.globus/simpleCA"
 default[:globus][:rootsimpleCA] = "/root/.globus/simpleCA"
 default[:condor][:dir] = "/usr/local/condor-7.4.3"

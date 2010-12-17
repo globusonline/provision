@@ -66,46 +66,48 @@ end
 #    complete the installation
 if ! File.exists?(node[:globus][:dir])
 
-	directory "/usr/local/globus-5.0.2" do
-	  owner "globus"
-	  group "globus"
-	  mode "0755"
-	  action :create
-	end
+  if ! File.exists?(node[:globus][:srcdir])
+  	cookbook_file "/var/tmp/#{install_tarball}" do
+  	  source "#{install_tarball}"
+  	  mode 0755
+  	  owner "globus"
+  	  group "globus"
+  	end
+  	
+    execute "tar" do
+      user "globus"
+      group "globus"
+      cwd "/var/tmp"
+      command "tar xzf /var/tmp/#{install_tarball}"
+      action :run
+    end  	
+  end
+  
+  directory "/usr/local/globus-5.0.2" do
+    owner "globus"
+    group "globus"
+    mode "0755"
+    action :create
+  end
+  
+  cookbook_file "/var/tmp/#{gl_tarball}" do
+    source "#{gl_tarball}"
+    mode 0755
+    owner "globus"
+    group "globus"
+  end
 
-	cookbook_file "/tmp/#{gl_tarball}" do
-	  source "#{gl_tarball}"
-	  mode 0755
-	  owner "globus"
-	  group "globus"
-	end
-
-	cookbook_file "/tmp/#{install_tarball}" do
-	  source "#{install_tarball}"
-	  mode 0755
-	  owner "globus"
-	  group "globus"
-	end
-
-	execute "tar" do
+  execute "tar" do
 	  user "globus"
 	  group "globus"
-	  command "tar xzf /tmp/#{gl_tarball} --directory #{node[:globus][:dir]}"
-	  action :run
-	end
-
-	execute "tar" do
-	  user "globus"
-	  group "globus"
-	  cwd "/tmp"
-	  command "tar xzf /tmp/#{install_tarball}"
+	  command "tar xzf /var/tmp/#{gl_tarball} --directory #{node[:globus][:dir]}"
 	  action :run
 	end
 
 	execute "make install" do
 	  user "globus"
 	  group "globus"
-	  cwd "/tmp/gt5.0.2-all-source-installer"
+	  cwd "/var/tmp/gt5.0.2-all-source-installer"
 	  command "make install 2>&1 | tee build.log"
 	  action :run
 	  environment(

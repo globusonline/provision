@@ -27,74 +27,47 @@ class Chef::Recipe
 end
 
 # See torque_head for a description of what these ".sh" files are.
-pbs_mom_sh = "torque-package-mom-linux-i686.sh"
+include_recipe "demogrid::torque"
 
 # The lrm_head attribute is part of the generated topology.rb file,
 # and contains the FQDN of the head node.
 server_fqdn = node[:lrm_head]
 server = server_fqdn.split(".")[0]
 
-# Install Torque
-if ! File.exists?(node[:torque][:dir])
-	# Copy worker node installation script
-	cookbook_file "/tmp/#{pbs_mom_sh}" do
-	  source "#{pbs_mom_sh}"
-	  mode 0755
-	  owner "root"
-	  group "root"
-	end
+# Create configuration file. 
+file "#{node[:torque][:dir]}/mom_priv/config" do
+  owner "root"
+  group "root"
+  mode "0644"
+  action :create
+  # Besides telling Torque about the head node, we instruct it
+  # to not use scp/rcp when copying files to/from the home directories
+  # (since they're on a shared file system)
+  content "pbs_server = #{server}\n$usecp *:/export  /export"
+end
 
-	# Run worker node installation script
-	execute "pbs_mom_install" do
-	  user "root"
-	  group "root"
-	  command "/tmp/#{pbs_mom_sh} --install"
-	  action :run
-	end
+# Tell Torque what node is the head node.
+file "#{node[:torque][:dir]}/server_name" do
+  owner "root"
+  group "root"
+  mode "0644"
+  action :create
+  content "#{server}"
+end
 
-	# Make system aware of new libraries
-	execute "ldconfig" do
-	  user "root"
-	  group "root"
-	  command "ldconfig"
-	  action :run
-	end
+# Create init script.
+cookbook_file "/etc/init.d/pbs_mom" do
+  source "debian.pbs_mom"
+  owner "root"
+  group "root"
+  mode "0755"
+end
 
-	# Create configuration file. 
-	file "#{node[:torque][:dir]}/mom_priv/config" do
-	  owner "root"
-	  group "root"
-	  mode "0644"
-	  action :create
-	  # Besides telling Torque about the head node, we instruct it
-	  # to not use scp/rcp when copying files to/from the home directories
-	  # (since they're on a shared file system)
-	  content "pbs_server = #{server}\n$usecp *:/export  /export"
-	end
-
-	# Tell Torque what node is the head node.
-	file "#{node[:torque][:dir]}/server_name" do
-	  owner "root"
-	  group "root"
-	  mode "0644"
-	  action :create
-	  content "#{server}"
-	end
-
-	# Create init script.
-	cookbook_file "/etc/init.d/pbs_mom" do
-	  source "debian.pbs_mom"
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	end
-
-	execute "update-rc.d" do
-	  user "root"
-	  group "root"
-	  command "update-rc.d pbs_mom defaults"
-	  action :run
-	end
+execute "update-rc.d" do
+  user "root"
+  group "root"
+  command "update-rc.d pbs_mom defaults"
+  action :run
 end
 
 # Restart Torque daemon
@@ -104,4 +77,3 @@ execute "pbs_mom_restart" do
  command "/etc/init.d/pbs_mom restart"
  action :run
 end
-

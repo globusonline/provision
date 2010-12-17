@@ -46,34 +46,38 @@ end
 
 # TODO: Figure out how to determine if gram5-condor is already installed,
 # so we can skip this step.
-cookbook_file "/tmp/#{install_tarball}" do
-  source "#{install_tarball}"
-  mode 0755
-  owner "globus"
-  group "globus"
+
+if ! File.exists?(node[:globus][:srcdir])
+  cookbook_file "/var/tmp/#{install_tarball}" do
+    source "#{install_tarball}"
+    mode 0755
+    owner "globus"
+    group "globus"
+  end
+  
+  execute "tar" do
+    user "globus"
+    group "globus"
+    cwd "/var/tmp"
+    command "tar xzf /var/tmp/#{install_tarball}"
+    action :run
+  end
 end
 
-execute "tar" do
-  user "globus"
-  group "globus"
-  cwd "/tmp"
-  command "tar xzf /tmp/#{install_tarball}"
-  action :run
+if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-condor") 
+  execute "make gram5-condor" do
+    user "globus"
+    group "globus"
+    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    command "make gram5-condor"
+    action :run
+  end
+  
+  execute "make install" do
+    user "globus"
+    group "globus"
+    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    command "PATH=/usr/local/condor-7.4.3/bin/:$PATH; make install"
+    action :run
+  end
 end
-
-execute "make gram5-condor" do
-  user "globus"
-  group "globus"
-  cwd "/tmp/gt5.0.2-all-source-installer"
-  command "make gram5-condor"
-  action :run
-end
-
-execute "make install" do
-  user "globus"
-  group "globus"
-  cwd "/tmp/gt5.0.2-all-source-installer"
-  command ". /usr/local/condor-7.4.3/condor.sh; make install"
-  action :run
-end
-
