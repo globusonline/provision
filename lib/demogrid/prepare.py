@@ -54,11 +54,12 @@ class Preparator(object):
     CHEF_FILES_DIR = "/chef/cookbooks/demogrid/files/default/"  
     CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"        
     
-    def __init__(self, demogrid_dir, config, generated_dir, force):
+    def __init__(self, demogrid_dir, config, generated_dir, force_certificates, force_chef):
         self.demogrid_dir = demogrid_dir
         self.config = config
         self.generated_dir = generated_dir
-        self.force = force
+        self.force_certificates = force_certificates
+        self.force_chef = force_chef
         
     def prepare(self):
         if not os.path.exists(self.generated_dir):
@@ -92,7 +93,7 @@ class Preparator(object):
         if self.copy_chef_files():
             print "\033[1;32mdone!\033[0m"
         else:
-            print '\033[1;33mWarning\033[0m: Chef directory already exists. Skipping. Use --force to overwrite'
+            print '\033[1;33mWarning\033[0m: Chef directory already exists. Skipping. Use --force-chef to overwrite'
 
         
         print "\033[1;37mCopying other files... \033[0m",
@@ -190,16 +191,18 @@ class Preparator(object):
             attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
             if node.org != None:
                 attrs["org"] = "\"%s\"" % node.org.name
-                attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
+                if self.config.has_org_lrm(org_name):
+                    attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
+                    attrs["lrm_nodes"] = "%i" % self.config.get_org_num_clusternodes(org_name)
             
         grid.save(self.generated_dir + "/topology.dat")
         
         nodes = grid.get_nodes()
         for n in nodes:
-            if node.org != None:
-                attrs = node.attrs
-                attrs["subnet"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 0)
-                attrs["org_server"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 1)
+            if n.org != None:
+                attrs = n.attrs
+                attrs["subnet"] = "\"%s\"" % self.__gen_IP(n.org.subnet, 0)
+                attrs["org_server"] = "\"%s\"" % self.__gen_IP(n.org.subnet, 1)
             
         return grid
         
@@ -390,7 +393,7 @@ ff02::3 ip6-allhosts
         vagrantfile.close()
         
         chef_link = vagrant_dir + "/chef"
-        if os.path.exists(chef_link):
+        if os.path.lexists(chef_link):
             os.remove(chef_link)            
         os.symlink(self.generated_dir + self.CHEF_DIR, chef_link)
         
@@ -399,7 +402,7 @@ ff02::3 ip6-allhosts
         src_chef = self.demogrid_dir + self.CHEF_DIR
         dst_chef = self.generated_dir + self.CHEF_DIR
         if os.path.exists(dst_chef):
-            if self.force:
+            if self.force_chef:
                 shutil.rmtree(dst_chef)
             else:
                 return False   
@@ -466,8 +469,8 @@ ff02::3 ip6-allhosts
         return cert, k 
     
     def __dump_certificate(self, cert, key, cert_file, key_file):
-        if os.path.exists(cert_file) and not self.force:
-            print '\033[1;33mWarning\033[0m: Certificate %s already exists. Skipping. Use --force to overwrite' % cert_file.split("/")[-1]
+        if os.path.exists(cert_file) and not self.force_certificates:
+            print '\033[1;33mWarning\033[0m: Certificate %s already exists. Skipping. Use --force-certificates to overwrite' % cert_file.split("/")[-1]
         else:
             cert_file = open(cert_file, "w")
             cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
