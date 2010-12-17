@@ -75,9 +75,13 @@ class demogrid_prepare(Command):
                                   default = defaults.GENERATED_LOCATION,
                                   help = "Directory to generate files in.")        
 
-        self.optparser.add_option("-f", "--force", 
-                                  action="store_true", dest="force", 
-                                  help = "Overwrite existing files.")        
+        self.optparser.add_option("-f", "--force-certificates", 
+                                  action="store_true", dest="force_certificates", 
+                                  help = "Overwrite existing certificates.")        
+
+        self.optparser.add_option("-e", "--force-chef", 
+                                  action="store_true", dest="force_chef", 
+                                  help = "Overwrite existing Chef files.")        
 
                 
     def run(self):    
@@ -85,7 +89,7 @@ class demogrid_prepare(Command):
         
         config = DemoGridConfig(self.opt.conf)
 
-        p = Preparator(self.dg_location, config, self.opt.dir, self.opt.force)
+        p = Preparator(self.dg_location, config, self.opt.dir, self.opt.force_certificates, self.opt.force_chef)
         p.prepare()        
         
         
@@ -232,6 +236,10 @@ class demogrid_ec2_launch(Command):
         self.optparser.add_option("-d", "--debug", 
                                   action="store_true", dest="debug", 
                                   help = "Write debugging information. Implies -v.")
+
+        self.optparser.add_option("-n", "--no-cleanup", 
+                                  action="store_true", dest="no_cleanup", 
+                                  help = "Don't release resources on failure.")
                 
     def run(self):    
         self.parse_options()
@@ -245,7 +253,7 @@ class demogrid_ec2_launch(Command):
         else:
             loglevel = 0
         
-        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel)
+        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel, self.opt.no_cleanup)
         c.launch()          
         
 class demogrid_ec2_create_chef_volume(Command):
