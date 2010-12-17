@@ -58,19 +58,20 @@ class EC2ChefVolumeCreator(object):
         while vol.update() != "available":
             time.sleep(1)
 
-        print "Terminating instance"
-        conn.stop_instances([instance.id])
-        while instance.update() != "terminated":
-            time.sleep(2)
-        print "Instance terminated"        
-        
         print "Creating snapshot"
-        snap = vol.create_snapshot("DemoGrid Chef partition 0.1")
+        snap = vol.create_snapshot("DemoGrid Chef partition 0.2")
         snap.share(groups=['all'])
         
         vol.delete()
         
         print "The snapshot ID is %s" % snap.id
+
+        print "Terminating instance"
+        conn.terminate_instances([instance.id])
+        while instance.update() != "terminated":
+            time.sleep(2)
+        print "Instance terminated"        
+        
 
 
 
@@ -107,9 +108,8 @@ class EC2AMICreator(object):
         
         ssh = SSH("ubuntu", instance.public_dns_name, self.keyfile)
         ssh.open()
-        
+
         print "Mounting volume."  
-        
         ssh.run("sudo mkdir /chef")
         ssh.run("sudo mount -t ext3 /dev/sdh /chef")
         ssh.run("sudo chown -R ubuntu /chef")
@@ -130,6 +130,13 @@ class EC2AMICreator(object):
         ssh.run("sudo update-rc.d nis disable")
         ssh.run("sudo update-rc.d chef-client disable")
         
+        ssh.run("sudo umount /chef")
+        
+        print "Detaching volume"
+        vol.detach()
+        while vol.update() != "available":
+            time.sleep(1)        
+            
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
         # use stop_instances instead.
@@ -144,7 +151,7 @@ class EC2AMICreator(object):
         ami = conn.create_image(instance.id, "DemoGrid Base AMI", description="DemoGrid Base AMI")       
         
         print "Cleaning up"
-        vol.detach()
+
         
         print "Terminating instance"
         conn.terminate_instances([instance.id])
