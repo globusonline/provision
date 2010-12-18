@@ -191,9 +191,9 @@ class Preparator(object):
             attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
             if node.org != None:
                 attrs["org"] = "\"%s\"" % node.org.name
-                if self.config.has_org_lrm(org_name):
+                if self.config.has_org_lrm(node.org.name):
                     attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
-                    attrs["lrm_nodes"] = "%i" % self.config.get_org_num_clusternodes(org_name)
+                    attrs["lrm_nodes"] = "%i" % self.config.get_org_num_clusternodes(node.org.name)
             
         grid.save(self.generated_dir + "/topology.dat")
         
