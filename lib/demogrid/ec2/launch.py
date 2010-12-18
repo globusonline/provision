@@ -92,6 +92,7 @@ class EC2Launcher(object):
         log.debug("Waiting for instances to start.")
         
         mt_instancewait = MultiThread()
+        
         for i in self.instances:
             mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
         mt_instancewait.run()
@@ -131,8 +132,28 @@ class EC2Launcher(object):
         log.info("Setting up DemoGrid on instances")        
         
         mt_configure = MultiThread()
-        for node, instance in node_instance.items():
-            mt_configure.add_thread(InstanceConfigureThread(mt_configure, "configure-%s" % node.hostname.split(".")[0], node, instance, self))
+
+        no_deps_roles = ("org-server", "grid-auth")
+
+        no_deps = dict([(n,InstanceConfigureThread(mt_configure, 
+                                                  "configure-%s" % n.hostname.split(".")[0], 
+                                                  n, 
+                                                  i, 
+                                                  self,
+                                                  depends = None)) 
+                                                  for n,i in node_instance.items()
+                                                  if n.role in no_deps_roles])
+        rest = dict([(n,InstanceConfigureThread(mt_configure, 
+                                                  "configure-%s" % n.hostname.split(".")[0], 
+                                                  n, 
+                                                  i, 
+                                                  self,
+                                                  depends = no_deps[n.org.server])) 
+                                                  for n,i in node_instance.items()
+                                                  if not n.role in no_deps_roles])
+
+        for thread in no_deps.values() + rest.values():
+            mt_configure.add_thread(thread)
         mt_configure.run()        
         
         if not mt_configure.all_success():
@@ -144,6 +165,11 @@ class EC2Launcher(object):
         minutes = int(delta / 60)
         seconds = int(delta - (minutes * 60))
         print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
+
+        print "Your login nodes are:"
+        for node, instance in node_instance.items():
+            if node.role == "org-login":
+                print "%s: %s" % (node.hostname.split(".")[0], instance.public_dns_name)
 
     def wait_state(self, obj, state, interval = 2.0):
         jitter = random.uniform(0.0, 0.5)
@@ -158,7 +184,7 @@ class EC2Launcher(object):
         if what != "": what = " when " + what
         print "\033[1;31mERROR\033[0m - EC2 returned an error when %s." % what
         print "        Reason: %s" % exc.reason
-        # Save body somewhere
+        print "        Body: %s" % exc.body
         self.cleanup()
         exit(1)        
         
@@ -178,6 +204,7 @@ class EC2Launcher(object):
                 print "        %s: Error while running '%s'" % (name, exception.command)
             elif isinstance(exception, EC2ResponseError):
                 print "        %s: EC2 error '%s'" % (name, exception.reason)
+                print "        Body: %s" % exception.body
             else:          
                 print "        %s: Unexpected exception '%s'" % (name, exception.__class__.__name__)
                 print "        Message: %s" % exception
@@ -215,8 +242,8 @@ class EC2Launcher(object):
         print "Please make sure you manually release all DemoGrid instances and volumes."
             
 class InstanceWaitThread(DemoGridThread):
-    def __init__(self, multi, name, instance, launcher):
-        DemoGridThread.__init__(self, multi, name)
+    def __init__(self, multi, name, instance, launcher, depends = None):
+        DemoGridThread.__init__(self, multi, name, depends)
         self.instance = instance
         self.launcher = launcher
                     
@@ -225,8 +252,8 @@ class InstanceWaitThread(DemoGridThread):
         log.info("Instance %s is running. Hostname: %s" % (self.instance.id, self.instance.public_dns_name))
         
 class InstanceConfigureThread(DemoGridThread):
-    def __init__(self, multi, name, node, instance, launcher):
-        DemoGridThread.__init__(self, multi, name)
+    def __init__(self, multi, name, node, instance, launcher, depends = None):
+        DemoGridThread.__init__(self, multi, name, depends)
         self.node = node
         self.instance = instance
         self.launcher = launcher
@@ -264,14 +291,14 @@ class InstanceConfigureThread(DemoGridThread):
         self.check_continue()
         
         log.debug("Mounting Chef volume", node)
-        ssh.run("sudo mount -t ext3 /dev/sdh /chef")
+        ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
         
         # Upload host file and update hostname
         log.debug("Uploading host file and updating hostname", node)
         ssh.scp("%s/hosts_ec2" % self.launcher.generated_dir,
                 "/chef/cookbooks/demogrid/files/default/hosts")             
-        ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts")
-        ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname)
+        ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
+        ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
         ssh.run("sudo /etc/init.d/hostname restart")
         
         self.check_continue()
@@ -296,16 +323,18 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": \"role[%s]\" }' > /tmp/chef.json" % node.role)
+        ssh.run("echo '{ \"run_list\": \"role[%s]\" }' > /tmp/chef.json" % node.role, expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
         self.check_continue()
         
-        ssh.run("sudo umount /chef")
+        ssh.run("sudo umount /chef", expectnooutput=True)
         vol.detach()
         self.launcher.wait_state(vol, "available")        
         vol.delete()
+        
+        self.launcher.vols.remove(vol)
         
         ssh.run("sudo update-rc.d nis enable")     
 
