@@ -22,12 +22,13 @@ class ThreadAbortException(Exception):
     pass
         
 class DemoGridThread (threading.Thread):
-    def __init__ (self, multi, name):
+    def __init__ (self, multi, name, depends = None):
         threading.Thread.__init__(self)
         self.multi = multi
         self.name = name
         self.exception = None
         self.status = -1
+        self.depends = depends
         
     def check_continue(self):
         if self.multi.abort.is_set():
@@ -63,23 +64,30 @@ class MultiThread(object):
 
     def run(self):
         self.done_threads = 0
-        for t in self.threads.values():
+        for t in [th for th in self.threads.values() if th.depends == None]:
             t.start()
         self.all_done.wait()
         
     def thread_success(self, thread):
         with self.lock:
             self.done_threads += 1
+            log.debug("%s thread has finished successfully." % thread.name)
+            log.debug("%i threads are done. Remaining: %s" % (self.done_threads, ",".join([t.name for t in self.threads.values() if t.status == -1])))
+            for t in [th for th in self.threads.values() if th.depends == thread]:
+                t.start()            
             if self.done_threads == self.num_threads:
                 self.all_done.set()            
 
     def thread_failure(self, thread):
         with self.lock:
             if not isinstance(thread.exception, ThreadAbortException):
+                log.debug("%s thread has failed." % thread.name)
                 self.abort.set()
             else:
+                log.debug("%s thread is being aborted." % thread.name)
                 thread.status = 2
             self.done_threads += 1
+            log.debug("%i threads are done. Remaining: %s" % (self.done_threads, ",".join([t.name for t in self.threads.values() if t.status == -1])))
             if self.done_threads == self.num_threads:
                 self.all_done.set()           
                 
@@ -151,7 +159,6 @@ class SSH(object):
     def open(self):
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.client = paramiko.SSHClient()
-        self.client.load_system_host_keys()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         connected = False
         while not connected:
@@ -170,19 +177,24 @@ class SSH(object):
     def close(self):
         self.client.close()
         
-    def run(self, command, outf=None, errf=None, exception_on_error = True):
+    def run(self, command, outf=None, errf=None, exception_on_error = True, expectnooutput=False):
         channel = self.client.get_transport().open_session()
         
         log.debug("%s - Running %s" % (self.hostname,command))
-        if outf != None:
-            outf = open(outf, "w")
+        
+        if expectnooutput:
+            outf = None
+            errf = None
         else:
-            outf = self.default_outf
-    
-        if errf != None:
-            errf = open(errf, "w")
-        else:
-            errf = self.default_errf
+            if outf != None:
+                outf = open(outf, "w")
+            else:
+                outf = self.default_outf
+        
+            if errf != None:
+                errf = open(errf, "w")
+            else:
+                errf = self.default_errf
             
         try:
             channel.exec_command(command)
@@ -192,7 +204,7 @@ class SSH(object):
                     rl, wl, xl = select.select([channel],[],[])
                     if len(rl) > 0:
                         # Must be stdout
-                        x = channel.recv(128)
+                        x = channel.recv(1)
                         if not x: break
                         outf.write(x)
                         outf.flush()
@@ -202,7 +214,8 @@ class SSH(object):
                     
                 if errf != sys.stderr:
                     outf.close()
-
+            
+            log.debug("%s - Waiting for exit status: %s" % (self.hostname,command))
             rc = channel.recv_exit_status()
             log.debug("%s - Ran %s" % (self.hostname,command))
             channel.close()
