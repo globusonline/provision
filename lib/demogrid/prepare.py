@@ -52,7 +52,7 @@ class Preparator(object):
     UVB_DIR = "/ubuntu-vm-builder"
     VAGRANT_DIR = "/vagrant"
     CHEF_FILES_DIR = "/chef/cookbooks/demogrid/files/default/"  
-    CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"        
+    CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"
     
     def __init__(self, demogrid_dir, config, generated_dir, force_certificates, force_chef):
         self.demogrid_dir = demogrid_dir
@@ -90,18 +90,22 @@ class Preparator(object):
 
         print "\033[1;37mCopying chef files... \033[0m",
         sys.stdout.flush()
-        if self.copy_chef_files():
-            print "\033[1;32mdone!\033[0m"
+
+        chef_dir = self.demogrid_dir + self.CHEF_DIR
+        if not os.path.exists(chef_dir):        
+            print '\033[1;33mWarning\033[0m: Chef files not installed. DemoGrid will only work in EC2 mode'
         else:
-            print '\033[1;33mWarning\033[0m: Chef directory already exists. Skipping. Use --force-chef to overwrite'
-
+            if self.copy_chef_files():
+                print "\033[1;32mdone!\033[0m"
+            else:
+                print '\033[1;33mWarning\033[0m: Chef directory already exists. Skipping. Use --force-chef to overwrite'
         
-        print "\033[1;37mCopying other files... \033[0m",
-        sys.stdout.flush()
+            print "\033[1;37mCopying other files... \033[0m",
+            sys.stdout.flush()
+    
+            self.copy_files(cert_files)
 
-        self.copy_files(cert_files)
-
-        print "\033[1;32mdone!\033[0m"
+            print "\033[1;32mdone!\033[0m"
 
     
     def generate_topology(self):
@@ -405,7 +409,7 @@ ff02::3 ip6-allhosts
             if self.force_chef:
                 shutil.rmtree(dst_chef)
             else:
-                return False   
+                return False
               
         if not os.path.exists(dst_chef):
             shutil.copytree(src_chef, dst_chef)            
