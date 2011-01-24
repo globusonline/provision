@@ -297,6 +297,10 @@ class demogrid_ec2_create_ami(Command):
                                   action="store", type="string", dest="snap", 
                                   help = "Snapshot with Chef files")
 
+        self.optparser.add_option("-n", "--name", 
+                                  action="store", type="string", dest="aminame", 
+                                  help = "Name of AMI to create")
+
         self.optparser.add_option("-k", "--keypair", 
                                   action="store", type="string", dest="keypair", 
                                   help = "EC2 keypair")
@@ -308,5 +312,5 @@ class demogrid_ec2_create_ami(Command):
     def run(self):    
         self.parse_options()
         
-        c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.snap, self.opt.keypair, self.opt.keyfile)
+        c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, self.opt.keypair, self.opt.keyfile)
         c.run()          
