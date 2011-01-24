@@ -76,9 +76,10 @@ class EC2ChefVolumeCreator(object):
 
 
 class EC2AMICreator(object):
-    def __init__(self, demogrid_dir, ami, snapshot, keypair, keyfile):
+    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, keypair, keyfile):
         self.demogrid_dir = demogrid_dir
-        self.ami = ami
+        self.base_ami = base_ami
+        self.ami_name = ami_name
         self.snapshot = snapshot
         self.keypair = keypair
         self.keyfile = keyfile
@@ -87,7 +88,7 @@ class EC2AMICreator(object):
         conn = create_ec2_connection()
 
         print "Creating instance"
-        reservation = conn.run_instances(self.ami, 
+        reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
                                          instance_type='t1.micro', 
                                          key_name=self.keypair)
@@ -97,22 +98,31 @@ class EC2AMICreator(object):
         while instance.update() != "running":
             time.sleep(2)
         
-        print "Instance running. Creating volume + attaching."
-        
-        vol = conn.create_volume(1, instance.placement, self.snapshot)
-        vol.attach(instance.id, '/dev/sdh')
-        while vol.update() != "in-use":
-            time.sleep(2)
-        
-        print "Volume created."        
-        
+        print "Instance running."
+
         ssh = SSH("ubuntu", instance.public_dns_name, self.keyfile)
         ssh.open()
-
-        print "Mounting volume."  
-        ssh.run("sudo mkdir /chef")
-        ssh.run("sudo mount -t ext3 /dev/sdh /chef")
-        ssh.run("sudo chown -R ubuntu /chef")
+        
+        if self.snapshot != None:
+            print "Creating volume + attaching."
+            
+            vol = conn.create_volume(1, instance.placement, self.snapshot)
+            vol.attach(instance.id, '/dev/sdh')
+            while vol.update() != "in-use":
+                time.sleep(2)
+            
+            print "Volume created."        
+    
+            print "Mounting volume."  
+            ssh.run("sudo mkdir /chef")
+            ssh.run("sudo mount -t ext3 /dev/sdh /chef")
+            ssh.run("sudo chown -R ubuntu /chef")
+        else:
+            print "Copying Chef files"
+            ssh.run("sudo mkdir /chef")
+            ssh.run("sudo chown -R ubuntu /chef")
+            ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
+            
         
         ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
         ssh.run("wget -qO - http://apt.opscode.com/packages@opscode.com.gpg.key | sudo apt-key add -")
@@ -130,12 +140,12 @@ class EC2AMICreator(object):
         ssh.run("sudo update-rc.d nis disable")
         ssh.run("sudo update-rc.d chef-client disable")
         
-        ssh.run("sudo umount /chef")
-        
-        print "Detaching volume"
-        vol.detach()
-        while vol.update() != "available":
-            time.sleep(1)        
+        if self.snapshot != None:
+            ssh.run("sudo umount /chef")
+            print "Detaching volume"
+            vol.detach()
+            while vol.update() != "available":
+                time.sleep(1)        
             
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
@@ -148,7 +158,7 @@ class EC2AMICreator(object):
         
         print "Creating AMI"
         # Doesn't actually return AMI. Have to make it public manually.
-        ami = conn.create_image(instance.id, "DemoGrid Base AMI", description="DemoGrid Base AMI")       
+        ami = conn.create_image(instance.id, self.ami_name, description=self.ami_name)       
         
         print "Cleaning up"
 
@@ -159,5 +169,6 @@ class EC2AMICreator(object):
             time.sleep(2)
         print "Instance terminated"   
                 
-        vol.delete()     
+        if self.snapshot != None:                
+            vol.delete()     
         
