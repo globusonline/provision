@@ -264,15 +264,16 @@ class InstanceConfigureThread(DemoGridThread):
         
         log.info("Setting up instance %s. Hostname: %s" % (instance.id, instance.public_dns_name), node)
 
-        log.debug("Creating Chef volume.", node)
-        vol = self.launcher.conn.create_volume(1, instance.placement, self.launcher.config.get_snap())
-        log.debug("Created Chef volume %s. Attaching." % vol.id, node)
-        vol.attach(instance.id, '/dev/sdh')
-        log.debug("Chef volume attached. Waiting for it to become in-use.", node)
-        self.launcher.wait_state(vol, "in-use")
-        log.debug("Volume is in-use", node)
-
-        self.launcher.vols.append(vol)
+        if self.launcher.config.has_snap():
+            log.debug("Creating Chef volume.", node)
+            vol = self.launcher.conn.create_volume(1, instance.placement, self.launcher.config.get_snap())
+            log.debug("Created Chef volume %s. Attaching." % vol.id, node)
+            vol.attach(instance.id, '/dev/sdh')
+            log.debug("Chef volume attached. Waiting for it to become in-use.", node)
+            self.launcher.wait_state(vol, "in-use")
+            log.debug("Volume is in-use", node)
+    
+            self.launcher.vols.append(vol)
 
         self.check_continue()
 
@@ -290,8 +291,9 @@ class InstanceConfigureThread(DemoGridThread):
 
         self.check_continue()
         
-        log.debug("Mounting Chef volume", node)
-        ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
+        if self.launcher.config.has_snap():
+            log.debug("Mounting Chef volume", node)
+            ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
         
         # Upload host file and update hostname
         log.debug("Uploading host file and updating hostname", node)
@@ -329,12 +331,13 @@ class InstanceConfigureThread(DemoGridThread):
 
         self.check_continue()
         
-        ssh.run("sudo umount /chef", expectnooutput=True)
-        vol.detach()
-        self.launcher.wait_state(vol, "available")        
-        vol.delete()
-        
-        self.launcher.vols.remove(vol)
+        if self.launcher.config.has_snap():
+            ssh.run("sudo umount /chef", expectnooutput=True)
+            vol.detach()
+            self.launcher.wait_state(vol, "available")        
+            vol.delete()
+            
+            self.launcher.vols.remove(vol)
         
         ssh.run("sudo update-rc.d nis enable")     
 

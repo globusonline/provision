@@ -71,6 +71,9 @@ class DemoGridConfig(object):
     
     def get_ami(self):
         return self.config.get(self.EC2_SEC, self.AMI_OPT)
+
+    def has_snap(self):
+        return self.config.has_option(self.EC2_SEC, self.SNAP_OPT)
     
     def get_snap(self):
         return self.config.get(self.EC2_SEC, self.SNAP_OPT)
