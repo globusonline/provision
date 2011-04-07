@@ -6,8 +6,11 @@ class DemoGridConfig(object):
     GENERAL_SEC = "general"
     ORGANIZATIONS_OPT = "organizations"
     MYPROXY_OPT = "myproxy"
+    CACERT_OPT = "ca-cert"
+    CAKEY_OPT = "ca-key"
     
     ORGANIZATION_SEC = "organization-"
+    USERSFILE_OPT = "users-file"
     GRIDUSERS_OPT = "grid-users"
     GRIDUSERS_AUTH_OPT = "grid-users-auth"
     NONGRIDUSERS_OPT = "nongrid-users"
@@ -22,6 +25,7 @@ class DemoGridConfig(object):
     KEYFILE_OPT = "keyfile"
     INSTYPE_OPT = "instance_type"
     ZONE_OPT = "availability_zone"
+    ACCESS_OPT = "access"
 
     
     def __init__(self, configfile):
@@ -33,7 +37,21 @@ class DemoGridConfig(object):
 
     def get_subnet(self):
         return "192.168" # This will be configurable
+
+    def has_ca(self):
+        return self.config.has_option(self.GENERAL_SEC, self.CACERT_OPT) and self.config.has_option(self.GENERAL_SEC, self.CAKEY_OPT)
     
+    def get_ca(self):
+        return self.config.get(self.GENERAL_SEC, self.CACERT_OPT), self.config.get(self.GENERAL_SEC, self.CAKEY_OPT)
+
+    def has_org_users_file(self, org_name):
+        org_sec = self.__get_org_sec(org_name)
+        return self.config.has_option(org_sec, self.USERSFILE_OPT)    
+
+    def get_org_users_file(self, org_name):
+        org_sec = self.__get_org_sec(org_name)
+        return self.config.get(org_sec, self.USERSFILE_OPT)    
+
     def get_org_num_gridusers(self, org_name):
         org_sec = self.__get_org_sec(org_name)
         return self.config.getint(org_sec, self.GRIDUSERS_OPT)    
@@ -90,7 +108,8 @@ class DemoGridConfig(object):
     def get_ec2_zone(self):
         return self.config.get(self.EC2_SEC, self.ZONE_OPT)        
     
-
+    def get_ec2_access_type(self):
+        return self.config.get(self.EC2_SEC, self.ACCESS_OPT) 
     
     
 class DemoGridHostsFile(object):
