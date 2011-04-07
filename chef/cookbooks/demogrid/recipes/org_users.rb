@@ -59,7 +59,7 @@ users.each do |u|
 	  uid 2000 + usernum
 	  gid 100
 	  home "/export/home/#{u[:login]}"
-	  password "$1$hgem2sWa$LEi4WMBeQx8VitWAcd5qC1" # Password: user
+	  password u[:password_hash]
 	  shell "/bin/bash"
 	  supports :manage_home => true
 	end

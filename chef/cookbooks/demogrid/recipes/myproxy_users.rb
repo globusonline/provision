@@ -44,7 +44,7 @@ node[:orgusers].each_pair do |org, users|
 		if ! File.exists?("/var/myproxy/#{u[:login]}.creds")
 			# I haven't found a way of running myproxy-admin-adduser in a completely unattended
 			# manner. So, we have to use expect to supply the passphrase for the user's certificate.
-			cmd = "expect -c \"spawn #{node[:globus][:dir]}/sbin/myproxy-admin-adduser -c \\\"#{u[:description]}\\\" -l #{u[:login]} -p pass:gridca; expect \\\"Enter PEM pass phrase:\\\"; send \\\"griduser\r\\\"; expect \\\"Verifying - Enter PEM pass phrase:\\\"; send \\\"griduser\r\\\"; expect eof\""
+			cmd = "expect -c \"spawn #{node[:globus][:dir]}/sbin/myproxy-admin-adduser -c \\\"#{u[:description]}\\\" -l #{u[:login]} -p pass:gridca; expect \\\"Enter PEM pass phrase:\\\"; send \\\"#{u[:password]}\r\\\"; expect \\\"Verifying - Enter PEM pass phrase:\\\"; send \\\"#{u[:password]}\r\\\"; expect eof\""
 			execute "myproxy-admin-adduser #{u[:login]}" do
 			  user "root"
 			  command ". #{node[:globus][:dir]}/etc/globus-user-env.sh; #{cmd}"
