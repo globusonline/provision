@@ -7,6 +7,7 @@ import time
 import sys
 import traceback
 from demogrid.common import log
+from demogrid.common.certs import CertificateGenerator
 
 
 class EC2Launcher(object):
@@ -63,6 +64,11 @@ class EC2Launcher(object):
         f.close()
         log.debug("Loaded topology file")
 
+        if self.config.get_ec2_access_type() == "public":
+            topology.global_attributes["ec2_public"] = "true"
+        else:
+            topology.global_attributes["ec2_public"] = "false"
+
         nodes = topology.get_nodes()
         num_instances = len(nodes)
 
@@ -116,6 +122,9 @@ class EC2Launcher(object):
         
         for node, instance in node_instance.items():
             node.ip = instance.private_ip_address
+            if self.config.get_ec2_access_type() == "public":
+                node.attrs["public_dns"] = "\"%s\"" % instance.public_dns_name
+                node.attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
         
         # Update attributes and other data
         for node in nodes:        
@@ -124,9 +133,13 @@ class EC2Launcher(object):
                 attrs["subnet"] = "nil" 
                 attrs["org_server"] = "\"%s\"" % node.org.server.ip
         
+        if self.config.get_ec2_access_type() == "public":
+            self.__gen_public_host_certificates(node_instance)
+        
         topology.gen_ruby_file(self.generated_dir + "/topology_ec2.rb")
         topology.gen_hosts_file(self.generated_dir + "/hosts_ec2") 
-
+        topology.gen_csv_file(self.generated_dir + "/topology_ec2.csv")
+        
         if self.loglevel == 0:
             print "\033[1;37mConfiguring DemoGrid nodes...\033[0m (this may take a few minutes)"
         log.info("Setting up DemoGrid on instances")        
@@ -170,6 +183,7 @@ class EC2Launcher(object):
         for node, instance in node_instance.items():
             if node.role == "org-login":
                 print "%s: %s" % (node.hostname.split(".")[0], instance.public_dns_name)
+
 
     def wait_state(self, obj, state, interval = 2.0):
         jitter = random.uniform(0.0, 0.5)
@@ -240,6 +254,32 @@ class EC2Launcher(object):
     def cleanup_after_kill(self):
         print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
         print "Please make sure you manually release all DemoGrid instances and volumes."
+
+    def __gen_public_host_certificates(self, node_instance):
+        log.info("Generating host certificates for public hosts")
+        
+        certs_dir = "%s/certs" % self.generated_dir
+        
+        certg = CertificateGenerator()
+        
+        if self.config.has_ca():
+            ca_cert_file, ca_cert_key = self.config.get_ca()
+            ca_cert, ca_key = certg.load_certificate(ca_cert_file, ca_cert_key)
+        else:
+            print "To use host certificates with public hostnames, you need to supply a CA certificate."
+            self.cleanup()
+            exit(1)
+            
+        certg.set_ca(ca_cert, ca_key)
+
+        for node, instance in node_instance.items():        
+            cert, key = certg.gen_host_cert(hostname= instance.public_dns_name) 
+            
+            cert_file = "%s/%s_cert.pem" % (certs_dir, node.hostname)
+            key_file = "%s/%s_key.pem" % (certs_dir, node.hostname)             
+            certg.save_certificate(cert, key, cert_file, key_file)            
+
+        log.info("Generated host certificates for public hosts")
             
 class InstanceWaitThread(DemoGridThread):
     def __init__(self, multi, name, instance, launcher, depends = None):
