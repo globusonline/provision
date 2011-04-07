@@ -43,7 +43,9 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :globus_location => globus_location
+    :globus_location => globus_location,
+    :ec2_public => node[:ec2_public],
+    :public_ip => node[:public_ip]
   )
 end
 

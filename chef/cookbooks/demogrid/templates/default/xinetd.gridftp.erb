@@ -7,7 +7,11 @@ service gsiftp
               env                     += GLOBUS_LOCATION=<%= @globus_location %>
               env                     += LD_LIBRARY_PATH=<%= @globus_location %>/lib
               server                  = <%= @globus_location %>/sbin/globus-gridftp-server
+              <% if @ec2_public %>
+              server_args             = -i  --data-interface <%= @public_ip %>
+              <% else %>
               server_args             = -i
+              <% end %>
               log_on_success          += DURATION
               nice                    = 10
               disable                 = no
