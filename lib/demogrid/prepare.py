@@ -1,10 +1,10 @@
 import os
 import os.path
 
-from OpenSSL import crypto, SSL
 import sys
 import shutil
 from demogrid.common.topology import DGGrid, DGOrganization, DGNode, DGOrgUser
+from demogrid.common.certs import CertificateGenerator
 
 try:
     from mako.template import Template
@@ -53,6 +53,9 @@ class Preparator(object):
     VAGRANT_DIR = "/vagrant"
     CHEF_FILES_DIR = "/chef/cookbooks/demogrid/files/default/"  
     CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"
+
+    # The default user password is "user"    
+    DEFAULT_USER_PASSWD = "$6$7iad7GsKb$YOWHui2Axtah8/UyoGJ.Q0zA49osppljN2NZwN9JRJKv8pL7DdSnUxNopinBhv1kQkwmAYA5YPS54MWCScJKi0"
     
     def __init__(self, demogrid_dir, config, generated_dir, force_certificates, force_chef):
         self.demogrid_dir = demogrid_dir
@@ -60,6 +63,7 @@ class Preparator(object):
         self.generated_dir = generated_dir
         self.force_certificates = force_certificates
         self.force_chef = force_chef
+        self.certg = CertificateGenerator()
         
     def prepare(self):
         if not os.path.exists(self.generated_dir):
@@ -71,8 +75,8 @@ class Preparator(object):
         self.topology = self.generate_topology()
         self.topology.gen_hosts_file(self.generated_dir + "/hosts", 
                                      extra_entries = [("%s.0.1" % self.config.get_subnet(), "master.%s" % self.DOMAIN)])
-        self.gen_hosts_csv_file()
         self.topology.gen_ruby_file(self.generated_dir + "/topology.rb")
+        self.topology.gen_csv_file(self.generated_dir + "/topology.csv")
         self.gen_uvb_master_conf()
         self.gen_uvb_confs()
         self.gen_vagrant_file()
@@ -122,21 +126,45 @@ class Preparator(object):
             org = DGOrganization(org_name, org_subnet)
             grid.add_organization(org)
             
-            usernum = 1
-            for i in range(self.config.get_org_num_gridusers(org_name)):
-                user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
-                                 description = "User %i of Organization %s" % (usernum, org_name),
-                                 gridenabled = True,
-                                 auth_type = self.config.get_org_user_auth(org_name))
-                org.add_user(user)
-                usernum += 1
-
-            for i in range(self.config.get_org_num_nongridusers(org_name)):
-                user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
-                                 description = "User %i of Organization %s" % (usernum, org_name),
-                                 gridenabled = False)
-                org.add_user(user)
-                usernum += 1
+            if self.config.has_org_users_file(org_name):
+                usersfile = self.config.get_org_users_file(org_name)
+                usersfile = open(usersfile, "r")
+                
+                for line in usersfile:
+                    fields = line.split()
+                    type = fields[0]
+                    username = fields[1]
+                    password = fields[2]
+                    password_hash = fields[3]
+                    
+                    if type == "G":
+                        user = DGOrgUser(login = username,
+                                         description = "User '%s' of Organization %s" % (username, org_name),
+                                         gridenabled = True, password = password, password_hash = password_hash,
+                                         auth_type = self.config.get_org_user_auth(org_name))
+                    else:
+                        user = DGOrgUser(login = username,
+                                         description = "User '%s' of Organization %s" % (username, org_name),
+                                         gridenabled = False, password = password, password_hash = password_hash)
+                    org.add_user(user)
+                    
+                usersfile.close()
+            else:
+                usernum = 1
+                for i in range(self.config.get_org_num_gridusers(org_name)):
+                    user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
+                                     description = "User %i of Organization %s" % (usernum, org_name),
+                                     gridenabled = True, password = self.DEFAULT_USER_PASSWD, password_hash = self.DEFAULT_USER_PASSWDHASH,
+                                     auth_type = self.config.get_org_user_auth(org_name))
+                    org.add_user(user)
+                    usernum += 1
+    
+                for i in range(self.config.get_org_num_nongridusers(org_name)):
+                    user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
+                                     description = "User %i of Organization %s" % (usernum, org_name),
+                                     gridenabled = False, password = self.DEFAULT_USER_PASSWD, password_hash = self.DEFAULT_USER_PASSWDHASH)
+                    org.add_user(user)
+                    usernum += 1
                 
             
             server_node = DGNode(role = self.SERVER_ROLE,
@@ -231,21 +259,7 @@ ff02::3 ip6-allhosts
         hostsfile = open(self.generated_dir + "/hosts", "w")
         hostsfile.write(hosts)
         hostsfile.close()
-        
-    def gen_hosts_csv_file(self):
-        hosts_csv = "fqdn,name,ip,role\n"
                 
-        nodes = self.topology.get_nodes()
-        for n in nodes:
-            hosts_csv += ",".join((n.hostname, n.hostname.split(".")[0], n.ip, n.role))
-            hosts_csv += "\n"
-        
-        hosts_csvfile = open(self.generated_dir + "/hosts.csv", "w")
-        hosts_csvfile.write(hosts_csv)
-        hosts_csvfile.close()
-        
-   
-        
     def gen_uvb_master_conf(self):
         uvb_dir = self.generated_dir + self.UVB_DIR
         if not os.path.exists(uvb_dir):
@@ -303,17 +317,20 @@ ff02::3 ip6-allhosts
              
             
     def gen_certificates(self):
-
         certs_dir = self.generated_dir + self.CERTS_DIR
         if not os.path.exists(certs_dir):
             os.makedirs(certs_dir)  
 
         cert_files = []
+        
+        if self.config.has_ca():
+            ca_cert_file, ca_cert_key = self.config.get_ca()
+            ca_cert, ca_key = self.certg.load_certificate(ca_cert_file, ca_cert_key)
+        else:
+            ca_cert, ca_key = self.certg.gen_selfsigned_ca_cert("DemoGrid CA")
+        
+        self.certg.set_ca(ca_cert, ca_key)
 
-        ca_cert, ca_key = self.__gen_certificate(cn = "DemoGrid CA", 
-                                                 serial = 1,
-                                                 issuer_cert = None,
-                                                 issuer_key = None)
         h = "%x" % ca_cert.subject_name_hash()
 
         hash_file = open(certs_dir + "/ca_cert.hash", "w")
@@ -329,13 +346,9 @@ ff02::3 ip6-allhosts
                                 cert_file = ca_cert_file,
                                 key_file = ca_key_file)
 
-        serial_number = 2
         users = [u for u in self.topology.get_users() if u.gridenabled and u.auth_type=="certs"]
         for user in users:        
-            cert, key = self.__gen_certificate(cn = user.description, 
-                                               serial = serial_number,
-                                               issuer_cert = ca_cert,
-                                               issuer_key = ca_key)
+            cert, key = self.certg.gen_user_cert(cn = user.description) 
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, user.login)
             key_file = "%s/%s_key.pem" % (certs_dir, user.login)
@@ -345,14 +358,10 @@ ff02::3 ip6-allhosts
                                     key = key,
                                     cert_file = cert_file,
                                     key_file = key_file)
-            serial_number += 1
         
         nodes = self.topology.get_nodes()
         for n in nodes:        
-            cert, key = self.__gen_certificate(cn = "host/%s" % n.hostname, 
-                                               serial = serial_number,
-                                               issuer_cert = ca_cert,
-                                               issuer_key = ca_key)
+            cert, key = self.certg.gen_host_cert(hostname= n.hostname) 
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, n.hostname)
             key_file = "%s/%s_key.pem" % (certs_dir, n.hostname)
@@ -361,9 +370,7 @@ ff02::3 ip6-allhosts
             self.__dump_certificate(cert = cert,
                                     key = key,
                                     cert_file = cert_file,
-                                    key_file = key_file)            
-
-            serial_number += 1          
+                                    key_file = key_file)        
 
         return cert_files  
         
@@ -443,46 +450,11 @@ ff02::3 ip6-allhosts
             attrs["org"] = "\"%s\"" % node.org.name
             attrs["subnet"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 0)
             attrs["org_server"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 1)
-            attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
-    
-    def __gen_certificate(self, cn, serial, issuer_cert, issuer_key):
-        k = crypto.PKey()
-        k.generate_key(crypto.TYPE_RSA, 1024)
-
-        cert = crypto.X509()
-        cert.get_subject().O = "Grid"
-        cert.get_subject().OU = "DemoGrid"
-        cert.get_subject().CN = cn
-        cert.set_serial_number(serial)
-        cert.set_version(2)
-        cert.gmtime_adj_notBefore(0)
-        cert.gmtime_adj_notAfter(10*365*24*60*60)
-        cert.set_pubkey(k)
-
-        
-        if issuer_cert == None:
-            cert.set_issuer(cert.get_subject())
-        else:
-            cert.set_issuer(issuer_cert.get_subject())
-            
-        if issuer_cert == None:
-            cert.sign(k, 'sha1')
-        else:
-            cert.sign(issuer_key, 'sha1')   
-        
-        return cert, k 
+            attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)     
     
     def __dump_certificate(self, cert, key, cert_file, key_file):
         if os.path.exists(cert_file) and not self.force_certificates:
             print '\033[1;33mWarning\033[0m: Certificate %s already exists. Skipping. Use --force-certificates to overwrite' % cert_file.split("/")[-1]
         else:
-            cert_file = open(cert_file, "w")
-            cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-            cert_file.close()  
-        
-            key_file = open(key_file, "w")
-            key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-            key_file.close()        
-    
- 
+            self.certg.save_certificate(cert, key, cert_file, key_file)     
         
