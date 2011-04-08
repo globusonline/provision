@@ -219,7 +219,7 @@ class Preparator(object):
         nodes = grid.get_nodes()
         for node in nodes:        
             attrs = node.attrs
-            attrs["demogrid_hostname"] = "\"%s\"" % node.hostname.split(".")[0]
+            attrs["demogrid_hostname"] = "\"%s\"" % node.demogrid_hostname
             attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
             if node.org != None:
                 attrs["org"] = "\"%s\"" % node.org.name
@@ -361,10 +361,12 @@ ff02::3 ip6-allhosts
         
         nodes = self.topology.get_nodes()
         for n in nodes:        
-            cert, key = self.certg.gen_host_cert(hostname= n.hostname) 
+            cert, key = self.certg.gen_host_cert(hostname = n.hostname) 
             
-            cert_file = "%s/%s_cert.pem" % (certs_dir, n.hostname)
-            key_file = "%s/%s_key.pem" % (certs_dir, n.hostname)
+            filename = n.demogrid_hostname + ".grid.example.org"
+            
+            cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
+            key_file = "%s/%s_key.pem" % (certs_dir, filename)
             cert_files.append(cert_file)
             cert_files.append(key_file)                
             self.__dump_certificate(cert = cert,
@@ -441,16 +443,6 @@ ff02::3 ip6-allhosts
             return "%s.%s" % (name, self.DOMAIN)
         else:
             return "%s-%s.%s" % (org, name, self.DOMAIN)
-        
-    def __gen_chef_attrs(self, node):
-        attrs = node.attrs
-        attrs["demogrid_hostname"] = "\"%s\"" % node.hostname.split(".")[0]
-        attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
-        if node.org != None:
-            attrs["org"] = "\"%s\"" % node.org.name
-            attrs["subnet"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 0)
-            attrs["org_server"] = "\"%s\"" % self.__gen_IP(node.org.subnet, 1)
-            attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)     
     
     def __dump_certificate(self, cert, key, cert_file, key_file):
         if os.path.exists(cert_file) and not self.force_certificates:

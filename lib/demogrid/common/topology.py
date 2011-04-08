@@ -146,6 +146,7 @@ class DGNode(object):
         self.role = role
         self.ip = ip
         self.hostname = hostname
+        self.demogrid_hostname = hostname.split(".")[0]
         self.org = org
         self.attrs = {}
         

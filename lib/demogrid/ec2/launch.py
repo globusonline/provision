@@ -123,6 +123,7 @@ class EC2Launcher(object):
         for node, instance in node_instance.items():
             node.ip = instance.private_ip_address
             if self.config.get_ec2_access_type() == "public":
+                node.hostname = instance.public_dns_name
                 node.attrs["public_dns"] = "\"%s\"" % instance.public_dns_name
                 node.attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
         
@@ -132,6 +133,9 @@ class EC2Launcher(object):
             if node.org != None:
                 attrs["subnet"] = "nil" 
                 attrs["org_server"] = "\"%s\"" % node.org.server.ip
+                if node.org.lrm != None:
+                    attrs["lrm_head"] = "\"%s\"" % node.org.lrm.hostname
+                
         
         if self.config.get_ec2_access_type() == "public":
             self.__gen_public_host_certificates(node_instance)
@@ -275,8 +279,10 @@ class EC2Launcher(object):
         for node, instance in node_instance.items():        
             cert, key = certg.gen_host_cert(hostname= instance.public_dns_name) 
             
-            cert_file = "%s/%s_cert.pem" % (certs_dir, node.hostname)
-            key_file = "%s/%s_key.pem" % (certs_dir, node.hostname)             
+            filename = node.demogrid_hostname + ".grid.example.org"
+            
+            cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
+            key_file = "%s/%s_key.pem" % (certs_dir, filename)             
             certg.save_certificate(cert, key, cert_file, key_file)            
 
         log.info("Generated host certificates for public hosts")
@@ -370,6 +376,11 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
         self.check_continue()
+
+        # The Chef recipes will overwrite the hostname, so
+        # we need to set it again.
+        ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
+        ssh.run("sudo /etc/init.d/hostname restart")
         
         if self.launcher.config.has_snap():
             ssh.run("sudo umount /chef", expectnooutput=True)
