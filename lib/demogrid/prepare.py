@@ -31,13 +31,18 @@ class Preparator(object):
     LOGIN_HOST = 2
     LOGIN_HOSTNAME = "login"
     LOGIN_ROLE = "org-login"
-    GRIDFTP_HOST = 3
+    MYPROXY_HOST = 3
+    MYPROXY_HOSTNAME = "auth"
+    MYPROXY_ROLE = "org-auth"
+    GRIDFTP_HOST = 4
     GRIDFTP_HOSTNAME = "gridftp"
     GRIDFTP_ROLE = "org-gridftp"
     GATEKEEPER_HOST = 100
     GATEKEEPER_HOSTNAME = "gatekeeper"
     GATEKEEPER_CONDOR_ROLE = "org-gram-condor"
     GATEKEEPER_PBS_ROLE = "org-gram-pbs"
+    LRM_CONDOR_ROLE = "org-condor"
+    LRM_PBS_ROLE = "org-pbs"
     LRM_NODE_HOST_START = 101
     LRM_NODE_HOSTNAME = "clusternode"
     LRM_NODE_CONDOR_ROLE = "org-clusternode-condor"
@@ -115,11 +120,12 @@ class Preparator(object):
     def generate_topology(self):
         grid = DGGrid()
         
-        if self.config.has_auth_node():
-            auth_node = DGNode(role = self.GRID_AUTH_ROLE,
-                               ip =   self.__gen_IP(self.GRID_MANAGEMENT_SUBNET, self.GRID_AUTH_HOST),
-                               hostname = self.__gen_hostname(self.GRID_AUTH_HOSTNAME))
-            grid.add_node(auth_node)
+        grid_auth_node = None
+        if self.config.has_grid_auth_node():
+            grid_auth_node = DGNode(role = self.GRID_AUTH_ROLE,
+                                    ip =   self.__gen_IP(self.GRID_MANAGEMENT_SUBNET, self.GRID_AUTH_HOST),
+                                    hostname = self.__gen_hostname(self.GRID_AUTH_HOSTNAME))
+            grid.add_node(grid_auth_node)
         
         org_subnet = self.ORG_SUBNET_START
         for org_name in self.config.organizations:
@@ -152,16 +158,18 @@ class Preparator(object):
             else:
                 usernum = 1
                 for i in range(self.config.get_org_num_gridusers(org_name)):
-                    user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
-                                     description = "User %i of Organization %s" % (usernum, org_name),
+                    username = "%s-user%i" % (org_name, usernum)
+                    user = DGOrgUser(login = username,
+                                     description = "User '%s' of Organization %s" % (username, org_name),
                                      gridenabled = True, password = self.DEFAULT_USER_PASSWD, password_hash = self.DEFAULT_USER_PASSWDHASH,
                                      auth_type = self.config.get_org_user_auth(org_name))
                     org.add_user(user)
                     usernum += 1
     
                 for i in range(self.config.get_org_num_nongridusers(org_name)):
+                    username = "%s-user%i" % (org_name, usernum)
                     user = DGOrgUser(login = "%s-user%i" % (org_name, usernum),
-                                     description = "User %i of Organization %s" % (usernum, org_name),
+                                     description = "User '%s' of Organization %s" % (username, org_name),
                                      gridenabled = False, password = self.DEFAULT_USER_PASSWD, password_hash = self.DEFAULT_USER_PASSWDHASH)
                     org.add_user(user)
                     usernum += 1
@@ -180,6 +188,16 @@ class Preparator(object):
                                  org = org)                        
             grid.add_org_node(org, login_node)
 
+            if self.config.has_org_auth(org_name):
+                auth_node = DGNode(role = self.MYPROXY_ROLE,
+                                   ip =   self.__gen_IP(org_subnet, self.MYPROXY_HOST),
+                                   hostname = self.__gen_hostname(self.MYPROXY_HOSTNAME, org = org_name),
+                                   org = org)                        
+                grid.add_org_node(org, auth_node)
+                org.auth = auth_node
+            else:
+                org.auth = grid_auth_node
+
             if self.config.has_org_gridftp(org_name):
                 gridftp_node = DGNode(role = self.GRIDFTP_ROLE,
                                       ip =   self.__gen_IP(org_subnet, self.GRIDFTP_HOST),
@@ -189,11 +207,18 @@ class Preparator(object):
             
             if self.config.has_org_lrm(org_name):
                 lrm_type = self.config.get_org_lrm(org_name)
+                gram = self.config.has_org_gram(org_name)
                 if lrm_type == "condor":
-                    role = self.GATEKEEPER_CONDOR_ROLE
+                    if gram:
+                        role = self.GATEKEEPER_CONDOR_ROLE
+                    else:
+                        role = self.LRM_CONDOR_ROLE
                     workernode_role = self.LRM_NODE_CONDOR_ROLE
                 elif lrm_type == "torque":
-                    role = self.GATEKEEPER_PBS_ROLE
+                    if gram:
+                        role = self.GATEKEEPER_PBS_ROLE
+                    else:
+                        role = self.LRM_PBS_ROLE
                     workernode_role = self.LRM_NODE_PBS_ROLE
                     
                 gatekeeper_node = DGNode(role = role,
@@ -216,13 +241,17 @@ class Preparator(object):
             
             org_subnet += 1
         
+        # Generate Chef attributes
         nodes = grid.get_nodes()
         for node in nodes:        
             attrs = node.attrs
             attrs["demogrid_hostname"] = "\"%s\"" % node.demogrid_hostname
+            attrs["demogrid_host_id"] = "\"%s\"" % node.demogrid_host_id
             attrs["run_list"] = "[ \"role[%s]\" ]" % node.role
             if node.org != None:
                 attrs["org"] = "\"%s\"" % node.org.name
+                if node.org.auth != None:
+                    attrs["auth"] = "\"%s\"" % self.__gen_hostname("auth", node.org.name)
                 if self.config.has_org_lrm(node.org.name):
                     attrs["lrm_head"] = "\"%s\"" % self.__gen_hostname("gatekeeper", node.org.name)
                     attrs["lrm_nodes"] = "%i" % self.config.get_org_num_clusternodes(node.org.name)
@@ -363,7 +392,7 @@ ff02::3 ip6-allhosts
         for n in nodes:        
             cert, key = self.certg.gen_host_cert(hostname = n.hostname) 
             
-            filename = n.demogrid_hostname + ".grid.example.org"
+            filename = n.demogrid_host_id
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
             key_file = "%s/%s_key.pem" % (certs_dir, filename)
