@@ -16,7 +16,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Globus Toolkit 5.0.2 basic install
+# RECIPE: Globus Toolkit 5.0.3 basic install
 #
 # This recipe performs a barebones install of Globus. Users on a node where this
 # recipe has been run will have access to Globus command-line utilities,
@@ -25,16 +25,16 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-# Globus Toolkit 5.0.2 only provides a source tarball. Installing from scratch
+# Globus Toolkit 5.0.3 only provides a source tarball. Installing from scratch
 # would involve compiling the toolkit on each VM, which would take too long.
 # So, we use a "precompiled" version prepared on an Ubuntu Lucid 32-bit machine.
-# Since making GT 5.0.2 creates files in both the source tree and in
+# Since making GT 5.0.3 creates files in both the source tree and in
 # GLOBUS_LOCATION, we have tarballs for both.
 #
 # This is a terrible kluge, and will be removed once we have a binary distribution
 # of the toolkit that we can use.
-gl_tarball = "gt5.0.2-globus_location.tgz"
-install_tarball = "gt5.0.2-source-install.tgz"
+gl_tarball = "gt5.0.3-globus_location.tgz"
+install_tarball = "gt5.0.3-source-install.tgz"
 
 
 # Needed to create the globus user
@@ -83,7 +83,7 @@ if ! File.exists?(node[:globus][:dir])
     end  	
   end
   
-  directory "/usr/local/globus-5.0.2" do
+  directory node[:globus][:dir] do
     owner "globus"
     group "globus"
     mode "0755"
@@ -107,7 +107,7 @@ if ! File.exists?(node[:globus][:dir])
 	execute "make install" do
 	  user "globus"
 	  group "globus"
-	  cwd "/var/tmp/gt5.0.2-all-source-installer"
+	  cwd node[:globus][:srcdir]
 	  command "make install 2>&1 | tee build.log"
 	  action :run
 	  environment(
@@ -121,7 +121,7 @@ end
 # so it will have GLOBUS_LOCATION, PATH, etc. properly set up.
 template "/home/globus/.profile" do
   source "profile.erb"
-  mode 0440
+  mode 0644
   owner "globus"
   group "globus"
   variables(

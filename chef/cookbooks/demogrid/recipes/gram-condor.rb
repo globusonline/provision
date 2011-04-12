@@ -16,7 +16,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Globus Toolkit 5.0.2 GRAM for Condor
+# RECIPE: Globus Toolkit 5.0.3 GRAM for Condor
 #
 # THis recipe assumes that the "gram" and "condor_head" recipes have been run, 
 # and sets GRAM up to interface with Condor. 
@@ -32,7 +32,7 @@ package "libssl0.9.8"
 package "libssl-dev"
 
 # We'll need the pre-compiled source tarball.
-install_tarball = "gt5.0.2-source-install.tgz"
+install_tarball = "gt5.0.3-source-install.tgz"
 
 # Make sure the globus user has all the Condor commands in its PATH.
 ruby_block "globus.condor" do
@@ -68,7 +68,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-condor")
   execute "make gram5-condor" do
     user "globus"
     group "globus"
-    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    cwd node[:globus][:srcdir]
     command "make gram5-condor"
     action :run
   end
@@ -76,7 +76,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-condor")
   execute "make install" do
     user "globus"
     group "globus"
-    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    cwd node[:globus][:srcdir]
     command "PATH=/usr/local/condor-7.4.3/bin/:$PATH; make install"
     action :run
   end

@@ -16,7 +16,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Globus Toolkit 5.0.2 GRAM for PBS
+# RECIPE: Globus Toolkit 5.0.3 GRAM for PBS
 #
 # This recipe assumes that the "gram" and "torque_head" recipes have been run, 
 # and sets GRAM up to interface with PBS (in our case, Torque). 
@@ -32,7 +32,7 @@ package "libssl0.9.8"
 package "libssl-dev"
 
 # We'll need the pre-compiled source tarball.
-install_tarball = "gt5.0.2-source-install.tgz"
+install_tarball = "gt5.0.3-source-install.tgz"
 
 
 # Compile and install gram5-pbs
@@ -61,7 +61,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-pbs")
   execute "make gram5-pbs" do
     user "globus"
     group "globus"
-    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    cwd node[:globus][:srcdir]
     command "make gram5-pbs"
     action :run
   end
@@ -69,7 +69,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-pbs")
   execute "make install" do
     user "globus"
     group "globus"
-    cwd "/var/tmp/gt5.0.2-all-source-installer"
+    cwd node[:globus][:srcdir]
     command "make install"
     action :run
     environment(

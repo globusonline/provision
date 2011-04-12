@@ -16,7 +16,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Globus Toolkit 5.0.2 GridFTP
+# RECIPE: Globus Toolkit 5.0.3 GridFTP
 #
 # This recipe performs a barebones install of GridFTP. It assumes that the
 # "globus" recipe has been run, so it just involves setting up GridFTP
@@ -24,13 +24,11 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-globus_location = "/usr/local/globus-5.0.2"
-
 package "xinetd" do
   action :install
 end
 
-cookbook_file "#{globus_location}/etc/gridftp.conf" do
+cookbook_file "#{node[:globus][:dir]}/etc/gridftp.conf" do
   source "gridftp.conf"
   mode 0644
   owner "globus"
@@ -43,7 +41,7 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :globus_location => globus_location,
+    :globus_location => node[:globus][:dir],
     :ec2_public => node[:ec2_public],
     :public_ip => node[:public_ip]
   )

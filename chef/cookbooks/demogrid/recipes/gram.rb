@@ -16,7 +16,7 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Globus Toolkit 5.0.2 GRAM
+# RECIPE: Globus Toolkit 5.0.3 GRAM
 #
 # This recipe performs a barebones install of GRAM. It assumes that the
 # "globus" recipe has been run, so it just involves setting up GRAM
