@@ -35,6 +35,9 @@ include_recipe "demogrid::condor"
 # and contains the FQDN of the head node.
 server = node[:lrm_head]
 
+# Domain (used by Condor for authorization). 
+# This should eventually be included in the topology.
+domain = server[server.index(".")+1, server.length]
 
 # Run the Condor configuration script.
 execute "condor_configure" do
@@ -58,6 +61,7 @@ template "/var/condor/condor_config.local" do
   group "condor"
   variables(
     :server => server,
+    :domain => domain,    
     :daemons => "COLLECTOR, MASTER, NEGOTIATOR, SCHEDD"
   )
 end

@@ -29,7 +29,7 @@ CONDOR_ADMIN = condor@grid.example.org
 ##  UID_DOMAIN = $(FULL_HOSTNAME)
 ##  to specify that each machine has its own UID space.
 
-UID_DOMAIN = grid.example.org
+UID_DOMAIN = <%= @domain %>
 
 
 ##  Internet domain of machines sharing a common file system.
@@ -37,7 +37,7 @@ UID_DOMAIN = grid.example.org
 ##  FILESYSTEM_DOMAIN = $(FULL_HOSTNAME)
 ##  to specify that each machine has its own file system. 
 
-FILESYSTEM_DOMAIN = grid.example.org
+FILESYSTEM_DOMAIN = <%= @domain %>
 
 
 ##  The user/group ID <uid>.<gid> of the "Condor" user. 
@@ -64,8 +64,8 @@ LOCK = /tmp/condor-lock.$(HOSTNAME)0.215043610268371
 
 DAEMON_LIST = <%= @daemons %>
 
-ALLOW_READ = *.grid.example.org, 127.0.*
-ALLOW_WRITE = *.grid.example.org, 127.0.*
+ALLOW_READ = *.<%= @domain %>, 127.0.*
+ALLOW_WRITE = *.<%= @domain %>, 127.0.*
 
 #StartIdleTime = 0
 #ContinueIdleTime = 0
