@@ -14,6 +14,7 @@ class DemoGridConfig(object):
     GRIDUSERS_OPT = "grid-users"
     GRIDUSERS_AUTH_OPT = "grid-users-auth"
     NONGRIDUSERS_OPT = "nongrid-users"
+    GRAM_OPT = "gram"
     GRIDFTP_OPT = "gridftp"
     LRM_OPT = "lrm"
     CLUSTER_NODES_OPT = "cluster-nodes"
@@ -44,6 +45,9 @@ class DemoGridConfig(object):
     def get_ca(self):
         return self.config.get(self.GENERAL_SEC, self.CACERT_OPT), self.config.get(self.GENERAL_SEC, self.CAKEY_OPT)
 
+    def has_grid_auth_node(self):
+        return self.config.getboolean(self.GENERAL_SEC, self.MYPROXY_OPT)
+
     def has_org_users_file(self, org_name):
         org_sec = self.__get_org_sec(org_name)
         return self.config.has_option(org_sec, self.USERSFILE_OPT)    
@@ -67,14 +71,19 @@ class DemoGridConfig(object):
     def has_org_gridftp(self, org_name):
         org_sec = self.__get_org_sec(org_name)
         return self.config.getboolean(org_sec, self.GRIDFTP_OPT)
+
+    def has_org_gram(self, org_name):
+        org_sec = self.__get_org_sec(org_name)
+        return self.config.getboolean(org_sec, self.GRAM_OPT)
+
+    def has_org_auth(self, org_name):
+        org_sec = self.__get_org_sec(org_name)
+        return self.config.getboolean(org_sec, self.MYPROXY_OPT)
     
     def has_org_lrm(self, org_name):
         org_sec = self.__get_org_sec(org_name)
         lrm = self.config.get(org_sec, self.LRM_OPT)
         return lrm != "none"
-
-    def has_auth_node(self):
-        return self.config.getboolean(self.GENERAL_SEC, self.MYPROXY_OPT)
         
     def get_org_lrm(self, org_name):
         org_sec = self.__get_org_sec(org_name)
