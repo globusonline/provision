@@ -16,43 +16,30 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: MyProxy server
+# RECIPE: MyProxy server for a single organization
 #
-# Sets up a MyProxy server. It assumes that the "globus" recipe has been run, 
-# so it just involves setting up MyProxy as a xinetd service.
-#
-# Users are added in a separate recipe, "myproxy_users"
+# Sets up a MyProxy server that will use the organization's NIS domain 
+# to authenticate users.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
 
-package "xinetd" do
-  action :install
-end
-
-template "/etc/xinetd.d/myproxy" do
-  source "xinetd.myproxy.erb"
+cookbook_file "#{node[:globus][:dir]}/etc/myproxy-server.config" do
+  source "myproxy-server.config.org"
   mode 0644
-  owner "root"
-  group "root"
+  owner "globus"
+  group "globus"
+end
+
+template "/usr/local/bin/myproxy-demogrid-certificate-mapapp" do
+  source "myproxy-dnmap.erb"
+  mode 0744
+  owner "globus"
+  group "globus"
   variables(
-    :globus_location => node[:globus][:dir]
+    :org => node[:org]
   )
 end
 
-ruby_block "add_lines" do
-  block do
-    add_line("/etc/services", "myproxy-server  7512/tcp                        # Myproxy server")
-  end
-end
-
-
-execute "xinetd_restart" do
- user "root"
- group "root"
- command "/etc/init.d/xinetd restart"
- action :run
-end
+# The "myproxy" recipe actually does all the work.
+include_recipe "demogrid::myproxy"
