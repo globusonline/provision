@@ -35,14 +35,14 @@ end
 # Copy the certificate and key.
 
 cookbook_file "/etc/grid-security/hostcert.pem" do
-  source "#{node[:demogrid_hostname]}.grid.example.org_cert.pem"
+  source "#{node[:demogrid_host_id]}_cert.pem"
   mode 0644
   owner "root"
   group "root"
 end
 
 cookbook_file "/etc/grid-security/hostkey.pem" do
-  source "#{node[:demogrid_hostname]}.grid.example.org_key.pem"
+  source "#{node[:demogrid_host_id]}_key.pem"
   mode 0400
   owner "root"
   group "root"
