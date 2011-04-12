@@ -84,7 +84,7 @@ users.each do |u|
 	ruby_block "add_lines" do
 	  profile = "/export/home/#{u[:login]}/.profile"
 	  block do
-	    add_line(profile, "export MYPROXY_SERVER=auth.grid.example.org")
+	    add_line(profile, "export MYPROXY_SERVER=#{node[:auth]}")
 	    add_line(profile, "export GLOBUS_LOCATION=#{node[:globus][:dir]}")
 	    add_line(profile, "export OPAL_PREFIX=#{node[:openmpi][:dir]}")
 	    add_line(profile, "export LD_LIBRARY_PATH=$OPAL_PREFIX/lib")
