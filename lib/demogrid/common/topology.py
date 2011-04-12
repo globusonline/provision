@@ -126,8 +126,9 @@ class DGOrganization(object):
         self.subnet = subnet
         self.nodes = []
         self.users = []
-        self.lrm = None
         self.server = None
+        self.auth = None
+        self.lrm = None
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -146,7 +147,8 @@ class DGNode(object):
         self.role = role
         self.ip = ip
         self.hostname = hostname
-        self.demogrid_hostname = hostname.split(".")[0]
+        self.demogrid_hostname = hostname
+        self.demogrid_host_id = hostname.split(".")[0]
         self.org = org
         self.attrs = {}
         
