@@ -124,6 +124,7 @@ class EC2Launcher(object):
             node.ip = instance.private_ip_address
             if self.config.get_ec2_access_type() == "public":
                 node.hostname = instance.public_dns_name
+                node.attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
                 node.attrs["public_dns"] = "\"%s\"" % instance.public_dns_name
                 node.attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
         
@@ -135,6 +136,8 @@ class EC2Launcher(object):
                 attrs["org_server"] = "\"%s\"" % node.org.server.ip
                 if node.org.lrm != None:
                     attrs["lrm_head"] = "\"%s\"" % node.org.lrm.hostname
+                if node.org.auth != None:
+                    attrs["auth"] = "\"%s\"" % node.org.auth.hostname
                 
         
         if self.config.get_ec2_access_type() == "public":
@@ -279,7 +282,7 @@ class EC2Launcher(object):
         for node, instance in node_instance.items():        
             cert, key = certg.gen_host_cert(hostname= instance.public_dns_name) 
             
-            filename = node.demogrid_hostname + ".grid.example.org"
+            filename = node.demogrid_host_id
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
             key_file = "%s/%s_key.pem" % (certs_dir, filename)             
