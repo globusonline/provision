@@ -4,6 +4,7 @@ Created on Dec 6, 2010
 @author: borja
 '''
 from demogrid.common.utils import create_ec2_connection, SSH
+from demogrid.common import log
 import time
 
 
@@ -85,12 +86,14 @@ class EC2AMICreator(object):
         self.keyfile = keyfile
 
     def run(self):
+        log.init_logging(2)
+        
         conn = create_ec2_connection()
 
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='t1.micro', 
+                                         instance_type='c1.medium', 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
