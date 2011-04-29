@@ -8,11 +8,12 @@ Created on Nov 1, 2010
 
 from demogrid.prepare import Preparator
 import demogrid.common.defaults as defaults
-from demogrid.common.config import DemoGridConfig, DemoGridHostsFile
+from demogrid.common.config import DemoGridConfig
 import os
 from optparse import OptionParser
 import getpass
 import subprocess
+from cPickle import load
 from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator
 from demogrid.ec2.launch import EC2Launcher
 
@@ -104,36 +105,38 @@ class demogrid_clone_image(Command):
                                   action="store", type="string", dest="host", 
                                   help = "Host to clone an image for.")
 
-        self.optparser.add_option("-f", "--hostsfile", 
-                                  action="store", type="string", dest="hostsfile", 
-                                  default = "%s/hosts.csv" % defaults.GENERATED_LOCATION,
-                                  help = "Hosts file.")
+        self.optparser.add_option("-g", "--generated-dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory with generated files.")
         
     def run(self):    
         self.parse_options()
         
-        hosts = DemoGridHostsFile(self.opt.hostsfile)
+        f = open ("%s/topology.dat" % self.opt.dir, "r")
+        topology = load(f)
+        f.close()        
 
-        host = hosts.get_host(self.opt.host)
+        host = topology.get_node_by_id(self.opt.host)
         if host == None:
             print "Host %s is not defined" % self.opt.host
             exit(1)
 
-        args_newvm = ["%s/ubuntu-vm-builder/master_img.qcow2" % defaults.GENERATED_LOCATION, 
-                      "/var/vm/%s.qcow2" % host["name"], 
-                      host["ip"], 
-                      host["name"],
-                      "%s/hosts" % defaults.GENERATED_LOCATION
+        args_newvm = ["%s/ubuntu-vm-builder/master_img.qcow2" % self.opt.dir, 
+                      "/var/vm/%s.qcow2" % host.demogrid_host_id, 
+                      host.ip, 
+                      host.demogrid_host_id,
+                      "%s/hosts" % self.opt.dir
                       ]
         cmd_newvm = ["%s/lib/create_from_master_img.sh" % self.dg_location] + args_newvm
         
-        print "Creating VM for %s" % host["name"]
+        print "Creating VM for %s" % host.demogrid_host_id
         retcode = subprocess.call(cmd_newvm)
         if retcode != 0:
             print "Error when running %s" % " ".join(cmd_newvm)
             exit(1)
 
-        print "Created VM for host %s" % host["name"]
+        print "Created VM for host %s" % host.demogrid_host_id
         
 
 class demogrid_register_host_chef(Command):
@@ -147,33 +150,35 @@ class demogrid_register_host_chef(Command):
                                   action="store", type="string", dest="host", 
                                   help = "Host to clone an image for.")
 
-        self.optparser.add_option("-f", "--hostsfile", 
-                                  action="store", type="string", dest="hostsfile", 
-                                  default = "%s/hosts.csv" % defaults.GENERATED_LOCATION,
-                                  help = "Hosts file.")
+        self.optparser.add_option("-g", "--generated-dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory with generated files.")
         
     def run(self):    
         self.parse_options()
         
-        hosts = DemoGridHostsFile(self.opt.hostsfile)
+        f = open ("%s/topology.dat" % self.opt.dir, "r")
+        topology = load(f)
+        f.close()        
 
-        host = hosts.get_host(self.opt.host)
+        host = topology.get_node_by_id(self.opt.host)
         if host == None:
             print "Host %s is not defined" % self.opt.host
             exit(1)
 
-        retcode = self._run("knife node show %s" % host["fqdn"], exit_on_error = False)
+        retcode = self._run("knife node show %s" % host.hostname, exit_on_error = False)
         node_exists = (retcode == 0)
-        retcode = self._run("knife client show %s" % host["fqdn"], exit_on_error = False)
+        retcode = self._run("knife client show %s" % host.hostname, exit_on_error = False)
         client_exists = (retcode == 0)
 
         if node_exists:
-            self._run("knife node delete %s -y" % host["fqdn"])
+            self._run("knife node delete %s -y" % host.hostname)
         if client_exists:
-            self._run("knife client delete %s -y" % host["fqdn"])
-        self._run("knife node create %s -n" % host["fqdn"])
-        self._run("knife node run_list add %s role[%s]" % (host["fqdn"], host["role"]))            
-        print "Registered host %s in the Chef server" % host["name"]        
+            self._run("knife client delete %s -y" % host.hostname)
+        self._run("knife node create %s -n" % host.hostname)
+        self._run("knife node run_list add %s role[%s]" % (host.hostname, host.role))            
+        print "Registered host %s in the Chef server" % host.demogrid_host_id        
         
 
 class demogrid_register_host_libvirt(Command):
@@ -187,10 +192,10 @@ class demogrid_register_host_libvirt(Command):
                                   action="store", type="string", dest="host", 
                                   help = "Host to clone an image for.")
 
-        self.optparser.add_option("-f", "--hostsfile", 
-                                  action="store", type="string", dest="hostsfile", 
-                                  default = "%s/hosts.csv" % defaults.GENERATED_LOCATION,
-                                  help = "Hosts file.")
+        self.optparser.add_option("-g", "--generated-dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory with generated files.")
 
         self.optparser.add_option("-m", "--memory", 
                                   action="store", type="int", dest="memory", 
@@ -200,16 +205,18 @@ class demogrid_register_host_libvirt(Command):
     def run(self):    
         self.parse_options()
         
-        hosts = DemoGridHostsFile(self.opt.hostsfile)
+        f = open ("%s/topology.dat" % self.opt.dir, "r")
+        topology = load(f)
+        f.close()        
 
-        host = hosts.get_host(self.opt.host)
+        host = topology.get_node_by_id(self.opt.host)
         if host == None:
             print "Host %s is not defined" % self.opt.host
             exit(1)
 
-        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host["name"], self.opt.memory, host["name"]) )
+        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host.demogrid_host_id, self.opt.memory, host.demogrid_host_id) )
 
-        print "Registered host %s in libvirt" % host["name"]          
+        print "Registered host %s in libvirt" % host.demogrid_host_id        
         
         
 class demogrid_ec2_launch(Command):

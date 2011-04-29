@@ -119,16 +119,6 @@ class DemoGridConfig(object):
     
     def get_ec2_access_type(self):
         return self.config.get(self.EC2_SEC, self.ACCESS_OPT) 
-    
-    
-class DemoGridHostsFile(object):
-    def __init__(self, file):
-        self.reader = csv.DictReader(open(file))
-        
-    def get_host(self, hostname):
-        for row in self.reader:
-            if row["name"] == hostname:
-                return row
-        return None
+
             
         
