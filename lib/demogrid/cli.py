@@ -6,16 +6,18 @@ Created on Nov 1, 2010
 
 #!/usr/bin/python
 
-from demogrid.prepare import Preparator
 import demogrid.common.defaults as defaults
+from demogrid.prepare import Preparator
 from demogrid.common.config import DemoGridConfig
+from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator
+from demogrid.ec2.launch import EC2Launcher
+
 import os
-from optparse import OptionParser
 import getpass
 import subprocess
 from cPickle import load
-from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator
-from demogrid.ec2.launch import EC2Launcher
+from optparse import OptionParser
+from demogrid.globusonline.transfer_api import TransferAPIClient
 
 class Command(object):
     
@@ -320,4 +322,50 @@ class demogrid_ec2_create_ami(Command):
         self.parse_options()
         
         c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, self.opt.keypair, self.opt.keyfile)
-        c.run()          
+        c.run()
+        
+# Warning: Lot's of hard-coded kludginess
+class demogrid_go_register_endpoints(Command):
+    
+    name = "demogrid-go-register-endpoints"
+    
+    def __init__(self, argv):
+        Command.__init__(self, argv)
+        
+        self.optparser.add_option("-c", "--conf", 
+                                  action="store", type="string", dest="conf", 
+                                  default = defaults.CONFIG_FILE,
+                                  help = "Configuration file.")        
+        
+        self.optparser.add_option("-g", "--generated-dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory with generated files.")        
+                
+    def run(self):    
+        self.parse_options()
+        
+        config = DemoGridConfig(self.opt.conf)
+        go_username = config.get_go_username()
+        go_cert_file, go_key_file = config.get_go_credentials()
+        go_server_ca = config.get_go_server_ca()
+
+        api = TransferAPIClient(go_username, go_server_ca, go_cert_file, go_key_file)
+        
+        f = open ("%s/topology.dat" % self.opt.dir, "r")
+        topology = load(f)
+        f.close()            
+        
+        # TODO: Check each organization, and see if they need an endpoint or not.
+        for org in topology.organizations.values():
+            # Find the GridFTP server
+            gridftp = [n for n in org.get_nodes() if n.role=="org-gridftp"][0]
+             
+            api.endpoint_create("demogrid", gridftp.hostname, description="DemoGrid endpoint",
+                       scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
+                       myproxy_server=gridftp.org.auth.hostname)
+             
+        
+        
+        
+        

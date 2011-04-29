@@ -28,6 +28,13 @@ class DemoGridConfig(object):
     ZONE_OPT = "availability_zone"
     ACCESS_OPT = "access"
 
+    GO_SEC = "globusonline"
+    GO_USERNAME_OPT = "username"
+    GO_CERT_OPT = "cert-file"
+    GO_KEY_OPT = "key-file"
+    GO_SERVER_CA_OPT = "server-ca-file"
+    
+
     
     def __init__(self, configfile):
         self.config = ConfigParser.ConfigParser()
@@ -120,5 +127,13 @@ class DemoGridConfig(object):
     def get_ec2_access_type(self):
         return self.config.get(self.EC2_SEC, self.ACCESS_OPT) 
 
+    def get_go_username(self):
+        return self.config.get(self.GO_SEC, self.GO_USERNAME_OPT) 
             
+    def get_go_credentials(self):
+        return (self.config.get(self.GO_SEC, self.GO_CERT_OPT),self.config.get(self.GO_SEC, self.GO_KEY_OPT))
+    
+    def get_go_server_ca(self):
+        return self.config.get(self.GO_SEC, self.GO_SERVER_CA_OPT)
+
         
