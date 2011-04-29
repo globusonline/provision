@@ -27,6 +27,14 @@ class DGGrid(object):
             nodes += org.get_nodes()
         return nodes
     
+    def get_node_by_id(self, host_id):
+        nodes = self.get_nodes()
+        node = [n for n in nodes if n.demogrid_host_id == host_id]
+        if len(node) == 1:
+            return node[0]
+        else:
+            return None
+    
     def get_users(self):
         users = []
         for org in self.organizations.values():
