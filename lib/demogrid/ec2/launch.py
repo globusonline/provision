@@ -168,6 +168,7 @@ class EC2Launcher(object):
         topology.gen_ruby_file(self.generated_dir + "/topology_ec2.rb")
         topology.gen_hosts_file(self.generated_dir + "/hosts_ec2") 
         topology.gen_csv_file(self.generated_dir + "/topology_ec2.csv")
+        topology.save("%s/topology.dat" % self.generated_dir)
         
         if self.loglevel == 0:
             print "\033[1;37mConfiguring DemoGrid nodes...\033[0m (this may take a few minutes)"
