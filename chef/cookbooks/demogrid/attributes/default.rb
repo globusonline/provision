@@ -21,7 +21,7 @@ default[:globus][:dir] = "/usr/local/globus-5.0.3"
 default[:globus][:srcdir] = "/var/tmp/gt5.0.3-all-source-installer"
 default[:globus][:simpleCA] = "/home/globus/.globus/simpleCA"
 default[:globus][:rootsimpleCA] = "/root/.globus/simpleCA"
-default[:condor][:dir] = "/usr/local/condor-7.4.3"
+default[:condor][:package] = "condor-7.6.0-1-deb_5.0_i386.deb"
 default[:torque][:dir] = "/var/spool/torque"
 default[:openmpi][:dir] = "/usr/local/openmpi-1.4.3"
 
