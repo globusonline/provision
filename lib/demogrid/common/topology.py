@@ -16,7 +16,7 @@ class DGGrid(object):
         self.organizations[org.name] = org
 
     def add_org_node(self, org, node):
-        self.grid_nodes.append(node)
+        org.nodes.append(node)
 
     def add_node(self, node):
         self.grid_nodes.append(node)
