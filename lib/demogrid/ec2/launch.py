@@ -37,8 +37,15 @@ class EC2Launcher(object):
         
         ami = self.config.get_ami()
         keypair = self.config.get_keypair()
-        insttype = self.config.get_instance_type()
+        insttypes = self.config.get_instance_type()
         zone = self.config.get_ec2_zone()   
+        
+        # Parse the instance type option
+        role_insttype = {}
+        for ri in insttypes.split():
+            role, insttype = ri.split(":")
+            role_insttype[role] = insttype
+        default_insttype = role_insttype["*"]
         
         log.init_logging(self.loglevel)
         
@@ -71,27 +78,40 @@ class EC2Launcher(object):
 
         nodes = topology.get_nodes()
         num_instances = len(nodes)
+        
+        nodes_by_role = {}
+        for n in nodes:
+            if not nodes_by_role.has_key(n.role):
+                nodes_by_role[n.role] = [n]
+            else:
+                nodes_by_role[n.role].append(n)
 
         # Launch instances
         if self.loglevel == 0:
             print "\033[1;37mLaunching %i EC2 instances...\033[0m" % num_instances,
             sys.stdout.flush()
 
-        log.info("Launching %i EC2 instances." % num_instances)     
-        try:   
-            reservation = self.conn.run_instances(ami, 
-                                             min_count=num_instances, 
-                                             max_count=num_instances,
-                                             instance_type=insttype,
-                                             security_groups= ["default"],
-                                             key_name=keypair,
-                                             placement = zone)
-        except EC2ResponseError, exc:
-            self.handle_ec2response_exception(exc, "requesting instances")
-        except Exception, exc:
-            self.handle_unexpected_exception(exc)            
+        self.instances = []
+        instances_by_role = {}
+        log.info("Launching a total of %i EC2 instances." % num_instances)
+        for role, n in nodes_by_role.items():     
+            try:   
+                insttype = role_insttype.get(role, default_insttype)
+                log.info(" |- Launching %i %s instances." % (len(n), insttype))
+                reservation = self.conn.run_instances(ami, 
+                                                 min_count=len(n), 
+                                                 max_count=len(n),
+                                                 instance_type=insttype,
+                                                 security_groups= ["default"],
+                                                 key_name=keypair,
+                                                 placement = zone)
+                self.instances += reservation.instances
+                instances_by_role[role] = reservation.instances
+            except EC2ResponseError, exc:
+                self.handle_ec2response_exception(exc, "requesting instances")
+            except Exception, exc:
+                self.handle_unexpected_exception(exc)            
         
-        self.instances = reservation.instances
         
         log.debug("Instances: %s" % " ".join([i.id for i in self.instances]))
         
@@ -110,15 +130,17 @@ class EC2Launcher(object):
             print "\033[1;32mdone!\033[0m"            
         log.info("Instances are running.")
 
-        # Kluge: This is because of a known bug in the stable release of boto.
-        # Basically, update() won't get some of the attributes (specially
-        # the private IP, which we need), and the workaround is to force
-        # boto to create a new Instance object.
-        # Can be removed once they push a new stable release
-        r = self.conn.get_all_instances([i.id for i in self.instances])
-        instances2 = r[0].instances
-
-        node_instance = dict(zip(nodes,instances2))
+        self.instances = []
+        node_instance = {}
+        for role, instances in instances_by_role.items():
+            # Kluge: This is because of a known bug in the stable release of boto.
+            # Basically, update() won't get some of the attributes (specially
+            # the private IP, which we need), and the workaround is to force
+            # boto to create a new Instance object.
+            # Can be removed once they push a new stable release
+            r = self.conn.get_all_instances([i.id for i in instances])
+            self.instances += r[0].instances
+            node_instance.update(dict(zip(nodes_by_role[role], r[0].instances)))
         
         for node, instance in node_instance.items():
             node.ip = instance.private_ip_address
