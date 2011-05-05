@@ -24,6 +24,10 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+class Chef::Resource
+  include FileHelper
+end
+
 # Needed by the Condor deb package
 package "libc6-amd64" do
   action :install
@@ -42,3 +46,8 @@ package "condor" do
   source "/var/tmp/#{node[:condor][:package]}"
 end
 
+ruby_block "add_lines" do
+  block do
+    add_line("/etc/default/condor", "CONDOR_RUN=\"/var/run\"")
+  end
+end
