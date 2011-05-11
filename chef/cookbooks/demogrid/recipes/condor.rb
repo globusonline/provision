@@ -33,9 +33,16 @@ package "libc6-amd64" do
   action :install
 end
 
+cookbook_file "/etc/init/condor-dir.conf" do
+  source "condor-dir.conf"
+  mode 0644
+  owner "root"
+  group "root"
+end
+
 cookbook_file "/var/tmp/#{node[:condor][:package]}" do
   source "#{node[:condor][:package]}"
-  mode 0755
+  mode 0644
   owner "root"
   group "root"
 end
@@ -44,10 +51,4 @@ package "condor" do
   action :install
   provider Chef::Provider::Package::Dpkg
   source "/var/tmp/#{node[:condor][:package]}"
-end
-
-ruby_block "add_lines" do
-  block do
-    add_line("/etc/default/condor", "CONDOR_RUN=\"/var/run\"")
-  end
 end
