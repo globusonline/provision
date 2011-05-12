@@ -182,11 +182,12 @@ class Preparator(object):
             grid.add_org_node(org, server_node)
             org.server = server_node
             
-            login_node =  DGNode(role = self.LOGIN_ROLE,
-                                 ip =   self.__gen_IP(org_subnet, self.LOGIN_HOST),
-                                 hostname = self.__gen_hostname(self.LOGIN_HOSTNAME, org = org_name),
-                                 org = org)                        
-            grid.add_org_node(org, login_node)
+            if self.config.has_org_login(org_name):            
+                login_node =  DGNode(role = self.LOGIN_ROLE,
+                                     ip =   self.__gen_IP(org_subnet, self.LOGIN_HOST),
+                                     hostname = self.__gen_hostname(self.LOGIN_HOSTNAME, org = org_name),
+                                     org = org)                        
+                grid.add_org_node(org, login_node)
 
             if self.config.has_org_auth(org_name):
                 auth_node = DGNode(role = self.MYPROXY_ROLE,
