@@ -17,6 +17,7 @@ import socket
 from demogrid.common import log
 import os
 import signal
+from Crypto.Random import atfork
         
 class ThreadAbortException(Exception):
     pass
@@ -157,6 +158,7 @@ class SSH(object):
         self.port = port
         
     def open(self):
+        atfork()   # Workaround for bug in paramiko
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
