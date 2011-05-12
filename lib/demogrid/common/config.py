@@ -14,6 +14,7 @@ class DemoGridConfig(object):
     GRIDUSERS_OPT = "grid-users"
     GRIDUSERS_AUTH_OPT = "grid-users-auth"
     NONGRIDUSERS_OPT = "nongrid-users"
+    LOGIN_OPT = "login"
     GRAM_OPT = "gram"
     GRIDFTP_OPT = "gridftp"
     LRM_OPT = "lrm"
@@ -78,6 +79,10 @@ class DemoGridConfig(object):
     def has_org_gridftp(self, org_name):
         org_sec = self.__get_org_sec(org_name)
         return self.config.getboolean(org_sec, self.GRIDFTP_OPT)
+
+    def has_org_login(self, org_name):
+        org_sec = self.__get_org_sec(org_name)
+        return self.config.getboolean(org_sec, self.LOGIN_OPT)
 
     def has_org_gram(self, org_name):
         org_sec = self.__get_org_sec(org_name)
