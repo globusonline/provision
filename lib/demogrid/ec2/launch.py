@@ -305,7 +305,7 @@ class EC2Launcher(object):
         for node, instance in node_instance.items():        
             cert, key = certg.gen_host_cert(hostname= instance.public_dns_name) 
             
-            filename = node.demogrid_host_id
+            filename = node.node_id
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
             key_file = "%s/%s_key.pem" % (certs_dir, filename)             

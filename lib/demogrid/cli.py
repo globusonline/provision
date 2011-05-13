@@ -18,6 +18,7 @@ import subprocess
 from cPickle import load
 from optparse import OptionParser
 from demogrid.globusonline.transfer_api import TransferAPIClient
+from demogrid.common.topology import Topology
 
 class Command(object):
     
@@ -73,6 +74,10 @@ class demogrid_prepare(Command):
                                   default = defaults.CONFIG_FILE,
                                   help = "Configuration file.")
         
+        self.optparser.add_option("-t", "--topology", 
+                                  action="store", type="string", dest="topology",
+                                  help = "Topology file.")        
+        
         self.optparser.add_option("-d", "--dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.GENERATED_LOCATION,
@@ -91,6 +96,14 @@ class demogrid_prepare(Command):
         self.parse_options()
         
         config = DemoGridConfig(self.opt.conf)
+
+        if self.opt.topology.endswith(".json"):
+            jsonfile = open(self.opt.topology)
+            json = jsonfile.read()
+            jsonfile.close()
+            topology = Topology.from_json(json)
+            exit(0)
+            
 
         p = Preparator(self.dg_location, config, self.opt.dir, self.opt.force_certificates, self.opt.force_chef)
         p.prepare()        
@@ -125,20 +138,20 @@ class demogrid_clone_image(Command):
             exit(1)
 
         args_newvm = ["%s/ubuntu-vm-builder/master_img.qcow2" % self.opt.dir, 
-                      "/var/vm/%s.qcow2" % host.demogrid_host_id, 
+                      "/var/vm/%s.qcow2" % host.node_id, 
                       host.ip, 
-                      host.demogrid_host_id,
+                      host.node_id,
                       "%s/hosts" % self.opt.dir
                       ]
         cmd_newvm = ["%s/lib/create_from_master_img.sh" % self.dg_location] + args_newvm
         
-        print "Creating VM for %s" % host.demogrid_host_id
+        print "Creating VM for %s" % host.node_id
         retcode = subprocess.call(cmd_newvm)
         if retcode != 0:
             print "Error when running %s" % " ".join(cmd_newvm)
             exit(1)
 
-        print "Created VM for host %s" % host.demogrid_host_id
+        print "Created VM for host %s" % host.node_id
         
 
 class demogrid_register_host_chef(Command):
@@ -180,7 +193,7 @@ class demogrid_register_host_chef(Command):
             self._run("knife client delete %s -y" % host.hostname)
         self._run("knife node create %s -n" % host.hostname)
         self._run("knife node run_list add %s role[%s]" % (host.hostname, host.role))            
-        print "Registered host %s in the Chef server" % host.demogrid_host_id        
+        print "Registered host %s in the Chef server" % host.node_id        
         
 
 class demogrid_register_host_libvirt(Command):
@@ -216,9 +229,9 @@ class demogrid_register_host_libvirt(Command):
             print "Host %s is not defined" % self.opt.host
             exit(1)
 
-        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host.demogrid_host_id, self.opt.memory, host.demogrid_host_id) )
+        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host.node_id, self.opt.memory, host.node_id) )
 
-        print "Registered host %s in libvirt" % host.demogrid_host_id        
+        print "Registered host %s in libvirt" % host.node_id        
         
         
 class demogrid_ec2_launch(Command):
