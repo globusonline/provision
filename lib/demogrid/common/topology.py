@@ -289,10 +289,11 @@ ff02::3 ip6-allhosts
             domain_obj = Domain(domain["name"])
             topology.add_domain(domain_obj)
             
-            for node in topology_json["nodes"]:
-                node_obj = Node(node["node_id"], domain = domain_obj)
+            for node in domain["nodes"]:
+                node_obj = Node(node["id"], domain = domain_obj)
                 topology.add_domain_node(domain_obj, node_obj)
     
+        return topology
         # Check if it is "bound"
    
 class Domain(object):    
