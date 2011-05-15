@@ -397,7 +397,17 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": \"role[%s]\" }' > /tmp/chef.json" % node.role, expectnooutput=True)
+        # Temporary kludge
+        #if node.role == "org-server":
+        #    ssh.run("echo '{ \"run_list\": [\"role[%s]\", \"recipe[demogrid::dropdir_server]\"] }' > /tmp/chef.json" % node.role, expectnooutput=True)
+        #else:
+        #    ssh.run("echo '{ \"run_list\": [\"role[%s]\", \"recipe[demogrid::dropdir_client]\"] }' > /tmp/chef.json" % node.role, expectnooutput=True)
+
+        # Another kludge
+        if node.role == "org-condor":
+            ssh.run("echo '{ \"run_list\": [\"role[%s]\", \"recipe[demogrid::galaxy]\"] }' > /tmp/chef.json" % node.role, expectnooutput=True)
+        else:
+            ssh.run("echo '{ \"run_list\": \"role[%s]\" }' > /tmp/chef.json" % node.role, expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
