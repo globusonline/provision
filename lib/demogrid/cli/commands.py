@@ -7,8 +7,8 @@ Created on Nov 1, 2010
 #!/usr/bin/python
 
 import demogrid.common.defaults as defaults
-from demogrid.prepare import Preparator
-from demogrid.common.config import DemoGridConfig
+from demogrid.core.prepare import Preparator
+from demogrid.core.config import DemoGridConfig
 from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator
 from demogrid.ec2.launch import EC2Launcher
 
@@ -18,6 +18,7 @@ import subprocess
 from cPickle import load
 from optparse import OptionParser
 from demogrid.globusonline.transfer_api import TransferAPIClient
+from demogrid.core.topology import Topology
 
 class Command(object):
     
@@ -73,14 +74,14 @@ class demogrid_prepare(Command):
                                   default = defaults.CONFIG_FILE,
                                   help = "Configuration file.")
         
+        self.optparser.add_option("-t", "--topology", 
+                                  action="store", type="string", dest="topology",
+                                  help = "Topology file.")        
+        
         self.optparser.add_option("-d", "--dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.GENERATED_LOCATION,
-                                  help = "Directory to generate files in.")        
-
-        self.optparser.add_option("-f", "--force-certificates", 
-                                  action="store_true", dest="force_certificates", 
-                                  help = "Overwrite existing certificates.")        
+                                  help = "Directory to generate files in.")            
 
         self.optparser.add_option("-e", "--force-chef", 
                                   action="store_true", dest="force_chef", 
@@ -92,9 +93,73 @@ class demogrid_prepare(Command):
         
         config = DemoGridConfig(self.opt.conf)
 
-        p = Preparator(self.dg_location, config, self.opt.dir, self.opt.force_certificates, self.opt.force_chef)
-        p.prepare()        
+        if self.opt.topology.endswith(".json"):
+            jsonfile = open(self.opt.topology)
+            json = jsonfile.read()
+            jsonfile.close()
+            topology = Topology.from_json(json)            
+
+        p = Preparator(self.dg_location, config, self.opt.dir)
+        p.prepare(topology, self.opt.force_chef)        
         
+class demogrid_vagrant_generate(Command):
+    
+    name = "demogrid-vagrant-generate"
+
+    def __init__(self, argv):
+        Command.__init__(self, argv)
+        
+        self.optparser.add_option("-c", "--conf", 
+                                  action="store", type="string", dest="conf", 
+                                  default = defaults.CONFIG_FILE,
+                                  help = "Configuration file.")
+        
+        self.optparser.add_option("-d", "--dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory to generate files in.")   
+        
+        self.optparser.add_option("-r", "--force-certificates", 
+                                  action="store_true", dest="force_certificates", 
+                                  help = "Overwrite existing certificates.")                       
+
+    def run(self):    
+        self.parse_options()
+        
+        config = DemoGridConfig(self.opt.conf)
+
+        p = Preparator(self.dg_location, config, self.opt.dir)
+        p.generate_vagrant(self.opt.force_certificates)                
+
+class demogrid_uvb_generate(Command):
+    
+    name = "demogrid-uvb-generate"
+
+    def __init__(self, argv):
+        Command.__init__(self, argv)
+        
+        self.optparser.add_option("-c", "--conf", 
+                                  action="store", type="string", dest="conf", 
+                                  default = defaults.CONFIG_FILE,
+                                  help = "Configuration file.")
+        
+        self.optparser.add_option("-d", "--dir", 
+                                  action="store", type="string", dest="dir", 
+                                  default = defaults.GENERATED_LOCATION,
+                                  help = "Directory to generate files in.")   
+        
+        self.optparser.add_option("-r", "--force-certificates", 
+                                  action="store_true", dest="force_certificates", 
+                                  help = "Overwrite existing certificates.")                       
+
+    def run(self):    
+        self.parse_options()
+        
+        config = DemoGridConfig(self.opt.conf)
+
+        p = Preparator(self.dg_location, config, self.opt.dir)
+        p.generate_uvb(self.opt.force_certificates)            
+
         
 class demogrid_clone_image(Command):
     
@@ -125,20 +190,20 @@ class demogrid_clone_image(Command):
             exit(1)
 
         args_newvm = ["%s/ubuntu-vm-builder/master_img.qcow2" % self.opt.dir, 
-                      "/var/vm/%s.qcow2" % host.demogrid_host_id, 
+                      "/var/vm/%s.qcow2" % host.node_id, 
                       host.ip, 
-                      host.demogrid_host_id,
+                      host.node_id,
                       "%s/hosts" % self.opt.dir
                       ]
         cmd_newvm = ["%s/lib/create_from_master_img.sh" % self.dg_location] + args_newvm
         
-        print "Creating VM for %s" % host.demogrid_host_id
+        print "Creating VM for %s" % host.node_id
         retcode = subprocess.call(cmd_newvm)
         if retcode != 0:
             print "Error when running %s" % " ".join(cmd_newvm)
             exit(1)
 
-        print "Created VM for host %s" % host.demogrid_host_id
+        print "Created VM for host %s" % host.node_id
         
 
 class demogrid_register_host_chef(Command):
@@ -180,7 +245,7 @@ class demogrid_register_host_chef(Command):
             self._run("knife client delete %s -y" % host.hostname)
         self._run("knife node create %s -n" % host.hostname)
         self._run("knife node run_list add %s role[%s]" % (host.hostname, host.role))            
-        print "Registered host %s in the Chef server" % host.demogrid_host_id        
+        print "Registered host %s in the Chef server" % host.node_id        
         
 
 class demogrid_register_host_libvirt(Command):
@@ -216,9 +281,9 @@ class demogrid_register_host_libvirt(Command):
             print "Host %s is not defined" % self.opt.host
             exit(1)
 
-        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host.demogrid_host_id, self.opt.memory, host.demogrid_host_id) )
+        self._run("virt-install -n %s -r %i --disk path=/var/vm/%s.qcow2,format=qcow2,size=2 --accelerate --vnc --noautoconsole --import --connect=qemu:///system" % (host.node_id, self.opt.memory, host.node_id) )
 
-        print "Registered host %s in libvirt" % host.demogrid_host_id        
+        print "Registered host %s in libvirt" % host.node_id        
         
         
 class demogrid_ec2_launch(Command):
@@ -249,6 +314,10 @@ class demogrid_ec2_launch(Command):
         self.optparser.add_option("-n", "--no-cleanup", 
                                   action="store_true", dest="no_cleanup", 
                                   help = "Don't release resources on failure.")
+
+        self.optparser.add_option("-u", "--upload-recipes", 
+                                  action="store_true", dest="upload_recipes", 
+                                  help = "Upload Chef recipes.")
                 
     def run(self):    
         self.parse_options()
@@ -262,7 +331,7 @@ class demogrid_ec2_launch(Command):
         else:
             loglevel = 0
         
-        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel, self.opt.no_cleanup)
+        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel, self.opt.no_cleanup, self.opt.upload_recipes)
         c.launch()          
         
 class demogrid_ec2_create_chef_volume(Command):

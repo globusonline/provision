@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+from demogrid.cli.commands import demogrid_uvb_generate
+import sys
+
+c = demogrid_uvb_generate(sys.argv)
+c.run()
