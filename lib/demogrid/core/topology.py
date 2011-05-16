@@ -6,7 +6,10 @@ Created on Dec 7, 2010
 from cPickle import dump, load, HIGHEST_PROTOCOL
 import json
 
+import demogrid.common.constants as constants
+
 class Topology(object):    
+    
     
     def __init__(self):
         self.global_attributes = {}
@@ -53,7 +56,7 @@ class Topology(object):
         nodes = self.get_nodes()
         for n in nodes:
             topology += "if node.name == \"%s\"\n" % n.hostname
-            for k,v in n.attrs.items():
+            for k,v in n.chef_attrs.items():
                 topology += "  node.normal[:%s] = %s\n" % (k,v)
             topology += "end\n\n"            
 
@@ -62,11 +65,17 @@ class Topology(object):
             for u in domain.users:
                 topology += "{ :login       => \"%s\",\n" % u.login
                 topology += "  :description => \"%s\",\n" % u.description
-                topology += "  :password    => \"%s\",\n" % u.password
                 topology += "  :password_hash => \"%s\",\n" % u.password_hash
-                if u.gridenabled:
-                    topology += "  :gridenabled => true,\n"
-                    topology += "  :auth_type   => :%s}" % u.auth_type
+                topology += "  :dn => \"%s\",\n" % u.dn
+                if u.cert_type != None:
+                    if u.cert_type == "external":
+                        topology += "  :gridenabled => true}"
+                    else:
+                        topology += "  :gridenabled => true,\n"
+                        if u.cert_type == "generated":
+                            topology += "  :auth_type   => :certs}"
+                        elif u.cert_type == "myproxy":
+                            topology += "  :auth_type   => :myproxy}"
                 else:
                     topology += "  :gridenabled => false}"
                 topology += ",\n"
@@ -101,22 +110,27 @@ ff02::3 ip6-allhosts
         
     def gen_csv_file(self, filename):
         attr_names = set()
+        deploy_data = set()
         nodes = self.get_nodes()
         
         for n in nodes:
-            attr_names.update(n.attrs.keys())
+            attr_names.update(n.chef_attrs.keys())
+            deploy_data.update(n.deploy_data.keys())
             
         attr_names = list(attr_names)
-        csv = "org,hostname,role,ip," + ",".join(attr_names) + "\n"
+        deploy_data = list(deploy_data)
+        csv = "org,hostname,run_list,ip," + ",".join(attr_names+deploy_data) +"\n"
         
         for n in nodes:
             if n.domain:
                 domainname = n.domain.name
             else:
                 domainname = ""
-            fields = [domainname, n.hostname, n.role, n.ip]
+            fields = [domainname, n.hostname, ";".join(n.run_list), n.ip]
             for name in attr_names:
-                fields.append(n.attrs.get(name,""))
+                fields.append(n.chef_attrs.get(name,""))
+            for name in deploy_data:    
+                fields.append(n.deploy_data.get(name,""))
             csv += ",".join(fields) + "\n"
             
         csvfile = open(filename, "w")
@@ -127,6 +141,28 @@ ff02::3 ip6-allhosts
         f = open (filename, "w")
         dump(self, f, protocol = HIGHEST_PROTOCOL)
         f.close()
+        
+    def bind_to_example(self):
+        global_node_num = 1
+        for node in self.global_nodes:
+            node.ip = self.__gen_example_IP(constants.EXAMPLE_GLOBAL_SUBNET, global_node_num)
+            node.hostname = self.__gen_example_hostname(node.node_id)
+            global_node_num += 1
+            
+        domain_subnet = constants.EXAMPLE_DOMAIN_SUBNET_START
+        for domain in self.domains.values():
+            domain_node_num = 1
+            domain.subnet = self.__gen_example_IP(domain_subnet, 0)
+            for node in domain.nodes:
+                node.ip = self.__gen_example_IP(domain_subnet, domain_node_num)
+                node.hostname = self.__gen_example_hostname(node.node_id)
+                domain_node_num += 1            
+                
+            domain_subnet += 1
+            
+        for n in self.get_nodes():
+            n.gen_chef_attrs()
+                 
         
     @classmethod
     def from_configfile(cls, config):
@@ -291,10 +327,35 @@ ff02::3 ip6-allhosts
             
             for node in domain["nodes"]:
                 node_obj = Node(node["id"], domain = domain_obj)
+                node_obj.run_list = node.get("run_list")
+                node_obj.depends = node.get("depends")
+                node_obj.deploy_data = dict(node["deploy_data"])
+                
                 topology.add_domain_node(domain_obj, node_obj)
+
+            for node in domain_obj.nodes:
+                if node.depends != None:
+                    depends_node = topology.get_node_by_id(node.depends[5:])
+                    node.depends = depends_node                    
+
+            for user in domain["users"]:
+                user_obj = User(user["login"], user.get("description", user["login"]), user["password_hash"], user.get("dn"), user.get("cert"))
+                domain_obj.add_user(user_obj)
+                
+            for s in constants.DOMAIN_SERVERS:
+                if domain.has_key(s):
+                    if domain[s].startswith("node:"):
+                        node = topology.get_node_by_id(domain[s][5:])
+                        domain_obj.servers[s] = node
     
         return topology
-        # Check if it is "bound"
+
+   
+    def __gen_example_IP(self, subnet, host):
+        return "%s.%i.%i" % (constants.EXAMPLE_SUBNET, subnet, host)
+    
+    def __gen_example_hostname(self, name):
+        return "%s.%s" % (name, constants.EXAMPLE_DOMAIN)
    
 class Domain(object):    
     def __init__(self, name):
@@ -302,9 +363,7 @@ class Domain(object):
         self.subnet = None
         self.nodes = []
         self.users = []
-        self.server = None
-        self.auth = None
-        self.lrm = None
+        self.servers = {}
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -318,20 +377,46 @@ class Domain(object):
     def get_users(self):
         return self.users
     
+    def has_server(self, s):
+        return self.servers.has_key(s)
+    
+    def get_server(self, s):
+        return self.servers.get(s)
+    
 class Node(object):
     def __init__(self, node_id, domain = None):
         self.node_id = node_id
+        self.domain = domain
         self.run_list = None
         self.ip = None
         self.hostname = None
-        self.domain = domain
-        self.attrs = {}
+        self.chef_attrs = {}
+        self.deploy_data = {}
+        
+    def gen_chef_attrs(self):
+        self.chef_attrs["demogrid_hostname"] = "\"%s\"" % self.hostname
+        self.chef_attrs["node_id"] = "\"%s\"" % self.node_id
+        self.chef_attrs["run_list"] = "[ %s ]" % ",".join("\"%s\"" % r for r in self.run_list)
+        if self.domain != None:
+            self.chef_attrs["org"] = "\"%s\"" % self.domain.name
+
+            if self.domain.has_server(constants.DOMAIN_MYPROXY_SERVER):
+                self.chef_attrs["auth"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
+
+            if self.domain.has_server(constants.DOMAIN_LRMHEAD_SERVER):
+                self.chef_attrs["lrm_head"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_LRMHEAD_SERVER).hostname
+
+            if self.domain.subnet == None:
+                self.chef_attrs["subnet"] = "nil"
+            else:
+                self.chef_attrs["subnet"] = "\"%s\"" % self.domain.subnet
+            self.chef_attrs["org_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
+        
         
 class User(object):
-    def __init__(self, login, description, gridenabled, password, password_hash, auth_type=None):
+    def __init__(self, login, description, password_hash, dn, cert_type=None):
         self.login = login
         self.description = description
-        self.gridenabled = gridenabled
-        self.auth_type = auth_type
-        self.password = password
-        self.password_hash = password_hash        
+        self.password_hash = password_hash
+        self.dn = dn
+        self.cert_type = cert_type

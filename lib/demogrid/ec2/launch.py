@@ -8,14 +8,16 @@ import sys
 import traceback
 from demogrid.common import log
 from demogrid.common.certs import CertificateGenerator
+from demogrid.core.prepare import Preparator
 
 
 class EC2Launcher(object):
-    def __init__(self, demogrid_dir, config, generated_dir, loglevel, no_cleanup):
+    def __init__(self, demogrid_dir, config, generated_dir, loglevel, no_cleanup, upload_recipes):
         self.demogrid_dir = demogrid_dir
         self.config = config
         self.generated_dir = generated_dir
         self.loglevel = loglevel
+        self.upload_recipes = upload_recipes
         self.conn = None
         self.instances = None
         self.vols = []
@@ -75,52 +77,52 @@ class EC2Launcher(object):
             topology.global_attributes["ec2_public"] = "true"
         else:
             topology.global_attributes["ec2_public"] = "false"
+            topology.bind_to_example()
 
         nodes = topology.get_nodes()
         num_instances = len(nodes)
         
-        nodes_by_role = {}
+        instance_types = {}
         for n in nodes:
-            if not nodes_by_role.has_key(n.role):
-                nodes_by_role[n.role] = [n]
+            instance_type = n.deploy_data["ec2_instance_type"]
+            if not instance_types.has_key(instance_type):
+                instance_types[instance_type] = 1
             else:
-                nodes_by_role[n.role].append(n)
+                instance_types[instance_type] += 1
 
         # Launch instances
         if self.loglevel == 0:
             print "\033[1;37mLaunching %i EC2 instances...\033[0m" % num_instances,
             sys.stdout.flush()
 
-        self.instances = []
-        instances_by_role = {}
+        instances_by_type = {}
         log.info("Launching a total of %i EC2 instances." % num_instances)
-        for role, n in nodes_by_role.items():     
+        for instance_type, n in instance_types.items():     
             try:   
-                insttype = role_insttype.get(role, default_insttype)
-                log.info(" |- Launching %i %s instances." % (len(n), insttype))
+                log.info(" |- Launching %i %s instances." % (n, insttype))
                 reservation = self.conn.run_instances(ami, 
-                                                 min_count=len(n), 
-                                                 max_count=len(n),
-                                                 instance_type=insttype,
+                                                 min_count=n, 
+                                                 max_count=n,
+                                                 instance_type=instance_type,
                                                  security_groups= ["default"],
                                                  key_name=keypair,
                                                  placement = zone)
-                self.instances += reservation.instances
-                instances_by_role[role] = reservation.instances
+                instances_by_type[instance_type] = reservation.instances
             except EC2ResponseError, exc:
                 self.handle_ec2response_exception(exc, "requesting instances")
             except Exception, exc:
                 self.handle_unexpected_exception(exc)            
         
-        
-        log.debug("Instances: %s" % " ".join([i.id for i in self.instances]))
+        for instance_type, li in instances_by_type.items():        
+            log.debug("%s instances: %s" % (instance_type, " ".join([i.id for i in li])))
         
         log.debug("Waiting for instances to start.")
         
         mt_instancewait = MultiThread()
         
-        for i in self.instances:
-            mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
+        for li in instances_by_type.values():
+            for i in li:
+                mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
         mt_instancewait.run()
         
         if not mt_instancewait.all_success():
@@ -132,7 +134,7 @@ class EC2Launcher(object):
 
         self.instances = []
         node_instance = {}
-        for role, instances in instances_by_role.items():
+        for instance_type, instances in instances_by_type.items():
             # Kluge: This is because of a known bug in the stable release of boto.
             # Basically, update() won't get some of the attributes (specially
             # the private IP, which we need), and the workaround is to force
@@ -140,34 +142,37 @@ class EC2Launcher(object):
             # Can be removed once they push a new stable release
             r = self.conn.get_all_instances([i.id for i in instances])
             self.instances += r[0].instances
-            node_instance.update(dict(zip(nodes_by_role[role], r[0].instances)))
+            
+            nodes_type = [n for n in nodes if n.deploy_data["ec2_instance_type"] == instance_type]
+            node_instance.update(dict(zip(nodes_type, r[0].instances)))
+        
+            
         
         for node, instance in node_instance.items():
             node.ip = instance.private_ip_address
+            node.deploy_data["ec2_instance"] = instance.id
+            node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
+            node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
             if self.config.get_ec2_access_type() == "public":
                 node.hostname = instance.public_dns_name
-                node.attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
-                node.attrs["public_dns"] = "\"%s\"" % instance.public_dns_name
-                node.attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
+                node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
+                node.chef_attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
         
-        # Update attributes and other data
-        for node in nodes:        
-            attrs = node.attrs
-            if node.org != None:
-                attrs["subnet"] = "nil" 
-                attrs["org_server"] = "\"%s\"" % node.org.server.ip
-                if node.org.lrm != None:
-                    attrs["lrm_head"] = "\"%s\"" % node.org.lrm.hostname
-                if node.org.auth != None:
-                    attrs["auth"] = "\"%s\"" % node.org.auth.hostname
-                
+        for n in topology.get_nodes():
+            n.gen_chef_attrs()        
+        
+        topology.gen_ruby_file(self.generated_dir + "/topology.rb")
+        topology.gen_hosts_file(self.generated_dir + "/hosts") 
+        topology.gen_csv_file(self.generated_dir + "/topology.csv")
+
+        # Use Preparator to generate certificates and Chef files
+        p = Preparator(self.demogrid_dir, self.config, self.generated_dir)
+        cert_files = p.gen_certificates(topology, force_certificates=True)
+        p.copy_files(cert_files)
         
         if self.config.get_ec2_access_type() == "public":
             self.__gen_public_host_certificates(node_instance)
         
-        topology.gen_ruby_file(self.generated_dir + "/topology_ec2.rb")
-        topology.gen_hosts_file(self.generated_dir + "/hosts_ec2") 
-        topology.gen_csv_file(self.generated_dir + "/topology_ec2.csv")
         topology.save("%s/topology.dat" % self.generated_dir)
         
         if self.loglevel == 0:
@@ -176,26 +181,22 @@ class EC2Launcher(object):
         
         mt_configure = MultiThread()
 
-        no_deps_roles = ("org-server", "grid-auth")
+        parents = [n for n in topology.get_nodes() if n.depends == None]
+        threads = {}
+        while len(parents) > 0:
+            rest = dict([(n,InstanceConfigureThread(mt_configure, 
+                                                      "configure-%s" % n.hostname.split(".")[0], 
+                                                      n, 
+                                                      i, 
+                                                      self,
+                                                      depends = threads.get(n.depends))) 
+                                                      for n,i in node_instance.items()
+                                                      if n in parents])
+            threads.update(rest)
+            parents = [n for n in topology.get_nodes() if n.depends in parents]
+            
 
-        no_deps = dict([(n,InstanceConfigureThread(mt_configure, 
-                                                  "configure-%s" % n.hostname.split(".")[0], 
-                                                  n, 
-                                                  i, 
-                                                  self,
-                                                  depends = None)) 
-                                                  for n,i in node_instance.items()
-                                                  if n.role in no_deps_roles])
-        rest = dict([(n,InstanceConfigureThread(mt_configure, 
-                                                  "configure-%s" % n.hostname.split(".")[0], 
-                                                  n, 
-                                                  i, 
-                                                  self,
-                                                  depends = no_deps[n.org.server])) 
-                                                  for n,i in node_instance.items()
-                                                  if not n.role in no_deps_roles])
-
-        for thread in no_deps.values() + rest.values():
+        for thread in threads.values():
             mt_configure.add_thread(thread)
         mt_configure.run()        
         
@@ -209,10 +210,10 @@ class EC2Launcher(object):
         seconds = int(delta - (minutes * 60))
         print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
 
-        print "Your login nodes are:"
-        for node, instance in node_instance.items():
-            if node.role == "org-login":
-                print "%s: %s" % (node.hostname.split(".")[0], instance.public_dns_name)
+        #print "Your login nodes are:"
+        #for node, instance in node_instance.items():
+        #    if node.role == "org-login":
+        #        print "%s: %s" % (node.hostname.split(".")[0], instance.public_dns_name)
 
 
     def wait_state(self, obj, state, interval = 2.0):
@@ -369,7 +370,7 @@ class InstanceConfigureThread(DemoGridThread):
         
         # Upload host file and update hostname
         log.debug("Uploading host file and updating hostname", node)
-        ssh.scp("%s/hosts_ec2" % self.launcher.generated_dir,
+        ssh.scp("%s/hosts" % self.launcher.generated_dir,
                 "/chef/cookbooks/demogrid/files/default/hosts")             
         ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
         ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
@@ -377,9 +378,15 @@ class InstanceConfigureThread(DemoGridThread):
         
         self.check_continue()
         
+        # Upload Chef recipes
+        if self.launcher.upload_recipes:
+            log.debug("Copying Chef recipes", node)
+            ssh.scp_dir("%s/chef/cookbooks/demogrid/recipes" % self.launcher.generated_dir, 
+                        "/chef/cookbooks/demogrid/recipes/")
+                
         # Upload topology file
         log.debug("Uploading topology file", node)
-        ssh.scp("%s/topology_ec2.rb" % self.launcher.generated_dir,
+        ssh.scp("%s/topology.rb" % self.launcher.generated_dir,
                 "/chef/cookbooks/demogrid/attributes/topology.rb")             
         
         # Copy certificates
@@ -397,7 +404,7 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": \"role[%s]\" }' > /tmp/chef.json" % node.role, expectnooutput=True)
+        ssh.run("echo '{ \"run_list\": [ %s ] }' > /tmp/chef.json" % ",".join("\"%s\"" % r for r in node.run_list), expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
