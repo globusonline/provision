@@ -57,7 +57,7 @@ users = node[:orgusers][org]
 users.select{|v| v[:gridenabled]}.each do |u|
 	ruby_block "add_lines" do
 	  file = "/etc/grid-security/grid-mapfile"
-	  map = "\"/O=Grid/OU=DemoGrid/CN=#{u[:description]}\" #{u[:login]}"
+	  map = "\"#{u[:dn]}\" #{u[:login]}"
 	  block do
 	    add_line(file, map)
 	  end
@@ -74,7 +74,7 @@ other_orgs.each do |other_org,users|
 
 		ruby_block "add_lines" do
 		  file = "/etc/grid-security/grid-mapfile"
-		  map = "\"/O=Grid/OU=DemoGrid/CN=#{u[:description]}\" #{username}"
+		  map = "\"#{u[:dn]}\" #{username}"
 		  block do
 		    add_line(file, map)
 		  end
