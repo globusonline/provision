@@ -38,11 +38,13 @@ user "galaxy" do
 end
 
 if ! File.exists?(node[:galaxy][:dir])
-
-  remote_file "/home/galaxy/galaxy-dist.tip.tar.gz" do
-    source "http://dist.g2.bx.psu.edu/galaxy-dist.tip.tar.gz"
+  
+  cookbook_file "/home/galaxy/galaxy-dist.tip.tar.gz" do
+    source "galaxy-dist.tip.tar.gz"
+    owner "root"
+    group "root"
     mode "0644"
-  end
+  end  
 
   execute "tar" do
     user "galaxy"
@@ -51,6 +53,29 @@ if ! File.exists?(node[:galaxy][:dir])
     command "tar xzf galaxy-dist.tip.tar.gz"
     action :run
   end  	
+
+  directory "#{node[:galaxy][:dir]}/eggs" do
+    owner "galaxy"
+    group "galaxy"
+    mode "0755"
+    action :create
+  end
+
+  cookbook_file "#{node[:galaxy][:dir]}/eggs/galaxy-eggs.tgz" do
+    source "galaxy-eggs.tgz"
+    owner "galaxy"
+    group "galaxy"
+    mode "0644"
+  end  
+
+  execute "tar" do
+    user "galaxy"
+    group "galaxy"
+    cwd "#{node[:galaxy][:dir]}/eggs"
+    command "tar xzf galaxy-eggs.tgz"
+    action :run
+  end  	
+
   
   # Add init script
   cookbook_file "/etc/init.d/galaxy" do
@@ -96,6 +121,7 @@ execute "galaxy_restart" do
  command "/etc/init.d/galaxy restart"
  action :run
 end
+
 
 
 
