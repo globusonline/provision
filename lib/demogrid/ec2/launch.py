@@ -99,7 +99,7 @@ class EC2Launcher(object):
         log.info("Launching a total of %i EC2 instances." % num_instances)
         for instance_type, n in instance_types.items():     
             try:   
-                log.info(" |- Launching %i %s instances." % (n, insttype))
+                log.info(" |- Launching %i %s instances." % (n, instance_type))
                 reservation = self.conn.run_instances(ami, 
                                                  min_count=n, 
                                                  max_count=n,
@@ -185,7 +185,7 @@ class EC2Launcher(object):
         threads = {}
         while len(parents) > 0:
             rest = dict([(n,InstanceConfigureThread(mt_configure, 
-                                                      "configure-%s" % n.hostname.split(".")[0], 
+                                                      "configure-%s" % n.node_id, 
                                                       n, 
                                                       i, 
                                                       self,
@@ -383,7 +383,7 @@ class InstanceConfigureThread(DemoGridThread):
             log.debug("Copying Chef recipes", node)
             ssh.scp_dir("%s/chef/cookbooks/demogrid/recipes" % self.launcher.generated_dir, 
                         "/chef/cookbooks/demogrid/recipes/")
-                
+                        
         # Upload topology file
         log.debug("Uploading topology file", node)
         ssh.scp("%s/topology.rb" % self.launcher.generated_dir,
