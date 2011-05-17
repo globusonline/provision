@@ -34,6 +34,7 @@ class DemoGridConfig(object):
     GO_CERT_OPT = "cert-file"
     GO_KEY_OPT = "key-file"
     GO_SERVER_CA_OPT = "server-ca-file"
+    GO_AUTH_OPT = "auth"
     
 
     
@@ -141,4 +142,6 @@ class DemoGridConfig(object):
     def get_go_server_ca(self):
         return self.config.get(self.GO_SEC, self.GO_SERVER_CA_OPT)
 
+    def get_go_auth(self):
+        return self.config.get(self.GO_SEC, self.GO_AUTH_OPT)
         

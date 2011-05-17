@@ -19,6 +19,7 @@ from cPickle import load
 from optparse import OptionParser
 from demogrid.globusonline.transfer_api import TransferAPIClient
 from demogrid.core.topology import Topology
+import demogrid.common.constants as constants
 
 class Command(object):
     
@@ -393,7 +394,6 @@ class demogrid_ec2_create_ami(Command):
         c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, self.opt.keypair, self.opt.keyfile)
         c.run()
         
-# Warning: Lot's of hard-coded kludginess
 class demogrid_go_register_endpoints(Command):
     
     name = "demogrid-go-register-endpoints"
@@ -410,6 +410,14 @@ class demogrid_go_register_endpoints(Command):
                                   action="store", type="string", dest="dir", 
                                   default = defaults.GENERATED_LOCATION,
                                   help = "Directory with generated files.")        
+
+        self.optparser.add_option("-d", "--domain", 
+                                  action="store", type="string", dest="domain", 
+                                  help = "Only this domain")   
+
+        self.optparser.add_option("-n", "--name", 
+                                  action="store", type="string", dest="name", 
+                                  help = "Endpoint name")   
                 
     def run(self):    
         self.parse_options()
@@ -426,13 +434,25 @@ class demogrid_go_register_endpoints(Command):
         f.close()            
         
         # TODO: Check each organization, and see if they need an endpoint or not.
-        for org in topology.organizations.values():
-            # Find the GridFTP server
-            gridftp = [n for n in org.get_nodes() if n.role=="org-gridftp"][0]
-             
-            api.endpoint_create("demogrid", gridftp.hostname, description="DemoGrid endpoint",
-                       scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
-                       myproxy_server=gridftp.org.auth.hostname)
+        for domain in topology.domains.values():
+            if self.opt.domain != None and self.opt.domain == domain.name:
+                
+                if self.opt.name != None:
+                    ep_name = self.opt.name
+                else:
+                    ep_name = domain.name
+                
+                # Find the GridFTP server
+                gridftp = domain.servers[constants.DOMAIN_GRIFTP_SERVER]
+                
+                if config.get_go_auth() == "go": 
+                    api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
+                               scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
+                               myproxy_server="myproxy.globusonline.org")
+                else:
+                    api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
+                               scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
+                               myproxy_server=gridftp.org.auth.hostname)
              
         
         

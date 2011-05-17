@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from demogrid.cli import demogrid_go_register_endpoints
+from demogrid.cli.commands import demogrid_go_register_endpoints
 import sys
 
 c = demogrid_go_register_endpoints(sys.argv)
