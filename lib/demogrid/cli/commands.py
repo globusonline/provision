@@ -94,7 +94,9 @@ class demogrid_prepare(Command):
         
         config = DemoGridConfig(self.opt.conf)
 
-        if self.opt.topology.endswith(".json"):
+        if self.opt.topology == None or self.opt.topology.endswith(".conf"):
+            topology = Topology.from_configfile(config)
+        elif self.opt.topology.endswith(".json"):
             jsonfile = open(self.opt.topology)
             json = jsonfile.read()
             jsonfile.close()
