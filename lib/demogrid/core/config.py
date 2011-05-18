@@ -42,8 +42,11 @@ class DemoGridConfig(object):
         self.config = ConfigParser.ConfigParser()
         self.config.readfp(open(configfile, "r"))
         
-        organizations = self.config.get(self.GENERAL_SEC, self.ORGANIZATIONS_OPT)
-        self.organizations = organizations.split()
+        if self.config.has_option(self.GENERAL_SEC, self.ORGANIZATIONS_OPT):
+            organizations = self.config.get(self.GENERAL_SEC, self.ORGANIZATIONS_OPT)
+            self.organizations = organizations.split()
+        else:
+            self.organizations = []
 
     def get_subnet(self):
         return "192.168" # This will be configurable
