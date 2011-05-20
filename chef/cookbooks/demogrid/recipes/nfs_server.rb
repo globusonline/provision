@@ -74,14 +74,20 @@ directory "/nfs/home" do
   action :create
 end
 
-# Scratch directories
-directory "/nfs/scratch" do
+# Scratch directory
+# This is a kludge: it assumes that ephemeral storage will be mounted
+# on /mnt. If it is not, the recipe should still work since /mnt
+# has to be empty, but keeping the scratch directory there is not ideal. 
+# A more general-purpose solution would be preferable (ideally by
+# specifying these shared directories in the topology)
+directory "/mnt/scratch" do
   owner "root"
   group "root"
   mode 01777
   recursive true
   action :create
 end
+
 
 # Software directories
 directory "/nfs/software" do
@@ -97,11 +103,11 @@ ruby_block "add_lines" do
   block do
     if subnet
       add_line("/etc/exports", "/nfs/home #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/nfs/scratch #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/mnt/scratch #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
       add_line("/etc/exports", "/nfs/software #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
     else
       add_line("/etc/exports", "/nfs/home (rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/nfs/scratch (rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/mnt/scratch (rw,root_squash,no_subtree_check,sync)")
       add_line("/etc/exports", "/nfs/software (rw,root_squash,no_subtree_check,sync)")
     end
   end
