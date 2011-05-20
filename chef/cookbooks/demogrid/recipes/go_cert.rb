@@ -21,6 +21,35 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+# Create the grid-security directory
+
+directory "/etc/grid-security" do
+  owner "root"
+  group "root"
+  mode "0755"
+  action :create
+end
+
+directory "/etc/grid-security/certificates" do
+  owner "root"
+  group "root"
+  mode "0755"
+  action :create
+end
+
+cookbook_file "/etc/grid-security/certificates/d1b603c3.0" do
+  source "d1b603c3.0"
+  mode 0644
+  owner "root"
+  group "root"
+end
+
+cookbook_file "/etc/grid-security/certificates/d1b603c3.signing_policy" do
+  source "d1b603c3.signing_policy"
+  mode 0644
+  owner "root"
+  group "root"
+end
 
 cookbook_file "/etc/grid-security/certificates/4396eb4d.0" do
   source "4396eb4d.0"
