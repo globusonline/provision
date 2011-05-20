@@ -45,12 +45,19 @@ if ! File.exists?(node[:galaxy][:dir])
     action :create
   end
   
-  cookbook_file "/var/tmp/galaxy-dist.tip.tar.bz2" do
-    source "galaxy-globus.tip.tar.bz2"
+  remote_file "/var/tmp/galaxy-dist.tip.tar.bz2" do
+    source "https://bitbucket.org/steder/galaxy-globus/get/tip.tar.bz2"
     owner "root"
-    group "root"
+    group "root"    
     mode "0644"
-  end  
+  end
+  
+  #cookbook_file "/var/tmp/galaxy-dist.tip.tar.bz2" do
+  #  source "galaxy-globus.tip.tar.bz2"
+  #  owner "root"
+  #  group "root"
+  #  mode "0644"
+  #end  
 
   execute "tar" do
     user "galaxy"
@@ -87,9 +94,9 @@ if ! File.exists?(node[:galaxy][:dir])
     group "galaxy"
     mode "0755"
   end
-
+  
   cookbook_file "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
-    source "universe_wsgi.ini"
+    source "universe_wsgi-globus.ini"
     owner "galaxy"
     group "galaxy"
     mode "0644"
