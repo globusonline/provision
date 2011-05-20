@@ -29,10 +29,10 @@ user "galaxy" do
 end
 
 # We need to run this for changes to take effect in the NIS server.
-execute "rebuild_yp" do
+execute "ypinit" do
  user "root"
  group "root"
- command "make -C /var/yp"
+ command "echo | /usr/lib/yp/ypinit -m"
  action :run
 end
 
