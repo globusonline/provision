@@ -81,48 +81,43 @@ class EC2Launcher(object):
 
         nodes = topology.get_nodes()
         num_instances = len(nodes)
-        
-        instance_types = {}
-        for n in nodes:
-            instance_type = n.deploy_data["ec2_instance_type"]
-            if not instance_types.has_key(instance_type):
-                instance_types[instance_type] = 1
-            else:
-                instance_types[instance_type] += 1
 
         # Launch instances
         if self.loglevel == 0:
             print "\033[1;37mLaunching %i EC2 instances...\033[0m" % num_instances,
             sys.stdout.flush()
 
-        instances_by_type = {}
         log.info("Launching a total of %i EC2 instances." % num_instances)
-        for instance_type, n in instance_types.items():     
+        node_instance = {}       
+        self.instances = [] 
+        for n in nodes:     
             try:   
-                log.info(" |- Launching %i %s instances." % (n, instance_type))
-                reservation = self.conn.run_instances(ami, 
-                                                 min_count=n, 
-                                                 max_count=n,
-                                                 instance_type=instance_type,
-                                                 security_groups= ["default"],
-                                                 key_name=keypair,
-                                                 placement = zone)
-                instances_by_type[instance_type] = reservation.instances
+                instance_type = n.deploy_data["ec2"]["instance_type"]
+                ami = n.deploy_data["ec2"]["ami"]
+                
+                image = self.conn.get_image(ami)
+                
+                log.info(" |- Launching a %s instance for %s." % (instance_type, n.node_id))
+                reservation = image.run(min_count=1, 
+                                        max_count=1,
+                                        instance_type=instance_type,
+                                        security_groups= ["default"],
+                                        key_name=keypair,
+                                        placement = zone)
+                instance = reservation.instances[0]
+                node_instance[n] = instance
+                self.instances.append(instance)
             except EC2ResponseError, exc:
                 self.handle_ec2response_exception(exc, "requesting instances")
             except Exception, exc:
-                self.handle_unexpected_exception(exc)            
-        
-        for instance_type, li in instances_by_type.items():        
-            log.debug("%s instances: %s" % (instance_type, " ".join([i.id for i in li])))
+                self.handle_unexpected_exception(exc)
         
         log.debug("Waiting for instances to start.")
         
         mt_instancewait = MultiThread()
         
-        for li in instances_by_type.values():
-            for i in li:
-                mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
+        for i in node_instance.values():
+            mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
         mt_instancewait.run()
         
         if not mt_instancewait.all_success():
@@ -132,22 +127,6 @@ class EC2Launcher(object):
             print "\033[1;32mdone!\033[0m"            
         log.info("Instances are running.")
 
-        self.instances = []
-        node_instance = {}
-        for instance_type, instances in instances_by_type.items():
-            # Kluge: This is because of a known bug in the stable release of boto.
-            # Basically, update() won't get some of the attributes (specially
-            # the private IP, which we need), and the workaround is to force
-            # boto to create a new Instance object.
-            # Can be removed once they push a new stable release
-            r = self.conn.get_all_instances([i.id for i in instances])
-            self.instances += r[0].instances
-            
-            nodes_type = [n for n in nodes if n.deploy_data["ec2_instance_type"] == instance_type]
-            node_instance.update(dict(zip(nodes_type, r[0].instances)))
-        
-            
-        
         for node, instance in node_instance.items():
             node.ip = instance.private_ip_address
             node.deploy_data["ec2_instance"] = instance.id
@@ -383,6 +362,14 @@ class InstanceConfigureThread(DemoGridThread):
             log.debug("Copying Chef recipes", node)
             ssh.scp_dir("%s/chef/cookbooks/demogrid/recipes" % self.launcher.generated_dir, 
                         "/chef/cookbooks/demogrid/recipes/")
+            ssh.scp_dir("%s/chef/cookbooks/demogrid/templates/default" % self.launcher.generated_dir, 
+                        "/chef/cookbooks/demogrid/templates/default")
+            ssh.scp("%s/chef/cookbooks/demogrid/files/default/d1b603c3.0" % self.launcher.generated_dir, 
+                    "/chef/cookbooks/demogrid/files/default/d1b603c3.0")
+            ssh.scp("%s/chef/cookbooks/demogrid/files/default/d1b603c3.signing_policy" % self.launcher.generated_dir, 
+                    "/chef/cookbooks/demogrid/files/default/d1b603c3.signing_policy")
+            ssh.scp("%s/chef/cookbooks/demogrid/files/default/universe_wsgi-globus.ini" % self.launcher.generated_dir, 
+                    "/chef/cookbooks/demogrid/files/default/universe_wsgi-globus.ini")
                         
         # Upload topology file
         log.debug("Uploading topology file", node)

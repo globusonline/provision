@@ -4,6 +4,7 @@ Created on Dec 7, 2010
 @author: borja
 '''
 from cPickle import dump, load, HIGHEST_PROTOCOL
+from copy import deepcopy
 import json
 
 import demogrid.common.constants as constants
@@ -15,6 +16,7 @@ class Topology(object):
         self.global_attributes = {}
         self.global_nodes = []
         self.domains = {}
+        self.default_deploy_data = {}
         
     def add_domain(self, domain):
         self.domains[domain.name] = domain
@@ -110,16 +112,17 @@ ff02::3 ip6-allhosts
         
     def gen_csv_file(self, filename):
         attr_names = set()
-        deploy_data = set()
+        #deploy_data = set()
         nodes = self.get_nodes()
         
         for n in nodes:
             attr_names.update(n.chef_attrs.keys())
-            deploy_data.update(n.deploy_data.keys())
+            #deploy_data.update(n.deploy_data.keys())
             
         attr_names = list(attr_names)
-        deploy_data = list(deploy_data)
-        csv = "org,hostname,run_list,ip," + ",".join(attr_names+deploy_data) +"\n"
+        #deploy_data = list(deploy_data)
+#        csv = "org,hostname,run_list,ip," + ",".join(attr_names+deploy_data) +"\n"
+        csv = "org,hostname,run_list,ip," + ",".join(attr_names) +"\n"
         
         for n in nodes:
             if n.domain:
@@ -129,8 +132,8 @@ ff02::3 ip6-allhosts
             fields = [domainname, n.hostname, ";".join(n.run_list), n.ip]
             for name in attr_names:
                 fields.append(n.chef_attrs.get(name,""))
-            for name in deploy_data:    
-                fields.append(n.deploy_data.get(name,""))
+            #for name in deploy_data:    
+            #    fields.append(n.deploy_data.get(name,""))
             csv += ",".join(fields) + "\n"
             
         csvfile = open(filename, "w")
@@ -321,6 +324,9 @@ ff02::3 ip6-allhosts
         
         topology_json = json.loads(jsonstr)
         
+        if topology_json.has_key("default_deploy_data"):
+            topology.default_deploy_data.update(deepcopy(topology_json["default_deploy_data"]))
+
         for domain in topology_json["domains"]:
             domain_obj = Domain(domain["name"])
             topology.add_domain(domain_obj)
@@ -329,7 +335,11 @@ ff02::3 ip6-allhosts
                 node_obj = Node(node["id"], domain = domain_obj)
                 node_obj.run_list = node.get("run_list")
                 node_obj.depends = node.get("depends")
-                node_obj.deploy_data = dict(node["deploy_data"])
+                node_obj.deploy_data.update(deepcopy(topology.default_deploy_data))
+                
+                if node.has_key("deploy_data"):
+                    for k,v in node["deploy_data"].items():
+                        node_obj.deploy_data[k].update(v)
                 
                 topology.add_domain_node(domain_obj, node_obj)
 
