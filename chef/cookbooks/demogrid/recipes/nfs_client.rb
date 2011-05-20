@@ -42,8 +42,18 @@ package "autofs" do
 end
 
 
-# Create the directory where home directories will be mounter
-directory "/export/home" do
+# Create the directory where the NFS directories will be mounted
+directory "/nfs" do
+  owner "root"
+  group "root"
+  mode "0755"
+  action :create
+  recursive true
+end
+
+
+# Create the directory where home directories will be mounted
+directory "/nfs/home" do
   owner "root"
   group "root"
   mode "0755"
@@ -56,7 +66,7 @@ end
 
 ruby_block "addlines" do
   block do
-    add_line("/etc/auto.master", "/export/home         /etc/auto.home")
+    add_line("/etc/auto.master", "/nfs              /etc/auto.nfs")
   end
 end
 
@@ -70,6 +80,15 @@ template "/etc/auto.home" do
   )
 end
 
+template "/etc/auto.nfs" do
+  source "auto.nfs.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :server => server
+  )
+end
 
 # Restart autofs
 

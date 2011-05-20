@@ -19,8 +19,7 @@
 #
 # RECIPE: NFS Server
 #
-# Set up an organizations NFS server. Currently, the only shared directory
-# is the one containing the home directories of the organization's users.
+# Set up an organizations NFS server and its shared directories.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -48,14 +47,7 @@ cookbook_file "/etc/default/nfs-kernel-server" do
 end
 
 
-# Create the directory for the home directories
-directory "/export/home" do
-  owner "root"
-  group "root"
-  mode "0755"
-  recursive true
-  action :create
-end
+
 
 
 # Only allow access to machines in the organization's subnet.
@@ -67,14 +59,53 @@ ruby_block "add_lines" do
     else
       add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : ALL")
     end
-    if subnet
-      add_line("/etc/exports", "/export/home #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
-    else
-      add_line("/etc/exports", "/export/home (rw,root_squash,no_subtree_check,sync)")
-    end
   end
 end
 
+
+# Create directories
+
+# Home directories
+directory "/nfs/home" do
+  owner "root"
+  group "root"
+  mode "0755"
+  recursive true
+  action :create
+end
+
+# Scratch directories
+directory "/nfs/scratch" do
+  owner "root"
+  group "root"
+  mode 01777
+  recursive true
+  action :create
+end
+
+# Software directories
+directory "/nfs/software" do
+  owner "root"
+  group "root"
+  mode "0755"
+  recursive true
+  action :create
+end
+
+# Add exports
+ruby_block "add_lines" do
+  block do
+    if subnet
+      add_line("/etc/exports", "/nfs/home #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/nfs/scratch #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/nfs/software #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
+    else
+      add_line("/etc/exports", "/nfs/home (rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/nfs/scratch (rw,root_squash,no_subtree_check,sync)")
+      add_line("/etc/exports", "/nfs/software (rw,root_squash,no_subtree_check,sync)")
+    end
+  end
+end
 
 # Restart NFS
 execute "nfs-kernel-server_restart" do
