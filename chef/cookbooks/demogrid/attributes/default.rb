@@ -18,7 +18,8 @@
 # For now, only directories where software is going to be installed.
 
 default[:globus][:dir] = "/usr/local/globus-5.0.3"
-default[:galaxy][:dir] = "/home/galaxy/galaxy-dist"
+default[:galaxy][:dir] = "/nfs/software/galaxy"
+default[:blast][:dir] = "/nfs/software/blast"
 default[:globus][:srcdir] = "/var/tmp/gt5.0.3-all-source-installer"
 default[:globus][:simpleCA] = "/home/globus/.globus/simpleCA"
 default[:globus][:rootsimpleCA] = "/root/.globus/simpleCA"
