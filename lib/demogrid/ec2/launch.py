@@ -12,12 +12,12 @@ from demogrid.core.prepare import Preparator
 
 
 class EC2Launcher(object):
-    def __init__(self, demogrid_dir, config, generated_dir, loglevel, no_cleanup, upload_recipes):
+    def __init__(self, demogrid_dir, config, generated_dir, loglevel, no_cleanup, extra_files):
         self.demogrid_dir = demogrid_dir
         self.config = config
         self.generated_dir = generated_dir
         self.loglevel = loglevel
-        self.upload_recipes = upload_recipes
+        self.extra_files = extra_files
         self.conn = None
         self.instances = None
         self.vols = []
@@ -40,14 +40,7 @@ class EC2Launcher(object):
         ami = self.config.get_ami()
         keypair = self.config.get_keypair()
         insttypes = self.config.get_instance_type()
-        zone = self.config.get_ec2_zone()   
-        
-        # Parse the instance type option
-        role_insttype = {}
-        for ri in insttypes.split():
-            role, insttype = ri.split(":")
-            role_insttype[role] = insttype
-        default_insttype = role_insttype["*"]
+        zone = self.config.get_ec2_zone()
         
         log.init_logging(self.loglevel)
         
@@ -357,20 +350,6 @@ class InstanceConfigureThread(DemoGridThread):
         
         self.check_continue()
         
-        # Upload Chef recipes
-        if self.launcher.upload_recipes:
-            log.debug("Copying Chef recipes", node)
-            ssh.scp_dir("%s/chef/cookbooks/demogrid/recipes" % self.launcher.generated_dir, 
-                        "/chef/cookbooks/demogrid/recipes/")
-            ssh.scp_dir("%s/chef/cookbooks/demogrid/templates/default" % self.launcher.generated_dir, 
-                        "/chef/cookbooks/demogrid/templates/default")
-            ssh.scp("%s/chef/cookbooks/demogrid/files/default/d1b603c3.0" % self.launcher.generated_dir, 
-                    "/chef/cookbooks/demogrid/files/default/d1b603c3.0")
-            ssh.scp("%s/chef/cookbooks/demogrid/files/default/d1b603c3.signing_policy" % self.launcher.generated_dir, 
-                    "/chef/cookbooks/demogrid/files/default/d1b603c3.signing_policy")
-            ssh.scp("%s/chef/cookbooks/demogrid/files/default/universe_wsgi-globus.ini" % self.launcher.generated_dir, 
-                    "/chef/cookbooks/demogrid/files/default/universe_wsgi-globus.ini")
-                        
         # Upload topology file
         log.debug("Uploading topology file", node)
         ssh.scp("%s/topology.rb" % self.launcher.generated_dir,
@@ -380,6 +359,11 @@ class InstanceConfigureThread(DemoGridThread):
         log.debug("Copying certificates", node)
         ssh.scp_dir("%s/certs" % self.launcher.generated_dir, 
                     "/chef/cookbooks/demogrid/files/default/")
+
+        # Upload extra files
+        log.debug("Copying extra files", node)
+        for src, dst in self.launcher.extra_files:
+            ssh.scp(src, dst)
         
         self.check_continue()
 

@@ -18,6 +18,7 @@ from demogrid.common import log
 import os
 import signal
 from Crypto.Random import atfork
+import glob
         
 class ThreadAbortException(Exception):
     pass
@@ -262,3 +263,19 @@ def create_ec2_connection():
         return None
     else:
         return EC2Connection()
+    
+def parse_extra_files_files(f, generated_dir):
+    l = []
+    extra_f = open(f)
+    for line in extra_f:
+        srcglob, dst = line.split()
+        srcglob = srcglob.replace("@", generated_dir)
+        srcs = glob.glob(os.path.expanduser(srcglob))
+        dst_isdir = (os.path.basename(dst) == "")
+        for src in srcs:
+            full_dst = dst
+            if dst_isdir:
+                full_dst += os.path.basename(src)
+            l.append( (src, full_dst) )
+    return l
+    
