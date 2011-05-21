@@ -20,7 +20,7 @@ import getpass
 import subprocess
 from cPickle import load
 from optparse import OptionParser
-from demogrid.globusonline.transfer_api import TransferAPIClient
+from demogrid.globusonline.transfer_api import TransferAPIClient, ClientError
 from demogrid.core.topology import Topology
 import demogrid.common.constants as constants
 from demogrid.common.utils import parse_extra_files_files
@@ -440,9 +440,9 @@ class demogrid_ec2_update_ami(Command):
         c = EC2AMIUpdater(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.keypair, self.opt.keyfile, files)
         c.run()        
         
-class demogrid_go_register_endpoints(Command):
+class demogrid_go_register_endpoint(Command):
     
-    name = "demogrid-go-register-endpoints"
+    name = "demogrid-go-register-endpoint"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -464,6 +464,14 @@ class demogrid_go_register_endpoints(Command):
         self.optparser.add_option("-n", "--name", 
                                   action="store", type="string", dest="name", 
                                   help = "Endpoint name")   
+        
+        self.optparser.add_option("-p", "--public", 
+                                  action="store_true", dest="public", 
+                                  help = "Create a public endpoint")           
+
+        self.optparser.add_option("-r", "--replace", 
+                                  action="store_true", dest="replace", 
+                                  help = "If the endpoint already exists, replace it")           
                 
     def run(self):    
         self.parse_options()
@@ -479,27 +487,54 @@ class demogrid_go_register_endpoints(Command):
         topology = load(f)
         f.close()            
         
-        # TODO: Check each organization, and see if they need an endpoint or not.
-        for domain in topology.domains.values():
-            if self.opt.domain != None and self.opt.domain == domain.name:
+        domain = topology.domains[self.opt.domain]
+        ep_name = self.opt.name
                 
-                if self.opt.name != None:
-                    ep_name = self.opt.name
-                else:
-                    ep_name = domain.name
+        # Find the GridFTP server
+        gridftp = domain.servers[constants.DOMAIN_GRIFTP_SERVER]
+        
+        
+        try:
+            (code, msg, ep) = api.endpoint(ep_name)
+            ep_exists = True
+        except ClientError as ce:
+            if ce.status_code == 404:
+                ep_exists = False
+            else:
+                print ce
+                exit(1)
+        
+        if config.get_go_auth() == "go": 
+            myproxy_server = "myproxy.globusonline.org"
+        else:
+            myproxy_server = gridftp.org.auth.hostname
+        
+        if ep_exists:
+            if not self.opt.replace:
+                print "An endpoint called '%s' already exists. Please choose a different name." % ep_name
+                exit(1)
+            else:
+                (code, msg, data) = api.endpoint_delete(ep_name)
+            
+        (code, msg, data) = api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
+                                                scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
+                                                myproxy_server=myproxy_server)
+        if code >= 400:
+            print code, msg
+            exit(1)        
+
+        if self.opt.public:
+            (code, msg, ep) = api.endpoint(ep_name)
+            if code >= 400:
+                print code, msg
+                exit(1)
+            ep["public"] = True
+            (code, msg, data) = api.endpoint_update(ep)
+            if code >= 400:
+                print code, msg
+                exit(1)
                 
-                # Find the GridFTP server
-                gridftp = domain.servers[constants.DOMAIN_GRIFTP_SERVER]
-                
-                if config.get_go_auth() == "go": 
-                    api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
-                               scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
-                               myproxy_server="myproxy.globusonline.org")
-                else:
-                    api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
-                               scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
-                               myproxy_server=gridftp.org.auth.hostname)
-             
+        print "Endpoint created successfully"
         
         
         
