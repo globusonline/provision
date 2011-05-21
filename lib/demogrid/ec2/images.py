@@ -175,3 +175,65 @@ class EC2AMICreator(object):
         if self.snapshot != None:                
             vol.delete()     
         
+
+class EC2AMIUpdater(object):
+    def __init__(self, demogrid_dir, base_ami, ami_name, keypair, keyfile, files):
+        self.demogrid_dir = demogrid_dir
+        self.base_ami = base_ami
+        self.ami_name = ami_name
+        self.keypair = keypair
+        self.keyfile = keyfile
+        self.files = files
+
+    def run(self):
+        log.init_logging(2)
+        
+        conn = create_ec2_connection()
+
+        print "Creating instance"
+        reservation = conn.run_instances(self.base_ami, 
+                                         min_count=1, max_count=1,
+                                         instance_type='m1.small', 
+                                         key_name=self.keypair)
+        instance = reservation.instances[0]
+        print "Instance %s created. Waiting for it to start..." % instance.id
+        
+        while instance.update() != "running":
+            time.sleep(2)
+        
+        print "Instance running."
+
+        print "Opening SSH connection."
+        ssh = SSH("ubuntu", instance.public_dns_name, self.keyfile)
+        ssh.open()
+        
+        print "Copying files"        
+        for src, dst in self.files:
+            ssh.scp(src, dst)
+                  
+        # Apparently instance.stop() will terminate
+        # the instance (this is a known bug), so we 
+        # use stop_instances instead.
+        print "Stopping instance"
+        conn.stop_instances([instance.id])
+        while instance.update() != "stopped":
+            time.sleep(2)
+        print "Instance stopped"
+        
+        print "Creating AMI"
+        
+        # Doesn't actually return AMI. Have to make it public manually.
+        ami = conn.create_image(instance.id, self.ami_name, description=self.ami_name)       
+        
+        if ami != None:
+            print ami
+        print "Cleaning up"
+
+        
+        print "Terminating instance"
+        conn.terminate_instances([instance.id])
+        while instance.update() != "terminated":
+            time.sleep(2)
+        print "Instance terminated"   
+
+                

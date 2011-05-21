@@ -9,10 +9,13 @@ Created on Nov 1, 2010
 import demogrid.common.defaults as defaults
 from demogrid.core.prepare import Preparator
 from demogrid.core.config import DemoGridConfig
-from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator
+from demogrid.ec2.images import EC2ChefVolumeCreator, EC2AMICreator,\
+    EC2AMIUpdater
 from demogrid.ec2.launch import EC2Launcher
 
 import os
+import os.path
+import glob
 import getpass
 import subprocess
 from cPickle import load
@@ -20,6 +23,7 @@ from optparse import OptionParser
 from demogrid.globusonline.transfer_api import TransferAPIClient
 from demogrid.core.topology import Topology
 import demogrid.common.constants as constants
+from demogrid.common.utils import parse_extra_files_files
 
 class Command(object):
     
@@ -318,9 +322,9 @@ class demogrid_ec2_launch(Command):
                                   action="store_true", dest="no_cleanup", 
                                   help = "Don't release resources on failure.")
 
-        self.optparser.add_option("-u", "--upload-recipes", 
-                                  action="store_true", dest="upload_recipes", 
-                                  help = "Upload Chef recipes.")
+        self.optparser.add_option("-x", "--extra-files", 
+                                  action="store", type="string", dest="extra_files", 
+                                  help = "Upload extra files")
                 
     def run(self):    
         self.parse_options()
@@ -333,8 +337,13 @@ class demogrid_ec2_launch(Command):
             loglevel = 1
         else:
             loglevel = 0
-        
-        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel, self.opt.no_cleanup, self.opt.upload_recipes)
+      
+        if self.opt.extra_files != None:
+            extra_files = parse_extra_files_files(self.opt.extra_files, self.opt.dir)
+        else:
+            extra_files = []
+
+        c = EC2Launcher(self.dg_location, config, self.opt.dir, loglevel, self.opt.no_cleanup, extra_files)
         c.launch()          
         
 class demogrid_ec2_create_chef_volume(Command):
@@ -395,6 +404,41 @@ class demogrid_ec2_create_ami(Command):
         
         c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, self.opt.keypair, self.opt.keyfile)
         c.run()
+        
+class demogrid_ec2_update_ami(Command):
+    
+    name = "demogrid-ec2-update-ami"
+    
+    def __init__(self, argv):
+        Command.__init__(self, argv)
+        
+        self.optparser.add_option("-a", "--ami", 
+                                  action="store", type="string", dest="ami", 
+                                  help = "AMI to update.")
+
+        self.optparser.add_option("-n", "--name", 
+                                  action="store", type="string", dest="aminame", 
+                                  help = "Name of new AMI.")
+
+        self.optparser.add_option("-k", "--keypair", 
+                                  action="store", type="string", dest="keypair", 
+                                  help = "EC2 keypair")
+        
+        self.optparser.add_option("-f", "--keypair-file", 
+                                  action="store", type="string", dest="keyfile", 
+                                  help = "EC2 keypair file")
+
+        self.optparser.add_option("-l", "--files", 
+                                  action="store", type="string", dest="files", 
+                                  help = "Files to add to AMI")
+                
+    def run(self):    
+        self.parse_options()
+        
+        files = parse_extra_files_files(self.opt.files, self.dg_location)
+        
+        c = EC2AMIUpdater(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.keypair, self.opt.keyfile, files)
+        c.run()        
         
 class demogrid_go_register_endpoints(Command):
     
