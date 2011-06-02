@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from demogrid.cli import demogrid_ec2_create_ami
+from demogrid.cli.commands import demogrid_ec2_create_ami
 import sys
 
 c = demogrid_ec2_create_ami(sys.argv)
