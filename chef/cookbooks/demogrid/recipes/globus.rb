@@ -27,15 +27,19 @@
 
 # Globus Toolkit 5.0.3 only provides a source tarball. Installing from scratch
 # would involve compiling the toolkit on each VM, which would take too long.
-# So, we use a "precompiled" version prepared on an Ubuntu Lucid 32-bit machine.
+# So, we use a "precompiled" version prepared on Ubuntu Lucid 32-bit and 64-bit machines.
 # Since making GT 5.0.3 creates files in both the source tree and in
 # GLOBUS_LOCATION, we have tarballs for both.
 #
 # This is a terrible kluge, and will be removed once we have a binary distribution
 # of the toolkit that we can use.
-gl_tarball = "gt5.0.3-globus_location.tgz"
-install_tarball = "gt5.0.3-source-install.tgz"
-
+if node[:kernel][:machine] == "i686" then
+  gl_tarball = "gt5.0.3-globus_location_i686.tgz"
+  install_tarball = "gt5.0.3-source-install_i686.tgz"
+elsif node[:kernel][:machine] == "x86_64" then
+  gl_tarball = "gt5.0.3-globus_location_x86_64.tgz"
+  install_tarball = "gt5.0.3-source-install_x86_64.tgz"
+end
 
 # Needed to create the globus user
 package "libshadow-ruby1.8" do

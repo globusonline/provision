@@ -37,9 +37,7 @@ class EC2Launcher(object):
         SIGINTWatcher(self.cleanup_after_kill)
         t_start = time.time()
         
-        ami = self.config.get_ami()
         keypair = self.config.get_keypair()
-        insttypes = self.config.get_instance_type()
         zone = self.config.get_ec2_zone()
         
         log.init_logging(self.loglevel)
