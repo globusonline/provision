@@ -85,6 +85,11 @@ if ! File.exists?(node[:globus][:dir])
       command "tar xzf /var/tmp/#{install_tarball}"
       action :run
     end  	
+    
+    # Cleanup
+    file "/var/tmp/#{install_tarball}" do
+      action :delete
+    end       
   end
   
   directory node[:globus][:dir] do
@@ -108,6 +113,10 @@ if ! File.exists?(node[:globus][:dir])
 	  action :run
 	end
 
+  file "/var/tmp/#{gl_tarball}" do
+    action :delete
+  end       
+	
 	execute "make install" do
 	  user "globus"
 	  group "globus"

@@ -58,3 +58,8 @@ package "condor" do
   provider Chef::Provider::Package::Dpkg
   source "/var/tmp/#{condor_package}"
 end
+
+# Cleanup
+file "/var/tmp/#{condor_package}" do
+  action :delete
+end       
