@@ -28,9 +28,15 @@ class Chef::Resource
   include FileHelper
 end
 
-# Needed by the Condor deb package
-package "libc6-amd64" do
-  action :install
+if node[:kernel][:machine] == "i686" then
+  condor_package = node[:condor][:package32]
+
+  # Needed by the Condor 32-bit deb package
+  package "libc6-amd64" do
+    action :install
+  end
+elsif node[:kernel][:machine] == "x86_64" then
+  condor_package = node[:condor][:package64]
 end
 
 cookbook_file "/etc/init/condor-dir.conf" do
@@ -40,8 +46,8 @@ cookbook_file "/etc/init/condor-dir.conf" do
   group "root"
 end
 
-cookbook_file "/var/tmp/#{node[:condor][:package]}" do
-  source "#{node[:condor][:package]}"
+cookbook_file "/var/tmp/#{condor_package}" do
+  source "#{condor_package}"
   mode 0644
   owner "root"
   group "root"
@@ -50,5 +56,5 @@ end
 package "condor" do
   action :install
   provider Chef::Provider::Package::Dpkg
-  source "/var/tmp/#{node[:condor][:package]}"
+  source "/var/tmp/#{condor_package}"
 end
