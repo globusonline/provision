@@ -5,7 +5,7 @@ Created on Dec 6, 2010
 '''
 
 import threading
-import paramiko
+import paramiko, dg_paraproxy
 import operator
 import traceback
 import select
