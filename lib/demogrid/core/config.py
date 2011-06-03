@@ -28,6 +28,10 @@ class DemoGridConfig(object):
     INSTYPE_OPT = "instance_type"
     ZONE_OPT = "availability_zone"
     ACCESS_OPT = "access"
+    HOSTNAME_OPT = "hostname"
+    PATH_OPT = "path"
+    PORT_OPT = "port"
+    USERNAME_OPT = "username"
 
     GO_SEC = "globusonline"
     GO_USERNAME_OPT = "username"
@@ -148,3 +152,16 @@ class DemoGridConfig(object):
     def get_go_auth(self):
         return self.config.get(self.GO_SEC, self.GO_AUTH_OPT)
         
+    def get_ec2_hostname(self):
+        return self.config.get(self.EC2_SEC, self.HOSTNAME_OPT)
+
+    def get_ec2_path(self):
+        return self.config.get(self.EC2_SEC, self.PATH_OPT)
+    
+    def get_ec2_port(self):
+        return int(self.config.get(self.EC2_SEC, self.PORT_OPT))
+
+    def get_ec2_username(self):
+        return self.config.get(self.EC2_SEC, self.USERNAME_OPT)
+
+

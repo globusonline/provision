@@ -11,7 +11,7 @@ import traceback
 import select
 import sys
 import time
-from boto.ec2.connection import EC2Connection
+from boto.ec2.connection import EC2Connection,RegionInfo
 from os import walk, environ
 import socket    
 from demogrid.common import log
@@ -258,11 +258,17 @@ class SSH(object):
                 log.debug("scp %s -> %s:%s" % (fromfile, self.hostname, tofile))
 
     
-def create_ec2_connection():
+def create_ec2_connection(hostname, path, port):
     if not (environ.has_key("AWS_ACCESS_KEY_ID") and environ.has_key("AWS_SECRET_ACCESS_KEY")):
         return None
     else:
-        return EC2Connection()
+        if hostname is not None:
+            print "Setting region"
+            region = RegionInfo(name="eucalyptus", endpoint="149.165.146.135")
+            return EC2Connection(is_secure=False, region=region, path=path, port=port)
+        else:
+            print "Not setting region"
+            return EC2Connection()
     
 def parse_extra_files_files(f, generated_dir):
     l = []

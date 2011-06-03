@@ -19,6 +19,7 @@ class EC2ChefVolumeCreator(object):
         conn = create_ec2_connection()
         
         print "Creating instance"
+		
         reservation = conn.run_instances(self.ami, 
                                          min_count=1, max_count=1,
                                          instance_type='t1.micro', 
@@ -77,23 +78,27 @@ class EC2ChefVolumeCreator(object):
 
 
 class EC2AMICreator(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, keypair, keyfile):
+    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, keypair, keyfile, hostname, path, port, username):
         self.demogrid_dir = demogrid_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.snapshot = snapshot
         self.keypair = keypair
         self.keyfile = keyfile
+        self.hostname = hostname
+        self.path = path
+        self.port = port
+        self.username = username
 
     def run(self):
         log.init_logging(2)
-        
-        conn = create_ec2_connection()
+
+        conn = create_ec2_connection(hostname=self.hostname, path=self.path, port=self.port)
 
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='c1.medium', 
+                                         instance_type='m1.large', 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
@@ -101,9 +106,8 @@ class EC2AMICreator(object):
         while instance.update() != "running":
             time.sleep(2)
         
-        print "Instance running."
-
-        ssh = SSH("ubuntu", instance.public_dns_name, self.keyfile)
+        print "Instance running"
+        ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
         ssh.open()
         
         if self.snapshot != None:
@@ -119,11 +123,11 @@ class EC2AMICreator(object):
             print "Mounting volume."  
             ssh.run("sudo mkdir /chef")
             ssh.run("sudo mount -t ext3 /dev/sdh /chef")
-            ssh.run("sudo chown -R ubuntu /chef")
+            ssh.run("sudo chown -R %s /chef" % self.username)
         else:
             print "Copying Chef files"
             ssh.run("sudo mkdir /chef")
-            ssh.run("sudo chown -R ubuntu /chef")
+            ssh.run("sudo chown -R %s /chef" % self.username)
             ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
             
         
