@@ -32,7 +32,11 @@ package "libssl0.9.8"
 package "libssl-dev"
 
 # We'll need the pre-compiled source tarball.
-install_tarball = "gt5.0.3-source-install.tgz"
+if node[:kernel][:machine] == "i686" then
+  install_tarball = "gt5.0.3-source-install_i686.tgz"
+elsif node[:kernel][:machine] == "x86_64" then
+  install_tarball = "gt5.0.3-source-install_x86_64.tgz"
+end
 
 # Make sure the globus user has all the Condor commands in its PATH.
 ruby_block "globus.condor" do
