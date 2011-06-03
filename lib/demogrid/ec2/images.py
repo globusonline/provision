@@ -140,7 +140,7 @@ class EC2AMICreator(object):
         ssh.scp("%s/lib/ec2/chef.conf" % self.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\" }' > /tmp/chef.json")
+        ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         

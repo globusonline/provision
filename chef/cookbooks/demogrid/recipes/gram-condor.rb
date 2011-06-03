@@ -51,8 +51,8 @@ end
 # TODO: Figure out how to determine if gram5-condor is already installed,
 # so we can skip this step.
 
-if ! File.exists?(node[:globus][:srcdir])
-  cookbook_file "/var/tmp/#{install_tarball}" do
+if ! File.exists?("#{node[:scratch_dir]}/#{node[:globus][:srcdir]}")
+  cookbook_file "#{node[:scratch_dir]}/#{install_tarball}" do
     source "#{install_tarball}"
     mode 0755
     owner "globus"
@@ -62,8 +62,8 @@ if ! File.exists?(node[:globus][:srcdir])
   execute "tar" do
     user "globus"
     group "globus"
-    cwd "/var/tmp"
-    command "tar xzf /var/tmp/#{install_tarball}"
+    cwd node[:scratch_dir]
+    command "tar xzf #{node[:scratch_dir]}/#{install_tarball}"
     action :run
   end
 end
@@ -72,7 +72,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-condor")
   execute "make gram5-condor" do
     user "globus"
     group "globus"
-    cwd node[:globus][:srcdir]
+    cwd "#{node[:scratch_dir]}/#{node[:globus][:srcdir]}"
     command "make gram5-condor"
     action :run
   end
@@ -80,7 +80,7 @@ if ! File.exists?("#{node[:globus][:dir]}/etc/grid-services/jobmanager-condor")
   execute "make install" do
     user "globus"
     group "globus"
-    cwd node[:globus][:srcdir]
+    cwd "#{node[:scratch_dir]}/#{node[:globus][:srcdir]}"
     command "PATH=/usr/local/condor-7.4.3/bin/:$PATH; make install"
     action :run
   end

@@ -20,7 +20,7 @@
 default[:globus][:dir] = "/usr/local/globus-5.0.3"
 default[:galaxy][:dir] = "/nfs/software/galaxy"
 default[:blast][:dir] = "/nfs/software/blast"
-default[:globus][:srcdir] = "/var/tmp/gt5.0.3-all-source-installer"
+default[:globus][:srcdir] = "gt5.0.3-all-source-installer"
 default[:globus][:simpleCA] = "/home/globus/.globus/simpleCA"
 default[:globus][:rootsimpleCA] = "/root/.globus/simpleCA"
 default[:condor][:package32] = "condor-7.6.0-1-deb_5.0_i386.deb"

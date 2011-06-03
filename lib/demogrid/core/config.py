@@ -8,6 +8,7 @@ class DemoGridConfig(object):
     MYPROXY_OPT = "myproxy"
     CACERT_OPT = "ca-cert"
     CAKEY_OPT = "ca-key"
+    SCRATCHDIR_OPT = "scratch-dir"
     
     ORGANIZATION_SEC = "organization-"
     USERSFILE_OPT = "users-file"
@@ -60,6 +61,9 @@ class DemoGridConfig(object):
     
     def get_ca(self):
         return self.config.get(self.GENERAL_SEC, self.CACERT_OPT), self.config.get(self.GENERAL_SEC, self.CAKEY_OPT)
+
+    def get_scratch_dir(self):
+        return self.config.get(self.GENERAL_SEC, self.SCRATCHDIR_OPT)
 
     def has_grid_auth_node(self):
         return self.config.getboolean(self.GENERAL_SEC, self.MYPROXY_OPT)
