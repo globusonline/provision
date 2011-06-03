@@ -41,7 +41,7 @@ pbs_mom_sh = "torque-package-mom-linux-i686.sh"
 # Install Torque
 if ! File.exists?(node[:torque][:dir])
 	# Copy the server installation script
-	cookbook_file "/var/tmp/#{pbs_server_sh}" do
+	cookbook_file "#{node[:scratch_dir]}/#{pbs_server_sh}" do
 	  source "#{pbs_server_sh}"
 	  mode 0755
 	  owner "root"
@@ -49,7 +49,7 @@ if ! File.exists?(node[:torque][:dir])
 	end
 
 	# Copy the client tools installation script
-	cookbook_file "/var/tmp/#{pbs_clients_sh}" do
+	cookbook_file "#{node[:scratch_dir]}/#{pbs_clients_sh}" do
 	  source "#{pbs_clients_sh}"
 	  mode 0755
 	  owner "root"
@@ -57,7 +57,7 @@ if ! File.exists?(node[:torque][:dir])
 	end
 
   # Copy worker node installation script
-   cookbook_file "/var/tmp/#{pbs_mom_sh}" do
+   cookbook_file "#{node[:scratch_dir]}/#{pbs_mom_sh}" do
      source "#{pbs_mom_sh}"
      mode 0755
      owner "root"
@@ -68,12 +68,12 @@ if ! File.exists?(node[:torque][:dir])
    execute "pbs_mom_install" do
      user "root"
      group "root"
-     command "/var/tmp/#{pbs_mom_sh} --install"
+     command "#{node[:scratch_dir]}/#{pbs_mom_sh} --install"
      action :run
    end
 	
 	# Copy the setup script
-	cookbook_file "/var/tmp/torque.setup" do
+	cookbook_file "#{node[:scratch_dir]}/torque.setup" do
 	  source "torque.setup"
 	  mode 0755
 	  owner "root"
@@ -84,7 +84,7 @@ if ! File.exists?(node[:torque][:dir])
 	execute "pbs_server_install" do
 	  user "root"
 	  group "root"
-	  command "/var/tmp/#{pbs_server_sh} --install"
+	  command "#{node[:scratch_dir]}/#{pbs_server_sh} --install"
 	  action :run
 	end
 
@@ -92,7 +92,7 @@ if ! File.exists?(node[:torque][:dir])
 	execute "pbs_client_install" do
 	  user "root"
 	  group "root"
-	  command "/var/tmp/#{pbs_clients_sh} --install"
+	  command "#{node[:scratch_dir]}/#{pbs_clients_sh} --install"
 	  action :run
 	end
 

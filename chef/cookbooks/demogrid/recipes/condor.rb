@@ -46,7 +46,7 @@ cookbook_file "/etc/init/condor-dir.conf" do
   group "root"
 end
 
-cookbook_file "/var/tmp/#{condor_package}" do
+cookbook_file "#{node[:scratch_dir]}/#{condor_package}" do
   source "#{condor_package}"
   mode 0644
   owner "root"
@@ -56,10 +56,10 @@ end
 package "condor" do
   action :install
   provider Chef::Provider::Package::Dpkg
-  source "/var/tmp/#{condor_package}"
+  source "#{node[:scratch_dir]}/#{condor_package}"
 end
 
 # Cleanup
-file "/var/tmp/#{condor_package}" do
+file "#{node[:scratch_dir]}/#{condor_package}" do
   action :delete
 end       

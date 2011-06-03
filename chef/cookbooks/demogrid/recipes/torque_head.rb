@@ -55,7 +55,7 @@ if ! File.exists?("/etc/init.d/pbs_server")
   execute "torque.setup" do
     user "root"
     group "root"
-    command "/var/tmp/torque.setup globus"
+    command "#{node[:scratch_dir]}/torque.setup globus"
     action :run
   end
   

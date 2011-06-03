@@ -396,27 +396,14 @@ class demogrid_ec2_create_ami(Command):
                                   action="store", type="string", dest="aminame", 
                                   help = "Name of AMI to create")
 
-        self.optparser.add_option("-k", "--keypair", 
-                                  action="store", type="string", dest="keypair", 
-                                  help = "EC2 keypair")
-        
-        self.optparser.add_option("-f", "--keypair-file", 
-                                  action="store", type="string", dest="keyfile", 
-                                  help = "EC2 keypair file")
-
-
                 
     def run(self):    
         self.parse_options()
        
 
         config = DemoGridConfig(self.opt.conf)
-        hostname = config.get_ec2_hostname()
-        path = config.get_ec2_path()
-        port = config.get_ec2_port()
-        username = config.get_ec2_username()
 
-        c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, self.opt.keypair, self.opt.keyfile, hostname, path, port, username)
+        c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, config)
         c.run()
         
 class demogrid_ec2_update_ami(Command):

@@ -5,7 +5,7 @@ Created on Dec 6, 2010
 '''
 
 import threading
-import paramiko
+import paramiko, dg_paraproxy
 import operator
 import traceback
 import select
@@ -19,6 +19,7 @@ import os
 import signal
 from Crypto.Random import atfork
 import glob
+from boto import connect_ec2
         
 class ThreadAbortException(Exception):
     pass
@@ -158,23 +159,36 @@ class SSH(object):
         self.default_errf = default_errf
         self.port = port
         
-    def open(self):
+    def open(self, timeout = 120):
         atfork()   # Workaround for bug in paramiko
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         connected = False
+        remaining = timeout
         while not connected:
             try:
-                self.client.connect(self.hostname, self.port, self.username, pkey=key)
-                connected = True
+                if remaining < 0:
+                    raise Exception("SSH timeout")
+                else:
+                    self.client.connect(self.hostname, self.port, self.username, pkey=key)
+                    connected = True
             except socket.error, e:
                 if e.errno == 111: # Connection refused
                     time.sleep(2)
+                    remaining -= 2
                 else:
                     time.sleep(2)
+                    remaining -= 2
             except EOFError, e:
                 time.sleep(2)
+                remaining -= 2
+            except paramiko.SSHException, e:
+                if e.message == "Error reading SSH protocol banner":
+                    time.sleep(2)
+                    remaining -= 2
+                else:
+                    raise e
         self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
         
     def close(self):
@@ -259,16 +273,29 @@ class SSH(object):
 
     
 def create_ec2_connection(hostname, path, port):
-    if not (environ.has_key("AWS_ACCESS_KEY_ID") and environ.has_key("AWS_SECRET_ACCESS_KEY")):
-        return None
-    else:
-        if hostname is not None:
-            print "Setting region"
-            region = RegionInfo(name="eucalyptus", endpoint="149.165.146.135")
-            return EC2Connection(is_secure=False, region=region, path=path, port=port)
+    if hostname == None:
+        # We're using EC2.
+        # Check for AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY,
+        # and use EC2Connection. boto will fill in all the values
+        if not (environ.has_key("AWS_ACCESS_KEY_ID") and environ.has_key("AWS_SECRET_ACCESS_KEY")):
+            return None
         else:
-            print "Not setting region"
             return EC2Connection()
+    else:
+        # We're using an EC2-ish cloud.
+        # Check for EC2_ACCESS_KEY and EC2_SECRET_KEY (these are used by Eucalyptus;
+        # we will probably have to tweak this further to support other systems)
+        if not (environ.has_key("EC2_ACCESS_KEY") and environ.has_key("EC2_SECRET_KEY")):
+            return None
+        else:
+            print "Setting region"
+            region = RegionInfo(name="eucalyptus", endpoint=hostname)
+            return connect_ec2(aws_access_key_id=environ["EC2_ACCESS_KEY"],
+                        aws_secret_access_key=environ["EC2_SECRET_KEY"],
+                        is_secure=False,
+                        region=region,
+                        port=port,
+                        path=path)            
     
 def parse_extra_files_files(f, generated_dir):
     l = []

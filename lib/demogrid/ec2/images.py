@@ -78,17 +78,25 @@ class EC2ChefVolumeCreator(object):
 
 
 class EC2AMICreator(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, keypair, keyfile, hostname, path, port, username):
+    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, config):
         self.demogrid_dir = demogrid_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.snapshot = snapshot
-        self.keypair = keypair
-        self.keyfile = keyfile
-        self.hostname = hostname
-        self.path = path
-        self.port = port
-        self.username = username
+        self.config = config
+
+        self.keypair = config.get_keypair()
+        self.keyfile = config.get_keyfile()
+        if config.has_ec2_hostname():
+            self.hostname = config.get_ec2_hostname()
+            self.path = config.get_ec2_path()
+            self.port = config.get_ec2_port()
+        else:
+            self.hostname = None
+            self.path = None
+            self.port = None
+        self.username = config.get_ec2_username()
+        self.scratch_dir = config.get_scratch_dir()
 
     def run(self):
         log.init_logging(2)
@@ -98,7 +106,7 @@ class EC2AMICreator(object):
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='m1.large', 
+                                         instance_type='m1.small', 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
@@ -108,7 +116,11 @@ class EC2AMICreator(object):
         
         print "Instance running"
         ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
-        ssh.open()
+        try:
+            ssh.open()
+        except Exception, e:
+            print e.message
+            exit(1)
         
         if self.snapshot != None:
             print "Creating volume + attaching."
@@ -131,7 +143,13 @@ class EC2AMICreator(object):
             ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
             
         
-        ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
+        #ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
+        
+        # Some VMs don't include their hostname
+        ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
+
+        ssh.run("sudo apt-get install lsb-release")
+        ssh.run("echo \"deb http://apt.opscode.com/ `lsb_release -cs` main\" | sudo tee /etc/apt/sources.list.d/opscode.list")
         ssh.run("wget -qO - http://apt.opscode.com/packages@opscode.com.gpg.key | sudo apt-key add -")
         ssh.run("sudo apt-get update")
         ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
@@ -140,7 +158,7 @@ class EC2AMICreator(object):
         ssh.scp("%s/lib/ec2/chef.conf" % self.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\" }' > /tmp/chef.json")
+        ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         

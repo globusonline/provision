@@ -32,7 +32,7 @@ openmpi_tarball = "openmpi-1.4.3-bin.tar.bz2"
 
 if ! File.exists?(node[:openmpi][:dir])
 
-	cookbook_file "/var/tmp/#{openmpi_tarball}" do
+	cookbook_file "#{node[:scratch_dir]}/#{openmpi_tarball}" do
 	  source "#{openmpi_tarball}"
 	  mode 0644
 	  owner "root"
@@ -42,7 +42,7 @@ if ! File.exists?(node[:openmpi][:dir])
 	execute "tar" do
 	  user "root"
 	  group "root"
-	  command "tar xjf /var/tmp/#{openmpi_tarball} --directory /usr/local"
+	  command "tar xjf #{node[:scratch_dir]}/#{openmpi_tarball} --directory /usr/local"
 	  action :run
 	end
 
