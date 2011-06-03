@@ -158,23 +158,36 @@ class SSH(object):
         self.default_errf = default_errf
         self.port = port
         
-    def open(self):
+    def open(self, timeout = 120):
         atfork()   # Workaround for bug in paramiko
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         connected = False
+        remaining = timeout
         while not connected:
             try:
-                self.client.connect(self.hostname, self.port, self.username, pkey=key)
-                connected = True
+                if remaining < 0:
+                    raise Exception("SSH timeout")
+                else:
+                    self.client.connect(self.hostname, self.port, self.username, pkey=key)
+                    connected = True
             except socket.error, e:
                 if e.errno == 111: # Connection refused
                     time.sleep(2)
+                    remaining -= 2
                 else:
                     time.sleep(2)
+                    remaining -= 2
             except EOFError, e:
                 time.sleep(2)
+                remaining -= 2
+            except paramiko.SSHException, e:
+                if e.message == "Error reading SSH protocol banner":
+                    time.sleep(2)
+                    remaining -= 2
+                else:
+                    raise e
         self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
         
     def close(self):
