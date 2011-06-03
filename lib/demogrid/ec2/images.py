@@ -106,7 +106,7 @@ class EC2AMICreator(object):
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='m1.large', 
+                                         instance_type='m1.small', 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
@@ -116,7 +116,11 @@ class EC2AMICreator(object):
         
         print "Instance running"
         ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
-        ssh.open()
+        try:
+            ssh.open()
+        except Exception, e:
+            print e.message
+            exit(1)
         
         if self.snapshot != None:
             print "Creating volume + attaching."
@@ -139,7 +143,13 @@ class EC2AMICreator(object):
             ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
             
         
-        ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
+        #ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
+        
+        # Some VMs don't include their hostname
+        ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
+
+        ssh.run("sudo apt-get install lsb-release")
+        ssh.run("echo \"deb http://apt.opscode.com/ `lsb_release -cs` main\" | sudo tee /etc/apt/sources.list.d/opscode.list")
         ssh.run("wget -qO - http://apt.opscode.com/packages@opscode.com.gpg.key | sudo apt-key add -")
         ssh.run("sudo apt-get update")
         ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
