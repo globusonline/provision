@@ -78,17 +78,25 @@ class EC2ChefVolumeCreator(object):
 
 
 class EC2AMICreator(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, keypair, keyfile, hostname, path, port, username):
+    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, config):
         self.demogrid_dir = demogrid_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.snapshot = snapshot
-        self.keypair = keypair
-        self.keyfile = keyfile
-        self.hostname = hostname
-        self.path = path
-        self.port = port
-        self.username = username
+        self.config = config
+
+        self.keypair = config.get_keypair()
+        self.keyfile = config.get_keyfile()
+        if config.has_ec2_hostname():
+            self.hostname = config.get_ec2_hostname()
+            self.path = config.get_ec2_path()
+            self.port = config.get_ec2_port()
+        else:
+            self.hostname = None
+            self.path = None
+            self.port = None
+        self.username = config.get_ec2_username()
+        self.scratch_dir = config.get_scratch_dir()
 
     def run(self):
         log.init_logging(2)

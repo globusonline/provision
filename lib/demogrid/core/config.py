@@ -155,7 +155,10 @@ class DemoGridConfig(object):
 
     def get_go_auth(self):
         return self.config.get(self.GO_SEC, self.GO_AUTH_OPT)
-        
+
+    def has_ec2_hostname(self):
+        return self.config.has_option(self.EC2_SEC, self.HOSTNAME_OPT)
+            
     def get_ec2_hostname(self):
         return self.config.get(self.EC2_SEC, self.HOSTNAME_OPT)
 
