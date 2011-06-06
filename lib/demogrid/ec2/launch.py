@@ -44,7 +44,13 @@ class EC2Launcher(object):
         
         try:
             log.debug("Connecting to EC2...")
-            self.conn = create_ec2_connection()
+            if self.config.has_ec2_hostname():
+                self.conn = create_ec2_connection(self.config.get_ec2_hostname(),
+                                                  self.config.get_ec2_path(),
+                                                  self.config.get_ec2_port()) 
+            else:
+                self.conn = create_ec2_connection()
+            
             if self.conn == None:
                 print "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
                 exit(1)
