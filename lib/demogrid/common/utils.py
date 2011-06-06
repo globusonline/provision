@@ -272,7 +272,7 @@ class SSH(object):
                 log.debug("scp %s -> %s:%s" % (fromfile, self.hostname, tofile))
 
     
-def create_ec2_connection(hostname, path, port):
+def create_ec2_connection(hostname = None, path = None, port = None):
     if hostname == None:
         # We're using EC2.
         # Check for AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY,
