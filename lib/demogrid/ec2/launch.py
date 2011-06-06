@@ -347,7 +347,7 @@ class InstanceConfigureThread(DemoGridThread):
             ssh_err = sys.stderr
 
         log.debug("Establishing SSH connection", node)
-        ssh = SSH("ubuntu", instance.public_dns_name, self.launcher.config.get_keyfile(), ssh_out, ssh_err)
+        ssh = SSH(self.launcher.config.get_ec2_username(), instance.public_dns_name, self.launcher.config.get_keyfile(), ssh_out, ssh_err)
         ssh.open()
         log.debug("SSH connection established", node)
 
