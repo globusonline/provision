@@ -94,6 +94,11 @@ class EC2Launcher(object):
                 
                 image = self.conn.get_image(ami)
                 
+                if image == None:
+                    # Workaround for this bug:
+                    # https://bugs.launchpad.net/eucalyptus/+bug/495670
+                    image = [i for i in self.conn.get_all_images() if i.id == ami][0]
+                
                 log.info(" |- Launching a %s instance for %s." % (instance_type, n.node_id))
                 reservation = image.run(min_count=1, 
                                         max_count=1,
