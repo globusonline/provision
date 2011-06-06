@@ -130,9 +130,17 @@ class EC2Launcher(object):
         log.info("Instances are running.")
 
         for node, instance in node_instance.items():
-            node.ip = instance.private_ip_address
+            if instance.private_ip_address != None:
+                # A correct EC2 system should return this
+                node.ip = instance.private_ip_address
+            else:
+                # Unfortunately, some EC2-ish systems won't return the private IP address
+                # We fall back on the private_dns_name, which should still work
+                # (plus, some EC2-ish systems actually set this to the IP address)
+                node.ip = instance.private_dns_name
             node.deploy_data["ec2_instance"] = instance.id
             node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
+            # TODO: The following won't work on EC2-ish systems behind a firewall.
             node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
             if self.config.get_ec2_access_type() == "public":
                 node.hostname = instance.public_dns_name
