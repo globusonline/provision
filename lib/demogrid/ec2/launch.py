@@ -392,7 +392,7 @@ class InstanceConfigureThread(DemoGridThread):
             
             self.launcher.vols.remove(vol)
         
-        ssh.run("sudo update-rc.d nis enable")     
+        ssh.run("sudo update-rc.d nis defaults")     
 
         log.info("Configuration done.", node)
         
