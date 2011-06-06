@@ -57,7 +57,7 @@ class Topology(object):
       
         nodes = self.get_nodes()
         for n in nodes:
-            topology += "if node.name == \"%s\"\n" % n.hostname
+            topology += "if node[:node_id] == \"%s\"\n" % n.node_id
             for k,v in n.chef_attrs.items():
                 topology += "  node.normal[:%s] = %s\n" % (k,v)
             topology += "end\n\n"            

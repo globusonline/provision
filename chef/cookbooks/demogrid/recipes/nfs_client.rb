@@ -90,6 +90,20 @@ template "/etc/auto.nfs" do
   )
 end
 
+execute "portmap_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/portmap restart"
+ action :run
+end
+
+execute "nfs_common_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/nfs-common restart"
+ action :run
+end
+
 # Restart autofs
 
 execute "autofs_restart" do

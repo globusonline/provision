@@ -162,8 +162,8 @@ class EC2AMICreator(object):
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         
-        ssh.run("sudo update-rc.d nis disable")
-        ssh.run("sudo update-rc.d chef-client disable")
+        ssh.run("sudo update-rc.d nis remove")
+        ssh.run("sudo update-rc.d chef-client remove")
         
         if self.snapshot != None:
             ssh.run("sudo umount /chef")

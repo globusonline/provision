@@ -44,7 +44,13 @@ class EC2Launcher(object):
         
         try:
             log.debug("Connecting to EC2...")
-            self.conn = create_ec2_connection()
+            if self.config.has_ec2_hostname():
+                self.conn = create_ec2_connection(self.config.get_ec2_hostname(),
+                                                  self.config.get_ec2_path(),
+                                                  self.config.get_ec2_port()) 
+            else:
+                self.conn = create_ec2_connection()
+            
             if self.conn == None:
                 print "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
                 exit(1)
@@ -88,6 +94,11 @@ class EC2Launcher(object):
                 
                 image = self.conn.get_image(ami)
                 
+                if image == None:
+                    # Workaround for this bug:
+                    # https://bugs.launchpad.net/eucalyptus/+bug/495670
+                    image = [i for i in self.conn.get_all_images() if i.id == ami][0]
+                
                 log.info(" |- Launching a %s instance for %s." % (instance_type, n.node_id))
                 reservation = image.run(min_count=1, 
                                         max_count=1,
@@ -119,9 +130,17 @@ class EC2Launcher(object):
         log.info("Instances are running.")
 
         for node, instance in node_instance.items():
-            node.ip = instance.private_ip_address
+            if instance.private_ip_address != None:
+                # A correct EC2 system should return this
+                node.ip = instance.private_ip_address
+            else:
+                # Unfortunately, some EC2-ish systems won't return the private IP address
+                # We fall back on the private_dns_name, which should still work
+                # (plus, some EC2-ish systems actually set this to the IP address)
+                node.ip = instance.private_dns_name
             node.deploy_data["ec2_instance"] = instance.id
             node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
+            # TODO: The following won't work on EC2-ish systems behind a firewall.
             node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
             if self.config.get_ec2_access_type() == "public":
                 node.hostname = instance.public_dns_name
@@ -328,7 +347,7 @@ class InstanceConfigureThread(DemoGridThread):
             ssh_err = sys.stderr
 
         log.debug("Establishing SSH connection", node)
-        ssh = SSH("ubuntu", instance.public_dns_name, self.launcher.config.get_keyfile(), ssh_out, ssh_err)
+        ssh = SSH(self.launcher.config.get_ec2_username(), instance.public_dns_name, self.launcher.config.get_keyfile(), ssh_out, ssh_err)
         ssh.open()
         log.debug("SSH connection established", node)
 
@@ -373,7 +392,7 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": [ %s ] }' > /tmp/chef.json" % ",".join("\"%s\"" % r for r in node.run_list), expectnooutput=True)
+        ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.launcher.config.get_scratch_dir(), node.node_id), expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
@@ -392,7 +411,7 @@ class InstanceConfigureThread(DemoGridThread):
             
             self.launcher.vols.remove(vol)
         
-        ssh.run("sudo update-rc.d nis enable")     
+        ssh.run("sudo update-rc.d nis defaults")     
 
         log.info("Configuration done.", node)
         

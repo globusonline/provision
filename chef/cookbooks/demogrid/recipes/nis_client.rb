@@ -55,6 +55,12 @@ ruby_block "addlines" do
   end
 end
 
+execute "portmap_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/portmap restart"
+ action :run
+end
 
 # Restart NIS
 execute "nis_restart" do
