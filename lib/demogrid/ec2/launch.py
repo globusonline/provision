@@ -392,7 +392,7 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": [ %s ] }' > /tmp/chef.json" % ",".join("\"%s\"" % r for r in node.run_list), expectnooutput=True)
+        ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.launcher.config.get_scratch_dir(), node.node_id), expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
