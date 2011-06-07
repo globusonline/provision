@@ -128,7 +128,18 @@ class EC2Launcher(object):
             print "\033[1;32mdone!\033[0m"            
         log.info("Instances are running.")
 
+        supports_create_tags = True
         for node, instance in node_instance.items():
+            try:
+                if supports_create_tags:
+                    self.conn.create_tags([instance.id], {"Name": node.node_id})
+            except:
+                # Some EC2-ish systems don't support the create_tags call.
+                # If it fails, we just silently ignore it, as it is not essential,
+                # but make sure not to call it again, as EC2-ish systems will
+                # timeout instead of immediately returning an error
+                supports_create_tags = False
+
             if instance.private_ip_address != None:
                 # A correct EC2 system should return this
                 node.ip = instance.private_ip_address
