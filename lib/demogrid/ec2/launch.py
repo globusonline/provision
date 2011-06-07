@@ -378,7 +378,7 @@ class InstanceConfigureThread(DemoGridThread):
                 "/chef/cookbooks/demogrid/files/default/hosts")             
         ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
         ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-        ssh.run("sudo /etc/init.d/hostname restart")
+        ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
         self.check_continue()
         
@@ -416,7 +416,7 @@ class InstanceConfigureThread(DemoGridThread):
         # The Chef recipes will overwrite the hostname, so
         # we need to set it again.
         ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-        ssh.run("sudo /etc/init.d/hostname restart")
+        ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
         if self.launcher.config.has_snap():
             ssh.run("sudo umount /chef", expectnooutput=True)
