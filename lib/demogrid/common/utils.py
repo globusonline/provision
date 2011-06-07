@@ -248,6 +248,16 @@ class SSH(object):
         
         
     def scp(self, fromf, tof):
+        # Create directory if it does not exist
+        try:
+            self.sftp.stat(os.path.dirname(tof))
+        except IOError, e:
+            pdirs = get_parent_directories(tof)
+            for d in pdirs:
+                try:
+                    self.sftp.stat(d)
+                except IOError, e:
+                    self.sftp.mkdir(d)        
         try:
             self.sftp.put(fromf, tof)
         except Exception, e:
@@ -304,6 +314,7 @@ def parse_extra_files_files(f, generated_dir):
         srcglob, dst = line.split()
         srcglob = srcglob.replace("@", generated_dir)
         srcs = glob.glob(os.path.expanduser(srcglob))
+        srcs = [s for s in srcs if os.path.isfile(s)]
         dst_isdir = (os.path.basename(dst) == "")
         for src in srcs:
             full_dst = dst
@@ -312,3 +323,12 @@ def parse_extra_files_files(f, generated_dir):
             l.append( (src, full_dst) )
     return l
     
+    
+def get_parent_directories(filepath):
+    dir = os.path.dirname(filepath)
+    dirs = [dir]
+    while dir != "/":
+        dir = os.path.dirname(dir)
+        dirs.append(dir)
+    dirs.reverse()
+    return dirs
