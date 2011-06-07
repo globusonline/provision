@@ -97,12 +97,16 @@ execute "portmap_restart" do
  action :run
 end
 
-execute "nfs_common_restart" do
- user "root"
- group "root"
- command "/etc/init.d/nfs-common restart"
- action :run
+case node.platform
+  when "debian"
+  execute "nfs_common_restart" do
+    user "root"
+    group "root"
+    command "/etc/init.d/nfs-common restart"
+    action :run
+  end
 end
+
 
 # Restart autofs
 

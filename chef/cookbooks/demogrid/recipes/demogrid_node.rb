@@ -72,9 +72,14 @@ end
 
 # Make sure the new hostname takes effect.
 execute "hostname" do
- user "root"
- group "root"
- command "/etc/init.d/hostname restart"
- action :run
+  user "root"
+  group "root"
+  case node.platform
+    when "debian"
+      command "/etc/init.d/hostname.sh"
+    when "ubuntu"
+      command "/etc/init.d/hostname restart"
+  end
+  action :run
 end
 

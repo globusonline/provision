@@ -39,11 +39,16 @@ elsif node[:kernel][:machine] == "x86_64" then
   condor_package = node[:condor][:package64]
 end
 
-cookbook_file "/etc/init/condor-dir.conf" do
-  source "condor-dir.conf"
-  mode 0644
-  owner "root"
-  group "root"
+case node.platform
+when "ubuntu"
+
+  cookbook_file "/etc/init/condor-dir.conf" do
+    source "condor-dir.conf"
+    mode 0644
+    owner "root"
+    group "root"
+  end
+  
 end
 
 cookbook_file "#{node[:scratch_dir]}/#{condor_package}" do
