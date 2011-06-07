@@ -112,3 +112,10 @@ execute "autofs_restart" do
  command "/etc/init.d/autofs restart"
  action :run
 end
+
+
+ruby_block "addlines" do
+  block do
+    add_line("/etc/profile", "export PATH=/nfs/software/bin:$PATH")
+  end
+end

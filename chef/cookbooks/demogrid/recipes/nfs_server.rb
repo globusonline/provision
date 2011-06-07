@@ -98,6 +98,18 @@ directory "/nfs/software" do
   action :create
 end
 
+# /nfs/software/bin will be in every user's $PATH
+# For an executable in /nfs/software to be in the user's PATH,
+# the corresponding recipe should create a symbolic link from
+# /nfs/software/bin to the executable
+directory "/nfs/software/bin" do
+  owner "root"
+  group "root"
+  mode "0755"
+  recursive true
+  action :create
+end
+
 # Add exports
 ruby_block "add_lines" do
   block do
