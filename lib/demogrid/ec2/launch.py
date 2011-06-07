@@ -74,7 +74,6 @@ class EC2Launcher(object):
             topology.global_attributes["ec2_public"] = "true"
         else:
             topology.global_attributes["ec2_public"] = "false"
-            topology.bind_to_example()
 
         nodes = topology.get_nodes()
         num_instances = len(nodes)
@@ -146,6 +145,11 @@ class EC2Launcher(object):
                 node.hostname = instance.public_dns_name
                 node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
                 node.chef_attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
+            elif self.config.get_ec2_access_type() == "private":
+                node.hostname = "%s.demogrid.example.org" % node.node_id
+                node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
+                node.chef_attrs["public_ip"] = "nil"
+                
         
         for n in topology.get_nodes():
             n.gen_chef_attrs()        
