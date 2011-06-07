@@ -15,28 +15,54 @@
 # -------------------------------------------------------------------------- #
 
 
-  execute "galaxy-setup.sh" do
-    user "galaxy"
-    group "galaxy"
-    cwd node[:galaxy][:dir]
-    command "./galaxy-setup.sh"
-    action :run
-  end  
+# Create postgresql user
+
+execute "createuser" do
+  user "postgres"
+  command "createuser -D -S -R galaxy"
+  action :run
+end  
+
+execute "createdb" do
+  user "postgres"
+  command "createdb galaxy"
+  action :run
+end  
+
+execute "alter_user" do
+  user "postgres"
+  command "psql -c \"alter user galaxy with encrypted password 'galaxy';\""
+  action :run
+end  
+
+execute "grant_all" do
+  user "postgres"
+  command "psql -c \"grant all privileges on database galaxy to galaxy;\""
+  action :run
+end
+
+execute "galaxy-setup.sh" do
+  user "galaxy"
+  group "galaxy"
+  cwd node[:galaxy][:dir]
+  command "./galaxy-setup.sh"
+  action :run
+end  
  
-  # Add init script
-  cookbook_file "/etc/init.d/galaxy" do
-    source "galaxy.init"
-    owner "root"
-    group "root"
-    mode "0755"
-  end
+# Add init script
+cookbook_file "/etc/init.d/galaxy" do
+  source "galaxy.init"
+  owner "root"
+  group "root"
+  mode "0755"
+end
   
-  execute "update-rc.d" do
-    user "root"
-    group "root"
-    command "update-rc.d galaxy defaults"
-    action :run
-  end  
+execute "update-rc.d" do
+  user "root"
+  group "root"
+  command "update-rc.d galaxy defaults"
+  action :run
+end  
 
 execute "galaxy_restart" do
  user "root"
@@ -44,7 +70,3 @@ execute "galaxy_restart" do
  command "/etc/init.d/galaxy restart"
  action :run
 end
-
-
-
-

@@ -95,12 +95,15 @@ if ! File.exists?(node[:galaxy][:dir])
     mode "0755"
   end
   
-  cookbook_file "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
-    source "universe_wsgi-globus.ini"
-    owner "galaxy"
-    group "galaxy"
-    mode "0644"
-  end
+template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
+  source "galaxy-universe.erb"
+  mode 0644
+  owner "galaxy"
+  group "galaxy"
+  variables(
+    :db_connect => "foo"
+  )
+end  
 
 end
   
