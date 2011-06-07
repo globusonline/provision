@@ -36,6 +36,10 @@ if ! File.exists?(node[:blast][:dir])
     command "tar xzf #{node[:scratch_dir]}/blast.tar.gz --strip-components=1 --directory #{node[:blast][:dir]}"
     action :run
   end  	
+  
+  link "/nfs/software/bin/blastp" do
+    to "#{node[:blast][:dir]}/bin/blastp"
+  end
 
 end
   
