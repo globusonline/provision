@@ -8,6 +8,7 @@ from copy import deepcopy
 import json
 
 import demogrid.common.constants as constants
+from demogrid.common import DemoGridException
 
 class Topology(object):    
     
@@ -17,6 +18,7 @@ class Topology(object):
         self.global_nodes = []
         self.domains = {}
         self.default_deploy_data = {}
+        self.pickledfile = None
         
     def add_domain(self, domain):
         self.domains[domain.name] = domain
@@ -140,8 +142,12 @@ ff02::3 ip6-allhosts
         csvfile.write(csv)
         csvfile.close()                
         
-    def save(self, filename):
-        f = open (filename, "w")
+    def save(self, filename = None):
+        if self.pickledfile == None and filename == None:
+            raise DemoGridException("Don't know where to save this topology")
+        if filename != None:
+            self.pickledfile = filename
+        f = open (self.pickledfile, "w")
         dump(self, f, protocol = HIGHEST_PROTOCOL)
         f.close()
         
