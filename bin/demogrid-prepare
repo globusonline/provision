@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.commands import demogrid_prepare
-import sys
-
-c = demogrid_prepare(sys.argv)
-c.run()
