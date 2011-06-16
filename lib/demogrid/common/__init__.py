@@ -1,0 +1,2 @@
+class DemoGridException(Exception):
+    pass
