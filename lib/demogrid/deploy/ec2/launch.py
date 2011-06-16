@@ -104,7 +104,7 @@ class EC2Launcher(object):
                                         instance_type=instance_type,
                                         security_groups= ["default"],
                                         key_name=keypair,
-                                        placement = zone)
+                                        placement = None)
                 instance = reservation.instances[0]
                 node_instance[n] = instance
                 self.instances.append(instance)
@@ -377,6 +377,7 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.scp("%s/hosts" % self.launcher.generated_dir,
                 "/chef/cookbooks/demogrid/files/default/hosts")             
         ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
+
         ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
         ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
