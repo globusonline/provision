@@ -5,6 +5,7 @@ import random
 from demogrid.common import DemoGridException
 from demogrid.core.config import DemoGridConfig
 from demogrid.core.topology import Topology
+from demogrid.common.certs import CertificateGenerator
 
 class InstanceStore(object):
     def __init__(self, instances_dir):
@@ -48,16 +49,14 @@ class Instance(object):
     CHEF_FILES_DIR = "/chef/cookbooks/demogrid/files/default/"  
     CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"
 
-    def __init__(self, inst_id, instances_dir):
+    def __init__(self, inst_id, instance_dir):
+        self.instance_dir = instance_dir
         self.id = inst_id
-        self.__instances_dir = instances_dir
-        self.__topology = self.__load_topology()
-        self.__config = DemoGridConfig("%s/demogrid.conf" % instances_dir)
+        self.config = DemoGridConfig("%s/demogrid.conf" % instance_dir)
+        self.topology = self.__load_topology()
         
-
-
     def __load_topology(self):
-        f = open ("%s/topology.dat" % self.__instances_dir, "r")
+        f = open ("%s/topology.dat" % self.instance_dir, "r")
         topology = load(f)
         f.close()   
         return topology     
@@ -76,7 +75,6 @@ ff02::2 ip6-allrouters
 ff02::3 ip6-allhosts
 
 """
-        hosts += "%s.0.1 master.%s master\n" % (self.config.get_subnet(), self.DOMAIN)
         
         nodes = self.topology.get_nodes()
         for n in nodes:
@@ -87,20 +85,22 @@ ff02::3 ip6-allhosts
         hostsfile.close()
 
 
-    def gen_certificates(self, topology, force_certificates):
-        certs_dir = self.generated_dir + self.CERTS_DIR
+    def gen_certificates(self, force_certificates):
+        certs_dir = self.instance_dir + self.CERTS_DIR
         if not os.path.exists(certs_dir):
             os.makedirs(certs_dir)  
+
+        certg = CertificateGenerator()
 
         cert_files = []
         
         if self.config.has_ca():
             ca_cert_file, ca_cert_key = self.config.get_ca()
-            ca_cert, ca_key = self.certg.load_certificate(ca_cert_file, ca_cert_key)
+            ca_cert, ca_key = certg.load_certificate(ca_cert_file, ca_cert_key)
         else:
-            ca_cert, ca_key = self.certg.gen_selfsigned_ca_cert("DemoGrid CA")
+            ca_cert, ca_key = certg.gen_selfsigned_ca_cert("DemoGrid CA")
         
-        self.certg.set_ca(ca_cert, ca_key)
+        certg.set_ca(ca_cert, ca_key)
 
         h = "%x" % ca_cert.subject_name_hash()
 
@@ -112,69 +112,47 @@ ff02::3 ip6-allhosts
         ca_key_file = certs_dir + "/ca_key.pem"
         cert_files.append(ca_cert_file)
         cert_files.append(ca_key_file)
-        self.__dump_certificate(cert = ca_cert,
-                                key = ca_key,
-                                cert_file = ca_cert_file,
-                                key_file = ca_key_file, force_certificates = force_certificates)
+        certg.save_certificate(cert = ca_cert,
+                              key = ca_key,
+                              cert_file = ca_cert_file,
+                              key_file = ca_key_file, 
+                              force = force_certificates)
 
-        users = [u for u in topology.get_users() if u.cert_type=="generated"]
+        users = [u for u in self.topology.get_users() if u.cert_type=="generated"]
         for user in users:        
-            cert, key = self.certg.gen_user_cert(cn = user.description) 
+            cert, key = certg.gen_user_cert(cn = user.description) 
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, user.login)
             key_file = "%s/%s_key.pem" % (certs_dir, user.login)
             cert_files.append(cert_file)
-            cert_files.append(key_file)            
-            self.__dump_certificate(cert = cert,
+            cert_files.append(key_file)    
+            certg.save_certificate(cert = cert,
                                     key = key,
                                     cert_file = cert_file,
-                                    key_file = key_file, force_certificates = force_certificates)
+                                    key_file = key_file, 
+                                    force = force_certificates)
         
-        nodes = topology.get_nodes()
+        nodes = self.topology.get_nodes()
         for n in nodes:
-            cert, key = self.certg.gen_host_cert(hostname = n.hostname) 
+            cert, key = certg.gen_host_cert(hostname = n.hostname) 
             
             filename = n.node_id
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
             key_file = "%s/%s_key.pem" % (certs_dir, filename)
             cert_files.append(cert_file)
-            cert_files.append(key_file)                
-            self.__dump_certificate(cert = cert,
-                                    key = key,
-                                    cert_file = cert_file,
-                                    key_file = key_file, force_certificates = force_certificates)        
+            cert_files.append(key_file)          
+            certg.save_certificate(cert = cert,
+                                   key = key,
+                                   cert_file = cert_file,
+                                   key_file = key_file, 
+                                   force = force_certificates)        
 
         return cert_files  
 
 
-    def copy_files(self, cert_files):
-        chef_files_dir = self.generated_dir + self.CHEF_FILES_DIR
-        for f in cert_files:
-            shutil.copy(f, chef_files_dir)
-            
-        shutil.copy(self.generated_dir + "/hosts", chef_files_dir)
-        
-        shutil.copy(self.generated_dir + "/topology.rb", self.generated_dir + self.CHEF_ATTR_DIR)
-    
-    def __dump_certificate(self, cert, key, cert_file, key_file, force_certificates):
-        if os.path.exists(cert_file) and not force_certificates:
-            print '\033[1;33mWarning\033[0m: Certificate %s already exists. Skipping. Use --force-certificates to overwrite' % cert_file.split("/")[-1]
-        else:
-            self.certg.save_certificate(cert, key, cert_file, key_file)     
+                 
         
 
-    def copy_chef_files(self, force_chef):
-        src_chef = self.demogrid_dir + self.CHEF_DIR
-        dst_chef = self.generated_dir + self.CHEF_DIR
-        if os.path.exists(dst_chef):
-            if force_chef:
-                shutil.rmtree(dst_chef)
-            else:
-                return False
-              
-        if not os.path.exists(dst_chef):
-            shutil.copytree(src_chef, dst_chef)            
-            
-        return True
+
         
