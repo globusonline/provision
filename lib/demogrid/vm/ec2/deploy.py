@@ -8,46 +8,43 @@ import sys
 import traceback
 from demogrid.common import log
 from demogrid.common.certs import CertificateGenerator
-from demogrid.core.prepare import Preparator
+from demogrid.core.deploy import Deployer, VM
 
+class EC2VM(VM):
+    def __init__(self, ec2_instance):
+        self.ec2_instance = ec2_instance
+        
+    def __str__(self):
+        return self.ec2_instance.id
 
-class EC2Launcher(object):
-    def __init__(self, demogrid_dir, config, generated_dir, loglevel, no_cleanup, extra_files):
-        self.demogrid_dir = demogrid_dir
-        self.config = config
-        self.generated_dir = generated_dir
-        self.loglevel = loglevel
-        self.extra_files = extra_files
+class EC2Deployer(Deployer):
+  
+    def __init__(self, *args, **kwargs):
+        Deployer.__init__(self, *args, **kwargs)
         self.conn = None
         self.instances = None
         self.vols = []
-        self.no_cleanup = no_cleanup
-     
-    def run(self):
-        # This try-except will catch anything that isn't
-        # caught in launch() (which should handle all
-        # exceptions)
-        try:
-            self.launch()
-        except Exception, exc:
-            self.handle_unexpected_exception(exc)
-            
-        
-    def launch(self):     
-        SIGINTWatcher(self.cleanup_after_kill)
-        t_start = time.time()
-        
-        keypair = self.config.get_keypair()
-        zone = self.config.get_ec2_zone()
-        
-        log.init_logging(self.loglevel)
+        self.supports_create_tags = True
+
+    def set_instance(self, inst):
+        self.instance = inst
+        self.__connect()
+        if inst.config.get_ec2_access_type() == "public":
+            inst.topology.global_attributes["ec2_public"] = "true"
+        else:
+            inst.topology.global_attributes["ec2_public"] = "false"            
+    
+    def __connect(self):
+        config = self.instance.config
+        keypair = config.get_keypair()
+        zone = config.get_ec2_zone()
         
         try:
             log.debug("Connecting to EC2...")
-            if self.config.has_ec2_hostname():
-                self.conn = create_ec2_connection(self.config.get_ec2_hostname(),
-                                                  self.config.get_ec2_path(),
-                                                  self.config.get_ec2_port()) 
+            if config.has_ec2_hostname():
+                self.conn = create_ec2_connection(config.get_ec2_hostname(),
+                                                  config.get_ec2_path(),
+                                                  config.get_ec2_port()) 
             else:
                 self.conn = create_ec2_connection()
             
@@ -60,164 +57,65 @@ class EC2Launcher(object):
             print "        Reason: %s" % exc.reason
             exit(1)
         except Exception, exc:
-            self.handle_unexpected_exception(exc)
-            
+            self.handle_unexpected_exception(exc)    
         
-        # Load topology
-        log.debug("Loading topology file...")
-        f = open ("%s/topology.dat" % self.generated_dir, "r")
-        topology = load(f)
-        f.close()
-        log.debug("Loaded topology file")
+    def allocate_vm(self, node):
+        instance_type = node.deploy_data["ec2"]["instance_type"]
+        ami = node.deploy_data["ec2"]["ami"]
+        try:
+            image = self.conn.get_image(ami)
+            if image == None:
+                # Workaround for this bug:
+                # https://bugs.launchpad.net/eucalyptus/+bug/495670
+                image = [i for i in self.conn.get_all_images() if i.id == ami][0]
+            
+            log.info(" |- Launching a %s instance for %s." % (instance_type, node.node_id))
+            reservation = image.run(min_count=1, 
+                                    max_count=1,
+                                    instance_type=instance_type,
+                                    security_groups= ["default"],
+                                    key_name=self.instance.config.get_keypair(),
+                                    placement = None)
+            instance = reservation.instances[0]
+        except EC2ResponseError, exc:
+            self.handle_ec2response_exception(exc, "requesting instances")
+        
+        return EC2VM(instance)
 
-        if self.config.get_ec2_access_type() == "public":
-            topology.global_attributes["ec2_public"] = "true"
+    def post_allocate(self, node, vm):
+        instance = vm.ec2_instance
+        config = self.instance.config
+        
+        try:
+            if self.supports_create_tags:
+                self.conn.create_tags([instance.id], {"Name": node.node_id})
+        except:
+            # Some EC2-ish systems don't support the create_tags call.
+            # If it fails, we just silently ignore it, as it is not essential,
+            # but make sure not to call it again, as EC2-ish systems will
+            # timeout instead of immediately returning an error
+            self.supports_create_tags = False
+
+        if instance.private_ip_address != None:
+            # A correct EC2 system should return this
+            node.ip = instance.private_ip_address
         else:
-            topology.global_attributes["ec2_public"] = "false"
-
-        nodes = topology.get_nodes()
-        num_instances = len(nodes)
-
-        # Launch instances
-        if self.loglevel == 0:
-            print "\033[1;37mLaunching %i EC2 instances...\033[0m" % num_instances,
-            sys.stdout.flush()
-
-        log.info("Launching a total of %i EC2 instances." % num_instances)
-        node_instance = {}       
-        self.instances = [] 
-        for n in nodes:     
-            try:   
-                instance_type = n.deploy_data["ec2"]["instance_type"]
-                ami = n.deploy_data["ec2"]["ami"]
-                
-                image = self.conn.get_image(ami)
-                
-                if image == None:
-                    # Workaround for this bug:
-                    # https://bugs.launchpad.net/eucalyptus/+bug/495670
-                    image = [i for i in self.conn.get_all_images() if i.id == ami][0]
-                
-                log.info(" |- Launching a %s instance for %s." % (instance_type, n.node_id))
-                reservation = image.run(min_count=1, 
-                                        max_count=1,
-                                        instance_type=instance_type,
-                                        security_groups= ["default"],
-                                        key_name=keypair,
-                                        placement = None)
-                instance = reservation.instances[0]
-                node_instance[n] = instance
-                self.instances.append(instance)
-            except EC2ResponseError, exc:
-                self.handle_ec2response_exception(exc, "requesting instances")
-            except Exception, exc:
-                self.handle_unexpected_exception(exc)
-        
-        log.debug("Waiting for instances to start.")
-        
-        mt_instancewait = MultiThread()
-        
-        for i in node_instance.values():
-            mt_instancewait.add_thread(InstanceWaitThread(mt_instancewait, "wait-%s" % i.id, i, self))
-        mt_instancewait.run()
-        
-        if not mt_instancewait.all_success():
-            self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
-            
-        if self.loglevel == 0:
-            print "\033[1;32mdone!\033[0m"            
-        log.info("Instances are running.")
-
-        supports_create_tags = True
-        for node, instance in node_instance.items():
-            try:
-                if supports_create_tags:
-                    self.conn.create_tags([instance.id], {"Name": node.node_id})
-            except:
-                # Some EC2-ish systems don't support the create_tags call.
-                # If it fails, we just silently ignore it, as it is not essential,
-                # but make sure not to call it again, as EC2-ish systems will
-                # timeout instead of immediately returning an error
-                supports_create_tags = False
-
-            if instance.private_ip_address != None:
-                # A correct EC2 system should return this
-                node.ip = instance.private_ip_address
-            else:
-                # Unfortunately, some EC2-ish systems won't return the private IP address
-                # We fall back on the private_dns_name, which should still work
-                # (plus, some EC2-ish systems actually set this to the IP address)
-                node.ip = instance.private_dns_name
-            node.deploy_data["ec2_instance"] = instance.id
-            node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
-            # TODO: The following won't work on EC2-ish systems behind a firewall.
-            node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
-            if self.config.get_ec2_access_type() == "public":
-                node.hostname = instance.public_dns_name
-                node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
-                node.chef_attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
-            elif self.config.get_ec2_access_type() == "private":
-                node.hostname = "%s.demogrid.example.org" % node.node_id
-                node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
-                node.chef_attrs["public_ip"] = "nil"
-                
-        
-        for n in topology.get_nodes():
-            n.gen_chef_attrs()        
-        
-        topology.gen_ruby_file(self.generated_dir + "/topology.rb")
-        topology.gen_hosts_file(self.generated_dir + "/hosts") 
-        topology.gen_csv_file(self.generated_dir + "/topology.csv")
-
-        # Use Preparator to generate certificates and Chef files
-        p = Preparator(self.demogrid_dir, self.config, self.generated_dir)
-        cert_files = p.gen_certificates(topology, force_certificates=True)
-        p.copy_files(cert_files)
-        
-        if self.config.get_ec2_access_type() == "public":
-            self.__gen_public_host_certificates(node_instance)
-        
-        topology.save("%s/topology.dat" % self.generated_dir)
-        
-        if self.loglevel == 0:
-            print "\033[1;37mConfiguring DemoGrid nodes...\033[0m (this may take a few minutes)"
-        log.info("Setting up DemoGrid on instances")        
-        
-        mt_configure = MultiThread()
-
-        parents = [n for n in topology.get_nodes() if n.depends == None]
-        threads = {}
-        while len(parents) > 0:
-            rest = dict([(n,InstanceConfigureThread(mt_configure, 
-                                                      "configure-%s" % n.node_id, 
-                                                      n, 
-                                                      i, 
-                                                      self,
-                                                      depends = threads.get(n.depends))) 
-                                                      for n,i in node_instance.items()
-                                                      if n in parents])
-            threads.update(rest)
-            parents = [n for n in topology.get_nodes() if n.depends in parents]
-            
-
-        for thread in threads.values():
-            mt_configure.add_thread(thread)
-        mt_configure.run()        
-        
-        if not mt_configure.all_success():
-            self.handle_mt_exceptions(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
-
-        t_end = time.time()
-        
-        delta = t_end - t_start
-        minutes = int(delta / 60)
-        seconds = int(delta - (minutes * 60))
-        print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
-
-        #print "Your login nodes are:"
-        #for node, instance in node_instance.items():
-        #    if node.role == "org-login":
-        #        print "%s: %s" % (node.hostname.split(".")[0], instance.public_dns_name)
+            # Unfortunately, some EC2-ish systems won't return the private IP address
+            # We fall back on the private_dns_name, which should still work
+            # (plus, some EC2-ish systems actually set this to the IP address)
+            node.ip = instance.private_dns_name
+        node.deploy_data["ec2_instance"] = instance.id
+        node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
+        # TODO: The following won't work on EC2-ish systems behind a firewall.
+        node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
+        if config.get_ec2_access_type() == "public":
+            node.hostname = instance.public_dns_name
+            node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
+            node.chef_attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
+        elif config.get_ec2_access_type() == "private":
+            node.hostname = "%s.demogrid.example.org" % node.node_id
+            node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
+            node.chef_attrs["public_ip"] = "nil"
 
 
     def wait_state(self, obj, state, interval = 2.0):
@@ -237,29 +135,6 @@ class EC2Launcher(object):
         self.cleanup()
         exit(1)        
         
-    def handle_unexpected_exception(self, exc, what=""):
-        if what != "": what = " when " + what
-        print "\033[1;31mERROR\033[0m - An unexpected '%s' exception has been raised" % what
-        print "        Message: %s" % exc
-        print "        Stack trace:"
-        traceback.print_exc()
-        self.cleanup()
-        exit(1)        
-
-    def handle_mt_exceptions(self, exceptions, what):
-        print "\033[1;31mERROR\033[0m - " + what
-        for name, exception in exceptions.items():
-            if isinstance(exception, SSHCommandFailureException):
-                print "        %s: Error while running '%s'" % (name, exception.command)
-            elif isinstance(exception, EC2ResponseError):
-                print "        %s: EC2 error '%s'" % (name, exception.reason)
-                print "        Body: %s" % exception.body
-            else:          
-                print "        %s: Unexpected exception '%s'" % (name, exception.__class__.__name__)
-                print "        Message: %s" % exception
-            
-        self.cleanup()
-        exit(1)
 
     def cleanup(self):
         if self.no_cleanup:
@@ -286,16 +161,13 @@ class EC2Launcher(object):
                 if len(self.vols) > 0:
                     print "Please make sure the following volumes have been deleted: " % [v.id for v in self.vols]
         
-    def cleanup_after_kill(self):
-        print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
-        print "Please make sure you manually release all DemoGrid instances and volumes."
+
 
     def __gen_public_host_certificates(self, node_instance):
         log.info("Generating host certificates for public hosts")
         
         certs_dir = "%s/certs" % self.generated_dir
         
-        certg = CertificateGenerator()
         
         if self.config.has_ca():
             ca_cert_file, ca_cert_key = self.config.get_ca()
@@ -318,63 +190,68 @@ class EC2Launcher(object):
 
         log.info("Generated host certificates for public hosts")
             
-class InstanceWaitThread(DemoGridThread):
-    def __init__(self, multi, name, instance, launcher, depends = None):
+class EC2InstanceWaitThread(DemoGridThread):
+    def __init__(self, multi, name, node, vm, deployer, depends = None):
         DemoGridThread.__init__(self, multi, name, depends)
-        self.instance = instance
-        self.launcher = launcher
+        self.ec2_instance = vm.ec2_instance
+        self.deployer = deployer
                     
     def run2(self):
-        self.launcher.wait_state(self.instance, "running")
-        log.info("Instance %s is running. Hostname: %s" % (self.instance.id, self.instance.public_dns_name))
+        self.deployer.wait_state(self.ec2_instance, "running")
+        log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
         
-class InstanceConfigureThread(DemoGridThread):
-    def __init__(self, multi, name, node, instance, launcher, depends = None):
+class EC2InstanceConfigureThread(DemoGridThread):
+    def __init__(self, multi, name, node, vm, deployer, depends = None):
         DemoGridThread.__init__(self, multi, name, depends)
         self.node = node
-        self.instance = instance
-        self.launcher = launcher
+        self.ec2_instance = vm.ec2_instance
+        self.deployer = deployer
+        self.config = deployer.instance.config
         
     def run2(self):
         node = self.node
-        instance = self.instance
+        instance = self.ec2_instance
+        instance_dir = self.deployer.instance.instance_dir
         
         log.info("Setting up instance %s. Hostname: %s" % (instance.id, instance.public_dns_name), node)
 
-        if self.launcher.config.has_snap():
+        if self.config.has_snap():
             log.debug("Creating Chef volume.", node)
-            vol = self.launcher.conn.create_volume(1, instance.placement, self.launcher.config.get_snap())
+            vol = self.deployer.conn.create_volume(1, instance.placement, self.config.get_snap())
             log.debug("Created Chef volume %s. Attaching." % vol.id, node)
             vol.attach(instance.id, '/dev/sdh')
             log.debug("Chef volume attached. Waiting for it to become in-use.", node)
-            self.launcher.wait_state(vol, "in-use")
+            self.deployer.wait_state(vol, "in-use")
             log.debug("Volume is in-use", node)
     
-            self.launcher.vols.append(vol)
+            self.deployer.vols.append(vol)
 
         self.check_continue()
 
-        if self.launcher.loglevel in (0,1):
-            ssh_out = None
-            ssh_err = None
-        elif self.launcher.loglevel == 2:
-            ssh_out = sys.stdout
-            ssh_err = sys.stderr
+        #if self.deployer.loglevel in (0,1):
+        #    ssh_out = None
+        #    ssh_err = None
+        #elif self.deployer.loglevel == 2:
+        #   ssh_out = sys.stdout
+        #    ssh_err = sys.stderr
+
+        ssh_out = sys.stdout
+        ssh_err = sys.stderr
 
         log.debug("Establishing SSH connection", node)
-        ssh = SSH(self.launcher.config.get_ec2_username(), instance.public_dns_name, self.launcher.config.get_keyfile(), ssh_out, ssh_err)
+        ssh = SSH(self.config.get_ec2_username(), instance.public_dns_name, self.config.get_keyfile(), ssh_out, ssh_err)
         ssh.open()
         log.debug("SSH connection established", node)
 
         self.check_continue()
         
-        if self.launcher.config.has_snap():
+        if self.config.has_snap():
             log.debug("Mounting Chef volume", node)
             ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
         
         # Upload host file and update hostname
         log.debug("Uploading host file and updating hostname", node)
-        ssh.scp("%s/hosts" % self.launcher.generated_dir,
+        ssh.scp("%s/hosts" % instance_dir,
                 "/chef/cookbooks/demogrid/files/default/hosts")             
         ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
 
@@ -385,30 +262,30 @@ class InstanceConfigureThread(DemoGridThread):
         
         # Upload topology file
         log.debug("Uploading topology file", node)
-        ssh.scp("%s/topology.rb" % self.launcher.generated_dir,
+        ssh.scp("%s/topology.rb" % instance_dir,
                 "/chef/cookbooks/demogrid/attributes/topology.rb")             
         
         # Copy certificates
         log.debug("Copying certificates", node)
-        ssh.scp_dir("%s/certs" % self.launcher.generated_dir, 
+        ssh.scp_dir("%s/certs" % instance_dir, 
                     "/chef/cookbooks/demogrid/files/default/")
 
         # Upload extra files
         log.debug("Copying extra files", node)
-        for src, dst in self.launcher.extra_files:
+        for src, dst in self.deployer.extra_files:
             ssh.scp(src, dst)
         
         self.check_continue()
 
-        if self.launcher.loglevel == 0:
-            print "   \033[1;37m%s\033[0m: Basic setup is done. Installing Grid software now." % node.hostname.split(".")[0]
+        #if self.deployer.loglevel == 0:
+        #    print "   \033[1;37m%s\033[0m: Basic setup is done. Installing Grid software now." % node.hostname.split(".")[0]
         
         # Run chef
         log.debug("Running chef", node)
-        ssh.scp("%s/lib/ec2/chef.conf" % self.launcher.demogrid_dir,
+        ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
                 "/tmp/chef.conf")        
         
-        ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.launcher.config.get_scratch_dir(), node.node_id), expectnooutput=True)
+        ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get_scratch_dir(), node.node_id), expectnooutput=True)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
 
@@ -419,17 +296,17 @@ class InstanceConfigureThread(DemoGridThread):
         ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
         ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
-        if self.launcher.config.has_snap():
+        if self.config.has_snap():
             ssh.run("sudo umount /chef", expectnooutput=True)
             vol.detach()
-            self.launcher.wait_state(vol, "available")        
+            self.deployer.wait_state(vol, "available")        
             vol.delete()
             
-            self.launcher.vols.remove(vol)
+            self.deployer.vols.remove(vol)
         
         ssh.run("sudo update-rc.d nis defaults")     
 
         log.info("Configuration done.", node)
         
-        if self.launcher.loglevel == 0:
-            print "   \033[1;37m%s\033[0m is ready." % node.hostname.split(".")[0]
+        #if self.deployer.loglevel == 0:
+        #    print "   \033[1;37m%s\033[0m is ready." % node.hostname.split(".")[0]
