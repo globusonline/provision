@@ -10,6 +10,8 @@ import demogrid.common.defaults as defaults
 
 from demogrid.cli import Command
 from demogrid.core.api import API
+from demogrid.common.utils import parse_extra_files_files
+import time
 
 
         
@@ -62,13 +64,25 @@ class demogrid_start(Command):
                                   help = "Upload extra files")
                 
     def run(self):    
+        t_start = time.time()        
         self.parse_options()
         
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
-        api.start(inst_id)
+        if self.opt.extra_files != None:
+            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
+        else:
+            extra_files = []
 
+        api = API(self.dg_location, self.opt.dir)
+        api.start(inst_id, self.opt.no_cleanup, extra_files)
+
+        t_end = time.time()
+        
+        delta = t_end - t_start
+        minutes = int(delta / 60)
+        seconds = int(delta - (minutes * 60))
+        #print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
         
 class demogrid_stop(Command):
     
@@ -150,14 +164,30 @@ class demogrid_add_hosts(Command):
                                   action="store", type="string", dest="json",
                                   help = "json file.")        
 
+        self.optparser.add_option("-n", "--no-cleanup", 
+                                  action="store_true", dest="no_cleanup", 
+                                  help = "Don't release resources on failure.")
+
+        self.optparser.add_option("-x", "--extra-files", 
+                                  action="store", type="string", dest="extra_files", 
+                                  help = "Upload extra files")
                 
     def run(self):    
         self.parse_options()
         
+        jsonfile = open(self.opt.json)
+        hosts_json = jsonfile.read()
+        jsonfile.close()        
+
+        if self.opt.extra_files != None:
+            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
+        else:
+            extra_files = []
+        
         inst_id = self.args[1]
 
         api = API(self.dg_location, self.opt.dir)
-        api.add_hosts(inst_id)          
+        api.add_hosts(inst_id, hosts_json, self.opt.no_cleanup, extra_files)       
         
 
 class demogrid_remove_user(Command):
