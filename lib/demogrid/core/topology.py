@@ -12,6 +12,14 @@ from demogrid.common import DemoGridException
 
 class Topology(object):    
     
+    STATE_NEW = 1
+    STATE_STARTING = 2
+    STATE_RUNNING = 3
+    STATE_STOPPING = 4
+    STATE_STOPPED = 5
+    STATE_RESUMING = 6
+    STATE_TERMINATING = 7
+    STATE_TERMINATED = 8
     
     def __init__(self):
         self.global_attributes = {}
@@ -19,6 +27,7 @@ class Topology(object):
         self.domains = {}
         self.default_deploy_data = {}
         self.pickledfile = None
+        self.state = Topology.STATE_NEW
         
     def add_domain(self, domain):
         self.domains[domain.name] = domain
@@ -338,15 +347,8 @@ ff02::3 ip6-allhosts
             topology.add_domain(domain_obj)
             
             for node in domain["nodes"]:
-                node_obj = Node(node["id"], domain = domain_obj)
-                node_obj.run_list = node.get("run_list")
-                node_obj.depends = node.get("depends")
-                node_obj.deploy_data.update(deepcopy(topology.default_deploy_data))
-                
-                if node.has_key("deploy_data"):
-                    for k,v in node["deploy_data"].items():
-                        node_obj.deploy_data[k].update(v)
-                
+                node_obj = Node.from_json(node, domain_obj)
+                node_obj.deploy_data.update(deepcopy(topology.default_deploy_data))                
                 topology.add_domain_node(domain_obj, node_obj)
 
             for node in domain_obj.nodes:
@@ -427,6 +429,20 @@ class Node(object):
             else:
                 self.chef_attrs["subnet"] = "\"%s\"" % self.domain.subnet
             self.chef_attrs["org_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
+        
+
+    @classmethod
+    def from_json(cls, json, domain_obj):
+        node = json
+        node_obj = cls(node["id"], domain = domain_obj)
+        node_obj.run_list = node.get("run_list")
+        node_obj.depends = node.get("depends")
+        
+        if node.has_key("deploy_data"):
+            for k,v in node["deploy_data"].items():
+                node_obj.deploy_data[k].update(v)
+                
+        return node_obj
         
         
 class User(object):
