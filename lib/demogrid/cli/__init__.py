@@ -3,6 +3,7 @@ from optparse import OptionParser
 import os
 import getpass
 from demogrid.common import defaults
+from demogrid.common import log
 
 class Command(object):
     
@@ -43,6 +44,15 @@ class Command(object):
         opt, args = self.optparser.parse_args(self.argv)
         self.opt = opt
         self.args = args
+        
+        if self.opt.debug:
+            loglevel = 2
+        elif self.opt.verbose:
+            loglevel = 1
+        else:
+            loglevel = 0
+            
+        log.init_logging(loglevel)
         
     def _run(self, cmd, exit_on_error=True, silent=True):
         if silent:
