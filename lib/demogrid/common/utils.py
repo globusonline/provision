@@ -84,7 +84,7 @@ class MultiThread(object):
     def thread_failure(self, thread):
         with self.lock:
             if not isinstance(thread.exception, ThreadAbortException):
-                log.debug("%s thread has failed." % thread.name)
+                log.debug("%s thread has failed: %s" % thread.name, thread.exception)
                 self.abort.set()
             else:
                 log.debug("%s thread is being aborted." % thread.name)
