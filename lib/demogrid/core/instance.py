@@ -85,7 +85,7 @@ ff02::3 ip6-allhosts
         hostsfile.close()
 
 
-    def gen_certificates(self, force_certificates):
+    def gen_certificates(self, force_hosts = False, force_users = False, force_ca = False):
         certs_dir = self.instance_dir + self.CERTS_DIR
         if not os.path.exists(certs_dir):
             os.makedirs(certs_dir)  
@@ -116,7 +116,7 @@ ff02::3 ip6-allhosts
                               key = ca_key,
                               cert_file = ca_cert_file,
                               key_file = ca_key_file, 
-                              force = force_certificates)
+                              force = force_ca)
 
         users = [u for u in self.topology.get_users() if u.cert_type=="generated"]
         for user in users:        
@@ -130,7 +130,7 @@ ff02::3 ip6-allhosts
                                     key = key,
                                     cert_file = cert_file,
                                     key_file = key_file, 
-                                    force = force_certificates)
+                                    force = force_users)
         
         nodes = self.topology.get_nodes()
         for n in nodes:
@@ -146,7 +146,7 @@ ff02::3 ip6-allhosts
                                    key = key,
                                    cert_file = cert_file,
                                    key_file = key_file, 
-                                   force = force_certificates)        
+                                   force = force_hosts)        
 
         return cert_files  
 
