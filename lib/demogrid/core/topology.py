@@ -406,6 +406,7 @@ class Node(object):
         self.node_id = node_id
         self.domain = domain
         self.run_list = None
+        self.depends = None
         self.ip = None
         self.hostname = None
         self.chef_attrs = {}
@@ -443,6 +444,16 @@ class Node(object):
                 node_obj.deploy_data[k].update(v)
                 
         return node_obj
+    
+    @staticmethod
+    def get_launch_order(nodes):
+        order = []
+        parents = [n for n in nodes if n.depends == None]
+        threads = {}
+        while len(parents) > 0:
+            order.append(parents)
+            parents = [n for n in nodes if n.depends in parents]    
+        return order
         
         
 class User(object):
