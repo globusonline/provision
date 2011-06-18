@@ -38,69 +38,33 @@ class API(object):
         
         print inst.id
         
-
-    def __allocate_vms(self, deployer, nodes):
-        log.info("Allocating %i VMs." % len(nodes))
-        node_vm = {}
-        for n in nodes:
-            try:
-                vm = deployer.allocate_vm(n)
-                node_vm[n] = vm
-            except Exception as exc:
-                raise
-        
-                #self.handle_unexpected_exception(exc)
-        log.debug("Waiting for instances to start.")
-        mt_instancewait = MultiThread()
-        for node, vm in node_vm.items():
-            mt_instancewait.add_thread(EC2InstanceWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
-        
-        mt_instancewait.run()
-        if not mt_instancewait.all_success():
-            self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
-        
-        return node_vm
-
-
-    def __configure_vms(self, deployer, node_vm):
-        nodes = node_vm.keys()
-        mt_configure = MultiThread()
-        parents = [n for n in nodes if n.depends == None]
-        threads = {}
-        while len(parents) > 0:
-            rest = dict([(n, EC2InstanceConfigureThread(mt_configure, 
-                            "configure-%s" % n.node_id, 
-                            n, 
-                            i, 
-                            deployer, 
-                            depends=threads.get(n.depends))) for (n, i) in node_vm.items() if n in parents])
-            threads.update(rest)
-            parents = [n for n in nodes if n.depends in parents]
-        
-        for thread in threads.values():
-            mt_configure.add_thread(thread)
-        
-        mt_configure.run()
-        if not mt_configure.all_success():
-            self.handle_mt_exceptions(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
-
     def start(self, inst_id, no_cleanup, extra_files):
         SIGINTWatcher(self.cleanup_after_kill)
         
         istore = InstanceStore(self.instances_dir)
-        
         inst = istore.get_instance(inst_id)
-        inst.topology.state = Topology.STATE_STARTING
+        
+        if inst.topology.state == Topology.STATE_NEW:
+            resuming = False
+        elif inst.topology.state == Topology.STATE_STOPPED:
+            resuming = True
+        else:
+            print "Error, can't start"
+            exit(1)
+        
+        if not resuming:
+            inst.topology.state = Topology.STATE_STARTING
+        else:
+            inst.topology.state = Topology.STATE_RESUMING
         inst.topology.save()
         
         # TODO: Choose the right deployer based on config file
         deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
-
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()
 
-        node_vm = self.__allocate_vms(deployer, nodes)
+        node_vm = self.__allocate_vms(deployer, nodes, resuming)
           
         log.info("Instances are running.")
 
@@ -108,7 +72,10 @@ class API(object):
             deployer.post_allocate(node, vm)
 
         # Generate certificates
-        inst.gen_certificates(force_certificates=False)
+        if not resuming:
+            inst.gen_certificates(force_hosts=False, force_users=False)
+        else:
+            inst.gen_certificates(force_hosts=True, force_users=False)
 
         for n in nodes:
             n.gen_chef_attrs()        
@@ -126,6 +93,47 @@ class API(object):
         inst.topology.state = Topology.STATE_RUNNING
         inst.topology.save()
 
+
+    def stop(self, inst_id):
+        SIGINTWatcher(self.cleanup_after_kill)
+        
+        istore = InstanceStore(self.instances_dir)
+        
+        inst = istore.get_instance(inst_id)
+        inst.topology.state = Topology.STATE_STOPPING
+        inst.topology.save()
+        
+        # TODO: Choose the right deployer based on config file
+        deployer = EC2Deployer(self.demogrid_dir)
+        deployer.set_instance(inst)    
+        
+        nodes = inst.topology.get_nodes()
+
+        self.__stop_vms(deployer, nodes)
+          
+        inst.topology.state = Topology.STATE_STOPPED
+        inst.topology.save()
+
+
+    def terminate(self, inst_id):
+        SIGINTWatcher(self.cleanup_after_kill)
+        
+        istore = InstanceStore(self.instances_dir)
+        
+        inst = istore.get_instance(inst_id)
+        inst.topology.state = Topology.STATE_TERMINATING
+        inst.topology.save()
+        
+        # TODO: Choose the right deployer based on config file
+        deployer = EC2Deployer(self.demogrid_dir)
+        deployer.set_instance(inst)    
+        
+        nodes = inst.topology.get_nodes()
+
+        deployer.terminate_vms(nodes)
+          
+        inst.topology.state = Topology.STATE_TERMINATED
+        inst.topology.save()
         
     def add_hosts(self, inst_id, hosts_json, no_cleanup, extra_files):
         SIGINTWatcher(self.cleanup_after_kill)
@@ -208,6 +216,63 @@ class API(object):
         print "Please make sure you manually release all DemoGrid instances and volumes."
         
         
+    def __allocate_vms(self, deployer, nodes, resuming):
+        if not resuming:
+            log.info("Allocating %i VMs." % len(nodes))
+        else:
+            log.info("Resuming %i VMs" % len(nodes))
+        node_vm = {}
+        for n in nodes:
+            try:
+                if not resuming:
+                    vm = deployer.allocate_vm(n)
+                else:
+                    vm = deployer.resume_vm(n)
+                node_vm[n] = vm
+            except Exception as exc:
+                raise
+        
+                #self.handle_unexpected_exception(exc)
+        log.debug("Waiting for instances to start.")
+        mt_instancewait = MultiThread()
+        for node, vm in node_vm.items():
+            mt_instancewait.add_thread(EC2InstanceWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
+        
+        mt_instancewait.run()
+        if not mt_instancewait.all_success():
+            self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
+        
+        return node_vm
 
+
+    def __configure_vms(self, deployer, node_vm):
+        nodes = node_vm.keys()
+        mt_configure = MultiThread()
+
+        order = Node.get_launch_order(nodes)
+        
+        threads = {}
+        for nodeset in order:
+            rest = dict([(n, EC2InstanceConfigureThread(mt_configure, 
+                            "configure-%s" % n.node_id, 
+                            n, 
+                            node_vm[n], 
+                            deployer, 
+                            depends=threads.get(n.depends))) for n in nodeset])
+            threads.update(rest)
+        
+        for thread in threads.values():
+            mt_configure.add_thread(thread)
+        
+        mt_configure.run()
+        if not mt_configure.all_success():
+            self.handle_mt_exceptions(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
+
+    def __stop_vms(self, deployer, nodes):
+        order = Node.get_launch_order(nodes)
+        order.reverse()
+        
+        for nodeset in order:
+            deployer.stop_vms(nodeset)
         
         

@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+from demogrid.cli.api import demogrid_terminate
+import sys
+
+c = demogrid_terminate(sys.argv)
+c.run()
