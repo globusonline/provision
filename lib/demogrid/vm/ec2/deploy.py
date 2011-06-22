@@ -82,13 +82,24 @@ class EC2Deployer(Deployer):
         
         return EC2VM(instance)
 
+    def resume_vm(self, node):
+        ec2_instance_id = node.deploy_data["ec2_instance"]
+        try:
+            log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.node_id))
+            started = self.conn.start_instances([ec2_instance_id])            
+            log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
+        except EC2ResponseError, exc:
+            self.handle_ec2response_exception(exc, "requesting instances")
+        
+        return EC2VM(started[0])
+
     def post_allocate(self, node, vm):
         instance = vm.ec2_instance
         config = self.instance.config
         
         try:
             if self.supports_create_tags:
-                self.conn.create_tags([instance.id], {"Name": node.node_id})
+                self.conn.create_tags([instance.id], {"Name": "%s_%s" % (self.instance.id, node.node_id)})
         except:
             # Some EC2-ish systems don't support the create_tags call.
             # If it fails, we just silently ignore it, as it is not essential,
@@ -117,7 +128,28 @@ class EC2Deployer(Deployer):
             node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
             node.chef_attrs["public_ip"] = "nil"
 
+    def get_node_vm(self, nodes):
+        ec2_instance_ids = [n.deploy_data["ec2_instance"] for n in nodes]
+        reservations = self.conn.get_all_instances(ec2_instance_ids)
+        node_vm = {}
+        for r in reservations:
+            instance = r.instances[0]
+            node = [n for n in nodes if n.deploy_data["ec2_instance"]==instance.id][0]
+            node_vm[node] = EC2VM(instance)
+        return node_vm
 
+    def stop_vms(self, nodes):
+        ec2_instance_ids = [n.deploy_data["ec2_instance"] for n in nodes]
+        log.info("Stopping EC2 instances %s." % ", ".join(ec2_instance_ids))
+        stopped = self.conn.stop_instances(ec2_instance_ids)
+        log.info("Stopped EC2 instances %s." % ", ".join([i.id for i in stopped]))
+
+    def terminate_vms(self, nodes):
+        ec2_instance_ids = [n.deploy_data["ec2_instance"] for n in nodes]
+        log.info("Terminating EC2 instances %s." % ", ".join(ec2_instance_ids))
+        terminated = self.conn.terminate_instances(ec2_instance_ids)
+        log.info("Terminated EC2 instances %s." % ", ".join([i.id for i in terminated]))
+        
     def wait_state(self, obj, state, interval = 2.0):
         jitter = random.uniform(0.0, 0.5)
         while True:
@@ -161,34 +193,6 @@ class EC2Deployer(Deployer):
                 if len(self.vols) > 0:
                     print "Please make sure the following volumes have been deleted: " % [v.id for v in self.vols]
         
-
-
-    def __gen_public_host_certificates(self, node_instance):
-        log.info("Generating host certificates for public hosts")
-        
-        certs_dir = "%s/certs" % self.generated_dir
-        
-        
-        if self.config.has_ca():
-            ca_cert_file, ca_cert_key = self.config.get_ca()
-            ca_cert, ca_key = certg.load_certificate(ca_cert_file, ca_cert_key)
-        else:
-            print "To use host certificates with public hostnames, you need to supply a CA certificate."
-            self.cleanup()
-            exit(1)
-            
-        certg.set_ca(ca_cert, ca_key)
-
-        for node, instance in node_instance.items():        
-            cert, key = certg.gen_host_cert(hostname= instance.public_dns_name) 
-            
-            filename = node.node_id
-            
-            cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
-            key_file = "%s/%s_key.pem" % (certs_dir, filename)             
-            certg.save_certificate(cert, key, cert_file, key_file)            
-
-        log.info("Generated host certificates for public hosts")
             
 class EC2InstanceWaitThread(DemoGridThread):
     def __init__(self, multi, name, node, vm, deployer, depends = None):
@@ -201,12 +205,14 @@ class EC2InstanceWaitThread(DemoGridThread):
         log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
         
 class EC2InstanceConfigureThread(DemoGridThread):
-    def __init__(self, multi, name, node, vm, deployer, depends = None):
+    def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
         DemoGridThread.__init__(self, multi, name, depends)
         self.node = node
         self.ec2_instance = vm.ec2_instance
         self.deployer = deployer
         self.config = deployer.instance.config
+        self.basic = basic
+        self.chef = chef
         
     def run2(self):
         node = self.node
@@ -245,58 +251,60 @@ class EC2InstanceConfigureThread(DemoGridThread):
 
         self.check_continue()
         
-        if self.config.has_snap():
+        if self.chef and self.config.has_snap():
             log.debug("Mounting Chef volume", node)
             ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
         
-        # Upload host file and update hostname
-        log.debug("Uploading host file and updating hostname", node)
-        ssh.scp("%s/hosts" % instance_dir,
-                "/chef/cookbooks/demogrid/files/default/hosts")             
-        ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
-
-        ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-        ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
+        if self.basic:
+            # Upload host file and update hostname
+            log.debug("Uploading host file and updating hostname", node)
+            ssh.scp("%s/hosts" % instance_dir,
+                    "/chef/cookbooks/demogrid/files/default/hosts")             
+            ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
+    
+            ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
+            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
         self.check_continue()
-        
-        # Upload topology file
-        log.debug("Uploading topology file", node)
-        ssh.scp("%s/topology.rb" % instance_dir,
-                "/chef/cookbooks/demogrid/attributes/topology.rb")             
-        
-        # Copy certificates
-        log.debug("Copying certificates", node)
-        ssh.scp_dir("%s/certs" % instance_dir, 
-                    "/chef/cookbooks/demogrid/files/default/")
 
-        # Upload extra files
-        log.debug("Copying extra files", node)
-        for src, dst in self.deployer.extra_files:
-            ssh.scp(src, dst)
-        
-        self.check_continue()
+        if self.chef:        
+            # Upload topology file
+            log.debug("Uploading topology file", node)
+            ssh.scp("%s/topology.rb" % instance_dir,
+                    "/chef/cookbooks/demogrid/attributes/topology.rb")             
+            
+            # Copy certificates
+            log.debug("Copying certificates", node)
+            ssh.scp_dir("%s/certs" % instance_dir, 
+                        "/chef/cookbooks/demogrid/files/default/")
+    
+            # Upload extra files
+            log.debug("Copying extra files", node)
+            for src, dst in self.deployer.extra_files:
+                ssh.scp(src, dst)
+            
+            self.check_continue()
 
         #if self.deployer.loglevel == 0:
         #    print "   \033[1;37m%s\033[0m: Basic setup is done. Installing Grid software now." % node.hostname.split(".")[0]
         
-        # Run chef
-        log.debug("Running chef", node)
-        ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
-                "/tmp/chef.conf")        
+            # Run chef
+            log.debug("Running chef", node)
+            ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
+                    "/tmp/chef.conf")        
+            
+            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get_scratch_dir(), node.node_id), expectnooutput=True)
+    
+            ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
+    
+            self.check_continue()
+
+            # The Chef recipes will overwrite the hostname, so
+            # we need to set it again.
+            ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
+            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
         
-        ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get_scratch_dir(), node.node_id), expectnooutput=True)
-
-        ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
-
-        self.check_continue()
-
-        # The Chef recipes will overwrite the hostname, so
-        # we need to set it again.
-        ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-        ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
-        
-        if self.config.has_snap():
+        if self.chef and self.config.has_snap():
             ssh.run("sudo umount /chef", expectnooutput=True)
             vol.detach()
             self.deployer.wait_state(vol, "available")        
@@ -304,7 +312,8 @@ class EC2InstanceConfigureThread(DemoGridThread):
             
             self.deployer.vols.remove(vol)
         
-        ssh.run("sudo update-rc.d nis defaults")     
+        if self.basic:
+            ssh.run("sudo update-rc.d nis defaults")     
 
         log.info("Configuration done.", node)
         

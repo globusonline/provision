@@ -83,6 +83,41 @@ class demogrid_start(Command):
         minutes = int(delta / 60)
         seconds = int(delta - (minutes * 60))
         #print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
+
+class demogrid_reconfigure(Command):
+    
+    name = "demogrid-reconfigure"
+    
+    def __init__(self, argv):
+        Command.__init__(self, argv)
+
+        self.optparser.add_option("-n", "--no-cleanup", 
+                                  action="store_true", dest="no_cleanup", 
+                                  help = "Don't release resources on failure.")
+
+        self.optparser.add_option("-x", "--extra-files", 
+                                  action="store", type="string", dest="extra_files", 
+                                  help = "Upload extra files")
+                
+    def run(self):    
+        t_start = time.time()        
+        self.parse_options()
+        
+        inst_id = self.args[1]
+
+        if self.opt.extra_files != None:
+            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
+        else:
+            extra_files = []
+
+        api = API(self.dg_location, self.opt.dir)
+        api.reconfigure(inst_id, self.opt.no_cleanup, extra_files)
+
+        t_end = time.time()
+        
+        delta = t_end - t_start
+        minutes = int(delta / 60)
+        seconds = int(delta - (minutes * 60))
         
 class demogrid_stop(Command):
     
@@ -207,9 +242,9 @@ class demogrid_remove_user(Command):
         api.remove_user(inst_id)
         
         
-class demogrid_remove_host(Command):
+class demogrid_remove_hosts(Command):
     
-    name = "demogrid-remove-host"
+    name = "demogrid-remove-hosts"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -218,8 +253,8 @@ class demogrid_remove_host(Command):
         self.parse_options()
         
         inst_id = self.args[1]
-        host = self.args[2]
+        hosts = self.args[2:]
 
         api = API(self.dg_location, self.opt.dir)
-        api.remove_host(inst_id)
+        api.remove_hosts(inst_id, hosts)
                 

@@ -49,8 +49,9 @@ class API(object):
         elif inst.topology.state == Topology.STATE_STOPPED:
             resuming = True
         else:
-            print "Error, can't start"
-            exit(1)
+            resuming = True
+            #print "Error, can't start"
+            #exit(1)
         
         if not resuming:
             inst.topology.state = Topology.STATE_STARTING
@@ -87,6 +88,28 @@ class API(object):
         inst.topology.save()
 
         log.info("Setting up DemoGrid on instances")        
+        
+        self.__configure_vms(deployer, node_vm)
+
+        inst.topology.state = Topology.STATE_RUNNING
+        inst.topology.save()
+
+
+    def reconfigure(self, inst_id, no_cleanup, extra_files):
+        SIGINTWatcher(self.cleanup_after_kill)
+        
+        istore = InstanceStore(self.instances_dir)
+        inst = istore.get_instance(inst_id)
+        
+        # TODO: Choose the right deployer based on config file
+        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
+        deployer.set_instance(inst)    
+        
+        nodes = inst.topology.get_nodes()
+
+        log.info("Setting up DemoGrid on instances")        
+        
+        node_vm = deployer.get_node_vm(nodes)
         
         self.__configure_vms(deployer, node_vm)
 
@@ -145,6 +168,9 @@ class API(object):
 
         deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
         deployer.set_instance(inst)
+
+        existing_nodes = inst.topology.get_nodes()
+        existing_nodes_vm = deployer.get_node_vm(existing_nodes)
                         
         # We assume there's only one domain.
         domain = inst.topology.domains.values()[0]
@@ -152,37 +178,69 @@ class API(object):
         json_nodes = json.loads(hosts_json)
         nodes = []
         for node in json_nodes:
-            node_obj = Node.from_json(node, domain)
-            node_obj.deploy_data.update(deepcopy(topology.default_deploy_data))     
+            node_obj = Node.from_json(node, domain, topology.default_deploy_data)
             if topology.get_node_by_id(node_obj.node_id) == None:           
                 topology.add_domain_node(domain, node_obj)
                 nodes.append(node_obj)
             else:
-                "Node %s already exists" % (node_obj.node_id)
-            
-        topology.save()
+                print "Node %s already exists" % (node_obj.node_id)
+                
+        for node in nodes:
+            if node.depends != None:
+                depends_node = topology.get_node_by_id(node.depends[5:])
+                node.depends = depends_node                   
 
-        node_vm = self.__allocate_vms(deployer, nodes)
+        node_vm = self.__allocate_vms(deployer, nodes, resuming=False)
 
         for node, vm in node_vm.items():
             deployer.post_allocate(node, vm)
+        topology.save()
 
         # Generate certificates
-        inst.gen_certificates(force_certificates=False)
+        inst.gen_certificates()
 
         for n in nodes:
             n.gen_chef_attrs()        
+        topology.save()
         
         inst.topology.gen_ruby_file(inst.instance_dir + "/topology.rb")
         inst.topology.gen_hosts_file(inst.instance_dir + "/hosts") 
         inst.topology.gen_csv_file(inst.instance_dir + "/topology.csv")                
 
         # TODO: Update hosts file on existing nodes
+        log.info("Updating existing nodes")        
+        self.__configure_vms(deployer, existing_nodes_vm, chef = False)
 
         log.info("Setting up DemoGrid on instances")        
-
         self.__configure_vms(deployer, node_vm)
+        topology.save()
                         
+    def remove_hosts(self, inst_id, hosts):
+        SIGINTWatcher(self.cleanup_after_kill)
+        
+        istore = InstanceStore(self.instances_dir)
+        
+        inst = istore.get_instance(inst_id)
+        topology = inst.topology
+
+        deployer = EC2Deployer(self.demogrid_dir)
+        deployer.set_instance(inst)
+                        
+        # We assume there's only one domain.
+        domain = inst.topology.domains.values()[0]
+        
+        nodes = []
+        for host in hosts:
+            node = topology.get_node_by_id(host)
+            if node == None:
+                print "Warning: Node %s is not part of this topology" % host
+            else:
+                nodes.append(node)
+        
+        if len(nodes) > 0:
+            deployer.terminate_vms(nodes)
+            topology.remove_nodes(nodes)
+        topology.save()
 
     def handle_unexpected_exception(self, exc, what=""):
         if what != "": what = " when " + what
@@ -217,6 +275,9 @@ class API(object):
         
         
     def __allocate_vms(self, deployer, nodes, resuming):
+        # TODO: Make this an option
+        sequential = False
+        
         if not resuming:
             log.info("Allocating %i VMs." % len(nodes))
         else:
@@ -231,21 +292,27 @@ class API(object):
                 node_vm[n] = vm
             except Exception as exc:
                 raise
-        
                 #self.handle_unexpected_exception(exc)
-        log.debug("Waiting for instances to start.")
-        mt_instancewait = MultiThread()
-        for node, vm in node_vm.items():
-            mt_instancewait.add_thread(EC2InstanceWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
         
-        mt_instancewait.run()
-        if not mt_instancewait.all_success():
-            self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
-        
+            if sequential:
+                log.debug("Waiting for instance to start.")
+                wait = EC2InstanceWaitThread(None, "wait-%s" % str(vm), n, vm, deployer)
+                wait.run2()
+                
+        if not sequential:        
+            log.debug("Waiting for instances to start.")
+            mt_instancewait = MultiThread()
+            for node, vm in node_vm.items():
+                mt_instancewait.add_thread(EC2InstanceWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
+            
+            mt_instancewait.run()
+            if not mt_instancewait.all_success():
+                self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
+            
         return node_vm
 
 
-    def __configure_vms(self, deployer, node_vm):
+    def __configure_vms(self, deployer, node_vm, basic = True, chef = True):
         nodes = node_vm.keys()
         mt_configure = MultiThread()
 
@@ -258,7 +325,9 @@ class API(object):
                             n, 
                             node_vm[n], 
                             deployer, 
-                            depends=threads.get(n.depends))) for n in nodeset])
+                            depends=threads.get(n.depends),
+                            basic = basic,
+                            chef = chef)) for n in nodeset])
             threads.update(rest)
         
         for thread in threads.values():
