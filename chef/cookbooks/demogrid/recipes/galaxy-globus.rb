@@ -14,6 +14,7 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+database_exists = "psql galaxy postgres -c ''"
 
 # Create postgresql user
 
@@ -21,24 +22,28 @@ execute "createuser" do
   user "postgres"
   command "createuser -D -S -R galaxy"
   action :run
+  not_if database_exists
 end  
 
 execute "createdb" do
   user "postgres"
   command "createdb galaxy"
   action :run
+  not_if database_exists
 end  
 
 execute "alter_user" do
   user "postgres"
   command "psql -c \"alter user galaxy with encrypted password 'galaxy';\""
   action :run
+  not_if database_exists
 end  
 
 execute "grant_all" do
   user "postgres"
   command "psql -c \"grant all privileges on database galaxy to galaxy;\""
   action :run
+  not_if database_exists
 end
 
 execute "galaxy-setup.sh" do
