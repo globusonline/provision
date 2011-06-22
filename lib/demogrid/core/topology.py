@@ -43,6 +43,15 @@ class Topology(object):
         for domain in self.domains.values():
             nodes += domain.get_nodes()
         return nodes
+
+    def remove_nodes(self, nodes):
+        for n in nodes:
+            if n in self.global_nodes:
+                self.global_nodes.remove(n)
+            
+            for domain in self.domains.values():
+                if n in domain.nodes:
+                    domain.nodes.remove(n)
     
     def get_node_by_id(self, node_id):
         nodes = self.get_nodes()
@@ -347,8 +356,7 @@ ff02::3 ip6-allhosts
             topology.add_domain(domain_obj)
             
             for node in domain["nodes"]:
-                node_obj = Node.from_json(node, domain_obj)
-                node_obj.deploy_data.update(deepcopy(topology.default_deploy_data))                
+                node_obj = Node.from_json(node, domain_obj, topology.default_deploy_data)
                 topology.add_domain_node(domain_obj, node_obj)
 
             for node in domain_obj.nodes:
@@ -387,7 +395,7 @@ class Domain(object):
         self.nodes.append(node)
         
     def get_nodes(self):
-        return self.nodes
+        return self.nodes[:]
         
     def add_user(self, user):
         self.users.append(user)   
@@ -433,22 +441,24 @@ class Node(object):
         
 
     @classmethod
-    def from_json(cls, json, domain_obj):
+    def from_json(cls, json, domain_obj, default_deploy_data):
         node = json
         node_obj = cls(node["id"], domain = domain_obj)
         node_obj.run_list = node.get("run_list")
         node_obj.depends = node.get("depends")
         
+        node_obj.deploy_data.update(deepcopy(default_deploy_data))                
+        
         if node.has_key("deploy_data"):
             for k,v in node["deploy_data"].items():
-                node_obj.deploy_data[k].update(v)
+                node_obj.deploy_data.setdefault(k,{}).update(v)
                 
         return node_obj
     
     @staticmethod
     def get_launch_order(nodes):
         order = []
-        parents = [n for n in nodes if n.depends == None]
+        parents = [n for n in nodes if n.depends == None or n.depends not in nodes]
         threads = {}
         while len(parents) > 0:
             order.append(parents)
