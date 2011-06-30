@@ -38,6 +38,12 @@ class InstanceStore(object):
             raise DemoGridException("Instance does not exist")
         return Instance(inst_id, inst_dir)
 
+    def get_instances(self):
+        return [Instance(inst_id, "%s/%s" % (self.instances_dir, inst_id)) for inst_id in self.__get_instance_ids()]
+    
+    def __get_instance_ids(self):
+        inst_ids = [i for i in os.listdir(self.instances_dir)]
+        return inst_ids
 
 class Instance(object):
 

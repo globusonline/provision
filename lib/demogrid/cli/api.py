@@ -12,6 +12,7 @@ from demogrid.cli import Command
 from demogrid.core.api import API
 from demogrid.common.utils import parse_extra_files_files
 import time
+from demogrid.core.topology import Topology
 
 
         
@@ -152,7 +153,7 @@ class demogrid_terminate(Command):
 
 class demogrid_list_instances(Command):
     
-    name = "demogrid-terminate"
+    name = "demogrid-list-instances"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -160,13 +161,22 @@ class demogrid_list_instances(Command):
     def run(self):    
         self.parse_options()
         
-        if len(self.args) == 2:
-            inst_id = self.args[1]
+        if len(self.args) >= 2:
+            inst_ids = self.args[1:]
         else:
-            inst_id = None
+            inst_ids = None
         
         api = API(self.dg_location, self.opt.dir)
-        api.list_instances(inst_id)
+        insts = api.list_instances(inst_ids)
+        
+        for i in insts:
+            t = i.topology
+            print "%s\t%s" % (i.id, Topology.state_str[t.state])
+            if self.opt.verbose:
+                for node in t.get_nodes():
+                    print "\t%s\t%s\t%s" % (node.node_id, node.hostname, node.ip)
+                    if self.opt.debug:
+                        print "\t%s" % node.deploy_data
 
 class demogrid_add_users(Command):
     

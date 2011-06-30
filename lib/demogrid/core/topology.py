@@ -21,6 +21,16 @@ class Topology(object):
     STATE_TERMINATING = 7
     STATE_TERMINATED = 8
     
+    # String representation of states
+    state_str = {STATE_NEW : "New",
+                 STATE_STARTING : "Starting",
+                 STATE_RUNNING : "Running",
+                 STATE_STOPPING : "Stopping",
+                 STATE_STOPPED : "Stopped",
+                 STATE_RESUMING : "Resuming",
+                 STATE_TERMINATING : "Terminating",
+                 STATE_TERMINATED : "Terminated"}    
+    
     def __init__(self):
         self.global_attributes = {}
         self.global_nodes = []

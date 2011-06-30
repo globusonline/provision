@@ -214,6 +214,19 @@ class API(object):
         log.info("Setting up DemoGrid on instances")        
         self.__configure_vms(deployer, node_vm)
         topology.save()
+
+
+    def list_instances(self, inst_ids):
+        istore = InstanceStore(self.instances_dir)
+        
+        if inst_ids == None:
+            insts = istore.get_instances()
+        else:
+            insts = [istore.get_instance(inst_id) for inst_id in inst_ids]
+                
+        # TODO: Return JSON
+        return insts
+
                         
     def remove_hosts(self, inst_id, hosts):
         SIGINTWatcher(self.cleanup_after_kill)
