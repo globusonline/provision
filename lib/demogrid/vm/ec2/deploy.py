@@ -8,7 +8,7 @@ import sys
 import traceback
 from demogrid.common import log
 from demogrid.common.certs import CertificateGenerator
-from demogrid.core.deploy import Deployer, VM
+from demogrid.core.deploy import Deployer, VM, ConfigureThread
 
 class EC2VM(VM):
     def __init__(self, ec2_instance):
@@ -204,118 +204,39 @@ class EC2InstanceWaitThread(DemoGridThread):
         self.deployer.wait_state(self.ec2_instance, "running")
         log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
         
-class EC2InstanceConfigureThread(DemoGridThread):
+class EC2InstanceConfigureThread(ConfigureThread):
     def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
-        DemoGridThread.__init__(self, multi, name, depends)
-        self.node = node
-        self.ec2_instance = vm.ec2_instance
-        self.deployer = deployer
-        self.config = deployer.instance.config
-        self.basic = basic
-        self.chef = chef
+        ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
+        self.ec2_instance = self.vm.ec2_instance
         
-    def run2(self):
+    def connect(self):
+        return self.ssh_connect(self.config.get_ec2_username(), self.ec2_instance.public_dns_name, self.config.get_keyfile())
+    
+    def pre_configure(self, ssh):
         node = self.node
         instance = self.ec2_instance
-        instance_dir = self.deployer.instance.instance_dir
         
         log.info("Setting up instance %s. Hostname: %s" % (instance.id, instance.public_dns_name), node)
-
-        if self.config.has_snap():
+        if self.chef and self.config.has_snap():
             log.debug("Creating Chef volume.", node)
-            vol = self.deployer.conn.create_volume(1, instance.placement, self.config.get_snap())
-            log.debug("Created Chef volume %s. Attaching." % vol.id, node)
-            vol.attach(instance.id, '/dev/sdh')
+            self.vol = self.deployer.conn.create_volume(1, instance.placement, self.config.get_snap())
+            log.debug("Created Chef volume %s. Attaching." % self.vol.id, node)
+            self.vol.attach(instance.id, '/dev/sdh')
             log.debug("Chef volume attached. Waiting for it to become in-use.", node)
-            self.deployer.wait_state(vol, "in-use")
+            self.deployer.wait_state(self.vol, "in-use")
             log.debug("Volume is in-use", node)
     
-            self.deployer.vols.append(vol)
+            self.deployer.vols.append(self.vol)
 
-        self.check_continue()
-
-        #if self.deployer.loglevel in (0,1):
-        #    ssh_out = None
-        #    ssh_err = None
-        #elif self.deployer.loglevel == 2:
-        #   ssh_out = sys.stdout
-        #    ssh_err = sys.stderr
-
-        ssh_out = sys.stdout
-        ssh_err = sys.stderr
-
-        log.debug("Establishing SSH connection", node)
-        ssh = SSH(self.config.get_ec2_username(), instance.public_dns_name, self.config.get_keyfile(), ssh_out, ssh_err)
-        ssh.open()
-        log.debug("SSH connection established", node)
-
-        self.check_continue()
-        
-        if self.chef and self.config.has_snap():
             log.debug("Mounting Chef volume", node)
             ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
-        
-        if self.basic:
-            # Upload host file and update hostname
-            log.debug("Uploading host file and updating hostname", node)
-            ssh.scp("%s/hosts" % instance_dir,
-                    "/chef/cookbooks/demogrid/files/default/hosts")             
-            ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
-    
-            ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
-        
-        self.check_continue()
-
-        if self.chef:        
-            # Upload topology file
-            log.debug("Uploading topology file", node)
-            ssh.scp("%s/topology.rb" % instance_dir,
-                    "/chef/cookbooks/demogrid/attributes/topology.rb")             
             
-            # Copy certificates
-            log.debug("Copying certificates", node)
-            ssh.scp_dir("%s/certs" % instance_dir, 
-                        "/chef/cookbooks/demogrid/files/default/")
-    
-            # Upload extra files
-            log.debug("Copying extra files", node)
-            for src, dst in self.deployer.extra_files:
-                ssh.scp(src, dst)
-            
-            self.check_continue()
-
-        #if self.deployer.loglevel == 0:
-        #    print "   \033[1;37m%s\033[0m: Basic setup is done. Installing Grid software now." % node.hostname.split(".")[0]
-        
-            # Run chef
-            log.debug("Running chef", node)
-            ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
-                    "/tmp/chef.conf")        
-            
-            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get_scratch_dir(), node.node_id), expectnooutput=True)
-    
-            ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
-    
-            self.check_continue()
-
-            # The Chef recipes will overwrite the hostname, so
-            # we need to set it again.
-            ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
-        
+    def post_configure(self, ssh):
         if self.chef and self.config.has_snap():
             ssh.run("sudo umount /chef", expectnooutput=True)
-            vol.detach()
-            self.deployer.wait_state(vol, "available")        
-            vol.delete()
+            self.vol.detach()
+            self.deployer.wait_state(self.vol, "available")        
+            self.vol.delete()
             
-            self.deployer.vols.remove(vol)
-        
-        if self.basic:
-            ssh.run("sudo update-rc.d nis defaults")     
-
-        log.info("Configuration done.", node)
-        
-        #if self.deployer.loglevel == 0:
-        #    print "   \033[1;37m%s\033[0m is ready." % node.hostname.split(".")[0]
+            self.deployer.vols.remove(self.vol)
+            
