@@ -47,6 +47,7 @@ class DemoGridThread (threading.Thread):
         except Exception, e:
             self.exception = e
             self.status = 1
+            raise e
             self.multi.thread_failure(self)
             
         if self.status == 0:
@@ -84,7 +85,7 @@ class MultiThread(object):
     def thread_failure(self, thread):
         with self.lock:
             if not isinstance(thread.exception, ThreadAbortException):
-                log.debug("%s thread has failed: %s" % thread.name, thread.exception)
+                log.debug("%s thread has failed: %s" % (thread.name, thread.exception))
                 self.abort.set()
             else:
                 log.debug("%s thread is being aborted." % thread.name)
