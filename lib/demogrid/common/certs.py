@@ -58,7 +58,8 @@ class CertificateGenerator(object):
         
         return cert, k 
     
-    def save_certificate(self, cert, key, cert_file, key_file):
+    # TODO: Implement force
+    def save_certificate(self, cert, key, cert_file, key_file, force = False):
         cert_file = open(cert_file, "w")
         cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
         cert_file.close()  

@@ -199,18 +199,30 @@ class EC2AMICreator(object):
         
 
 class EC2AMIUpdater(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, keypair, keyfile, files):
+    def __init__(self, demogrid_dir, base_ami, ami_name, files, config):
         self.demogrid_dir = demogrid_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
-        self.keypair = keypair
-        self.keyfile = keyfile
         self.files = files
+        
+        self.config = config
+
+        self.keypair = config.get_keypair()
+        self.keyfile = config.get_keyfile()
+        if config.has_ec2_hostname():
+            self.hostname = config.get_ec2_hostname()
+            self.path = config.get_ec2_path()
+            self.port = config.get_ec2_port()
+        else:
+            self.hostname = None
+            self.path = None
+            self.port = None
+        self.username = config.get_ec2_username()
 
     def run(self):
         log.init_logging(2)
         
-        conn = create_ec2_connection()
+        conn = create_ec2_connection(hostname=self.hostname, path=self.path, port=self.port)
 
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
@@ -226,7 +238,7 @@ class EC2AMIUpdater(object):
         print "Instance running."
 
         print "Opening SSH connection."
-        ssh = SSH("ubuntu", instance.public_dns_name, self.keyfile)
+        ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
         ssh.open()
         
         print "Copying files"        

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from demogrid.cli.commands import demogrid_ec2_update_ami
+from demogrid.cli.ec2 import demogrid_ec2_update_ami
 import sys
 
 c = demogrid_ec2_update_ami(sys.argv)

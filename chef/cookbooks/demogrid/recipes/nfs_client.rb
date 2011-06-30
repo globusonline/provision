@@ -42,27 +42,27 @@ package "autofs" do
 end
 
 
-# Create the directory where the NFS directories will be mounted
-directory "/nfs" do
-  owner "root"
-  group "root"
-  mode "0755"
-  action :create
-  recursive true
-end
-
-
-# Create the directory where home directories will be mounted
-directory "/nfs/home" do
-  owner "root"
-  group "root"
-  mode "0755"
-  action :create
-  recursive true
-end
-
-
 # Set up the home directories so they will be automounted.
+
+if ! File.exists?("/nfs")
+	# Create the directory where the NFS directories will be mounted
+	directory "/nfs" do
+	  owner "root"
+	  group "root"
+	  mode "0755"
+	  action :create
+	  recursive true
+	end
+	
+	# Create the directory where home directories will be mounted
+	directory "/nfs/home" do
+	  owner "root"
+	  group "root"
+	  mode "0755"
+	  action :create
+	  recursive true
+	end
+end
 
 ruby_block "addlines" do
   block do
@@ -116,6 +116,8 @@ execute "autofs_restart" do
  command "/etc/init.d/autofs restart"
  action :run
 end
+
+
 
 
 ruby_block "addlines" do
