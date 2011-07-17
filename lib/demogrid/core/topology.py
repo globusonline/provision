@@ -99,6 +99,11 @@ class Topology(object):
                 topology += "  :description => \"%s\",\n" % u.description
                 topology += "  :password_hash => \"%s\",\n" % u.password_hash
                 topology += "  :dn => \"%s\",\n" % u.dn
+                if u.admin:
+                    topology += "  :admin => true,\n"
+                else:
+                    topology += "  :admin => false,\n"
+                    
                 if u.cert_type != None:
                     if u.cert_type == "external":
                         topology += "  :gridenabled => true}"
@@ -375,7 +380,7 @@ ff02::3 ip6-allhosts
                     node.depends = depends_node                    
 
             for user in domain["users"]:
-                user_obj = User(user["login"], user.get("description", user["login"]), user["password_hash"], user.get("dn"), user.get("cert"))
+                user_obj = User.from_json(user) 
                 domain_obj.add_user(user_obj)
                 
             for s in constants.DOMAIN_SERVERS:
@@ -437,6 +442,9 @@ class Node(object):
         if self.domain != None:
             self.chef_attrs["org"] = "\"%s\"" % self.domain.name
 
+            if self.domain.has_server(constants.DOMAIN_NIS_SERVER):
+                self.chef_attrs["org_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
+
             if self.domain.has_server(constants.DOMAIN_MYPROXY_SERVER):
                 self.chef_attrs["auth"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
 
@@ -447,7 +455,6 @@ class Node(object):
                 self.chef_attrs["subnet"] = "nil"
             else:
                 self.chef_attrs["subnet"] = "\"%s\"" % self.domain.subnet
-            self.chef_attrs["org_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
         
 
     @classmethod
@@ -477,9 +484,16 @@ class Node(object):
         
         
 class User(object):
-    def __init__(self, login, description, password_hash, dn, cert_type=None):
+    def __init__(self, login, description, password_hash, dn, admin = False, cert_type=None):
         self.login = login
         self.description = description
         self.password_hash = password_hash
         self.dn = dn
+        self.admin = admin
         self.cert_type = cert_type
+
+    @classmethod
+    def from_json(cls, json):
+        admin = (json.get("admin") in ("True", "true"))
+            
+        return cls(json["login"], json.get("description", json["login"]), json["password_hash"], json.get("dn"), admin, json.get("cert"))
