@@ -115,6 +115,7 @@ class EC2AMICreator(object):
             time.sleep(2)
         
         print "Instance running"
+        print self.username, instance.public_dns_name, self.keyfile
         ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
         try:
             ssh.open()
@@ -141,9 +142,6 @@ class EC2AMICreator(object):
             ssh.run("sudo mkdir /chef")
             ssh.run("sudo chown -R %s /chef" % self.username)
             ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
-            
-        
-        #ssh.run("sudo apt-add-repository 'deb http://apt.opscode.com/ lucid main'")
         
         # Some VMs don't include their hostname
         ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
@@ -164,6 +162,10 @@ class EC2AMICreator(object):
         
         ssh.run("sudo update-rc.d -f nis remove")
         ssh.run("sudo update-rc.d -f chef-client remove")
+        
+        print "Removing private data and authorized keys"
+        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")        
         
         if self.snapshot != None:
             ssh.run("sudo umount /chef")
@@ -189,9 +191,9 @@ class EC2AMICreator(object):
 
         
         print "Terminating instance"
-        conn.terminate_instances([instance.id])
-        while instance.update() != "terminated":
-            time.sleep(2)
+        #conn.terminate_instances([instance.id])
+        #while instance.update() != "terminated":
+        #    time.sleep(2)
         print "Instance terminated"   
                 
         if self.snapshot != None:                
@@ -244,6 +246,10 @@ class EC2AMIUpdater(object):
         print "Copying files"        
         for src, dst in self.files:
             ssh.scp(src, dst)
+                  
+        print "Removing private data and authorized keys"
+        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;")
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")
                   
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
