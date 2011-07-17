@@ -63,7 +63,11 @@ class demogrid_start(Command):
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
                                   help = "Upload extra files")
-                
+
+        self.optparser.add_option("-r", "--run", 
+                                  action="store", type="string", dest="run", 
+                                  help = "Run commands after configuration")
+                        
     def run(self):    
         t_start = time.time()        
         self.parse_options()
@@ -75,14 +79,20 @@ class demogrid_start(Command):
         else:
             extra_files = []
 
+        if self.opt.run != None:
+            run_cmds = [l.strip() for l in open(self.opt.run).readlines()]
+        else:
+            run_cmds = []
+
         api = API(self.dg_location, self.opt.dir)
-        api.start(inst_id, self.opt.no_cleanup, extra_files)
+        api.start(inst_id, self.opt.no_cleanup, extra_files, run_cmds)
 
         t_end = time.time()
         
         delta = t_end - t_start
         minutes = int(delta / 60)
         seconds = int(delta - (minutes * 60))
+        print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
         #print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
 
 class demogrid_reconfigure(Command):

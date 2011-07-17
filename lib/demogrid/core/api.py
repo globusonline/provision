@@ -38,7 +38,7 @@ class API(object):
         
         print inst.id
         
-    def start(self, inst_id, no_cleanup, extra_files):
+    def start(self, inst_id, no_cleanup, extra_files, run_cmds):
         SIGINTWatcher(self.cleanup_after_kill)
         
         istore = InstanceStore(self.instances_dir)
@@ -60,7 +60,7 @@ class API(object):
         inst.topology.save()
         
         # TODO: Choose the right deployer based on config file
-        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
+        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()

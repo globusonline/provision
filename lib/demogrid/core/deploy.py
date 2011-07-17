@@ -8,10 +8,11 @@ from demogrid.common import log
 import sys
 
 class Deployer(object):
-    def __init__(self, demogrid_dir, no_cleanup = False, extra_files = []):
+    def __init__(self, demogrid_dir, no_cleanup = False, extra_files = [], run_cmds = []):
         self.demogrid_dir = demogrid_dir
         self.instance = None
         self.extra_files = extra_files
+        self.run_cmds = run_cmds
         self.no_cleanup = no_cleanup
         
 class VM(object):
@@ -109,11 +110,12 @@ class ConfigureThread(DemoGridThread):
             # we need to set it again.
             ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
             ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
-        
 
-        
         if self.basic:
             ssh.run("sudo update-rc.d nis defaults")     
+
+        for cmd in self.deployer.run_cmds:
+            ssh.run(cmd)
 
         log.info("Configuration done.", node)
         
