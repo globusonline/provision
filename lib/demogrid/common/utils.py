@@ -160,11 +160,8 @@ class SSH(object):
         self.default_errf = default_errf
         self.port = port
         
-    def open(self, timeout = 120):
-        atfork()   # Workaround for bug in paramiko
+    def open(self, timeout = 180):
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
-        self.client = paramiko.SSHClient()
-        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         connected = False
         remaining = timeout
         while not connected:
@@ -172,24 +169,38 @@ class SSH(object):
                 if remaining < 0:
                     raise Exception("SSH timeout")
                 else:
+                    atfork()
+                    self.client = paramiko.SSHClient()
+                    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                     self.client.connect(self.hostname, self.port, self.username, pkey=key)
                     connected = True
-            except socket.error, e:
-                if e.errno == 111: # Connection refused
-                    time.sleep(2)
-                    remaining -= 2
-                else:
-                    time.sleep(2)
-                    remaining -= 2
-            except EOFError, e:
-                time.sleep(2)
-                remaining -= 2
-            except paramiko.SSHException, e:
-                if e.message == "Error reading SSH protocol banner":
-                    time.sleep(2)
-                    remaining -= 2
-                else:
+            except Exception, e:
+                if remaining - 2 < 0:
                     raise e
+                else:
+                    time.sleep(2)
+                    remaining -= 2
+            
+#             socket.error, e:
+#                if e.errno == 111: # Connection refused
+#                    time.sleep(2)
+#                    remaining -= 2
+#                else:
+#                    time.sleep(2)
+#                    remaining -= 2
+#            except EOFError, e:
+#                time.sleep(2)
+#                remaining -= 2
+#            except paramiko.SSHException, e:
+#                if e.message in ("Error reading SSH protocol banner", "Authentication failed."):
+#                    time.sleep(2)
+#                    remaining -= 2
+#                else:
+#                    if remaining - 2 < 0:
+#                        raise e
+#            except:
+#                if remaining - 2 < 0:
+#                    raise e
         self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
         
     def close(self):
