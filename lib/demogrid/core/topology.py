@@ -93,7 +93,7 @@ class Topology(object):
             topology += "end\n\n"            
 
         for domain in self.domains.values():
-            topology += "default[:orgusers][\"%s\"] = [\n" % domain.name
+            topology += "default[:domains][\"%s\"][:users] = [\n" % domain.name
             for u in domain.users:
                 topology += "{ :login       => \"%s\",\n" % u.login
                 topology += "  :description => \"%s\",\n" % u.description
@@ -405,10 +405,13 @@ class Node(object):
         self.chef_attrs["node_id"] = "\"%s\"" % self.node_id
         self.chef_attrs["run_list"] = "[ %s ]" % ",".join("\"%s\"" % r for r in self.run_list)
         if self.domain != None:
-            self.chef_attrs["org"] = "\"%s\"" % self.domain.name
+            self.chef_attrs["demogrid_domain"] = "\"%s\"" % self.domain.name
 
             if self.domain.has_server(constants.DOMAIN_NIS_SERVER):
-                self.chef_attrs["org_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
+                self.chef_attrs["nis_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
+
+            if self.domain.has_server(constants.DOMAIN_NFS_SERVER):
+                self.chef_attrs["nfs_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NFS_SERVER).ip               
 
             if self.domain.has_server(constants.DOMAIN_MYPROXY_SERVER):
                 self.chef_attrs["auth"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
