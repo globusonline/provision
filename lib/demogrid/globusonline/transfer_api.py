@@ -20,7 +20,7 @@ for experimenting with the API:
 
 ipython -- transfer_api.py USERNAME -k ~/.globus/userkey.pem \
            -c ~/.globus/usercert.pem \
-           -C ~/.globus/certificates/1c3f2ca8.0
+           -C ../gd-bundle_ca.cert
 
 OR
 
@@ -35,11 +35,15 @@ passed on the command line, which you can use to make requests:
 See https://transfer.api.globusonline.org for API documentation.
 """
 import os.path
+import os
+import sys
+import platform
 import socket
 import json
 import urllib
 import time
 import ssl
+import struct
 import traceback
 from urlparse import urlparse
 from httplib import BadStatusLine
@@ -54,6 +58,8 @@ __all__ = ["TransferAPIClient","TransferAPIError", "InterfaceError",
            "ClientError", "ServerError", "ExternalError",
            "ServiceUnavailable"]
 
+# client version
+__version__ = "0.10.5"
 
 class TransferAPIClient(object):
     """
@@ -67,9 +73,9 @@ class TransferAPIClient(object):
     or None if the reponse was empty, or a conveninience wrapper around
     the JSON data if the data itself is hard to use directly.
 
-    Endpoint names can be full canonical names of the form ausername#epname,
-    or simply epname, in which case the API looks at the logged in user's
-    endpoints.
+    Endpoint names can be full canonical names of the form
+    ausername#epname, or simply epname, in which case the API looks at
+    the logged in user's endpoints.
     """
 
     def __init__(self, username, server_ca_file,
@@ -147,7 +153,8 @@ class TransferAPIClient(object):
         self.timeout = timeout
 
         if saml_cookie:
-            if saml_cookie.find("un=%s|" % username) == -1:
+            unquoted = urllib.unquote(saml_cookie)
+            if unquoted.find("un=%s|" % username) == -1:
                 raise ValueError("saml cookie username does not match "
                                  "username argument")
             self.headers = {}
@@ -157,6 +164,10 @@ class TransferAPIClient(object):
         self.print_request = False
         self.print_response = False
         self.c = None
+
+        self.user_agent = "Python-httplib/%s (%s)" \
+                          % (platform.python_version(), platform.system())
+        self.client_info = "transfer_api.py/%s" % __version__
 
     def connect(self):
         """
@@ -223,6 +234,9 @@ class TransferAPIClient(object):
 
         if self.saml_cookie:
             headers["Cookie"] = "saml=%s" % self.saml_cookie
+
+        headers["User-Agent"] = self.user_agent
+        headers["X-Transfer-API-Client"] = self.client_info
 
         def do_request():
             if self.c is None:
@@ -398,9 +412,9 @@ class TransferAPIClient(object):
         @return: (status_code, status_reason, data)
         @raise TransferAPIError
         """
-        return self.get(_endpoint_path(endpoint_name))
+        return self.get(_endpoint_path(endpoint_name) + encode_qs(kw))
 
-    def endpoint_activation_requirements(self, endpoint_name):
+    def endpoint_activation_requirements(self, endpoint_name, **kw):
         """
         @return: (code, reason, data), where data is an
                  ActivationRequirements instance instead of a plain
@@ -408,7 +422,8 @@ class TransferAPIClient(object):
         @raise TransferAPIError
         """
         code, reason, data = self.get(_endpoint_path(endpoint_name,
-                                                 "/activation_requirements"))
+                                                 "/activation_requirements")
+                                      + encode_qs(kw))
         if code == 200 and data:
             data = ActivationRequirementList(data)
         return code, reason, data
@@ -433,7 +448,9 @@ class TransferAPIClient(object):
         if filled_requirements:
             body = json.dumps(filled_requirements.json_data)
         else:
-            body = None
+            raise ValueError("Use autoactivate instead; using activate "
+                "with an empty request body to auto activate is "
+                "deprecated.")
         # Note: blank query parameters are ignored, so we can pass blank
         # values to use the default behavior.
         qs = encode_qs(dict(if_expires_in=str(if_expires_in),
@@ -444,17 +461,57 @@ class TransferAPIClient(object):
             data = ActivationRequirementList(data)
         return code, reason, data
 
-    def endpoint_ls(self, endpoint_name, path=""):
+    def endpoint_autoactivate(self, endpoint_name, if_expires_in="",
+                              timeout=30):
+        """
+        @param endpoint_name: partial or canonical name of endpoint to
+                              activate.
+        @param if_expires_in: don't re-activate endpoint if it doesn't expire
+                              for this many minutes. If not passed, always
+                              activate, even if already activated.
+        @param timeout: timeout in seconds to attempt contacting external
+                        servers to get the credential.
+        @return: (code, reason, data), where data is an ActivationRequirements
+                 instance.
+        @raise TransferAPIError
+        """
+        # Note: blank query parameters are ignored, so we can pass blank
+        # values to use the default behavior.
+        qs = encode_qs(dict(if_expires_in=str(if_expires_in),
+                            timeout=str(timeout)))
+        code, reason, data = self.post(
+            _endpoint_path(endpoint_name, "/autoactivate" + qs), body=None)
+        if code == 200 and data:
+            data = ActivationRequirementList(data)
+        return code, reason, data
+
+    def endpoint_deactivate(self, endpoint_name, **kw):
+        """
+        @param endpoint_name: partial or canonical name of endpoint to
+                              activate.
+        @return: (code, reason, data)
+        @raise TransferAPIError
+        """
+        # Note: blank query parameters are ignored, so we can pass blank
+        # values to use the default behavior.
+        code, reason, data = self.post(
+            _endpoint_path(endpoint_name, "/deactivate") + encode_qs(kw),
+            body=None)
+        return code, reason, data
+
+    def endpoint_ls(self, endpoint_name, path="", **kw):
         """
         @return: (status_code, status_reason, data)
         @raise TransferAPIError
         """
+        kw["path"] = path
         return self.get(_endpoint_path(endpoint_name, "/ls")
-                        + encode_qs(dict(path=path)))
+                        + encode_qs(kw))
 
     def endpoint_create(self, endpoint_name, hostname, description="",
                         scheme="gsiftp", port=2811, subject=None,
-                        myproxy_server=None):
+                        myproxy_server=None, public=False,
+                        is_globus_connect=False):
         """
         @return: (status_code, status_reason, data)
         @raise TransferAPIError
@@ -464,6 +521,8 @@ class TransferAPIClient(object):
                  "myproxy_server": myproxy_server,
                  "description": description,
                  "canonical_name": endpoint_name,
+                 "public": public,
+                 "is_globus_connect": is_globus_connect,
                  "DATA": [dict(DATA_TYPE="server",
                                hostname=hostname,
                                scheme=scheme,
@@ -472,19 +531,22 @@ class TransferAPIClient(object):
                }
         return self.post("/endpoint", json.dumps(data))
 
-    def endpoint_update(self, endpoint_data):
+    def endpoint_update(self, endpoint_name, endpoint_data):
         """
         Call endpoint to get the data, modify as needed, then pass the
         modified data to this method.
 
-        Note that rename is not supported; if you change the name, it will
-        create a new endpoint.
-
         @return: (status_code, status_reason, data)
         @raise TransferAPIError
         """
-        return self.put(_endpoint_path(endpoint_data["canonical_name"]),
+        return self.put(_endpoint_path(endpoint_name),
                         json.dumps(endpoint_data))
+
+    def endpoint_rename(self, endpoint_name, new_endpoint_name):
+        _, _, endpoint_data = self.endpoint(endpoint_name)
+        endpoint_data["canonical_name"] = new_endpoint_name
+        del endpoint_data["name"]
+        return self.endpoint_update(endpoint_name, endpoint_data)
 
     def endpoint_delete(self, endpoint_name):
         """
@@ -496,7 +558,6 @@ class TransferAPIClient(object):
         @raise TransferAPIError
         """
         return self.delete(_endpoint_path(endpoint_name))
-
 
     def transfer_submission_id(self):
         """
@@ -517,24 +578,27 @@ class TransferAPIClient(object):
 class Transfer(object):
     """
     Class for constructing a transfer request, which is a collections of items
-    containing the source and destination endpoint and path, along with flags.
-    Each item can have different source and destination endpoints.
+    containing the source and destination paths, along with flags.
+    A transfer can only invovle one source and one destination endpoint, so
+    they are set in the constructor.
     """
-
-    def __init__(self, submission_id, deadline=None, sync_level=None):
+    def __init__(self, submission_id, source_endpoint, destination_endpoint,
+                 deadline=None, sync_level=None):
         self.submission_id = submission_id
         self.deadline = deadline
         self.sync_level = sync_level
         self.items = []
+        self.source_endpoint = source_endpoint
+        self.destination_endpoint = destination_endpoint
 
-    def add_item(self, source_endpoint, source_path,
-                 destination_endpoint, destination_path,
-                 recursive=False):
-        item = dict(source_endpoint=source_endpoint,
+    def add_item(self, source_path, destination_path, recursive=False,
+                 verify_size=None):
+        item = dict(source_endpoint=self.source_endpoint,
                     source_path=source_path,
-                    destination_endpoint=destination_endpoint,
+                    destination_endpoint=self.destination_endpoint,
                     destination_path=destination_path,
                     recursive=recursive,
+                    verify_size=verify_size,
                     DATA_TYPE="transfer_item")
         self.items.append(item)
 
@@ -546,31 +610,15 @@ class Transfer(object):
         return { "DATA_TYPE": "transfer",
                  "length": len(self.items),
                  "submission_id": self.submission_id,
-                 "deadline":deadline,
+                 "deadline": deadline,
                  "sync_level": self.sync_level,
                  "DATA": self.items }
 
     def as_json(self):
         return json.dumps(self.as_data())
 
-
-class SimpleTransfer(Transfer):
-    """
-    A transfer involving a single source and destination endpoint for all
-    the items.
-    """
-    def __init__(self, submission_id, source_endpoint, destination_endpoint,
-                 deadline=None, sync_level=None):
-        super(SimpleTransfer, self).__init__(submission_id, deadline,
-                                             sync_level)
-        self.source_endpoint = source_endpoint
-        self.destination_endpoint = destination_endpoint
-
-    def add_item(self, source_path, destination_path, recursive=False):
-        super(SimpleTransfer, self).add_item(
-                                self.source_endpoint, source_path,
-                                self.destination_endpoint, destination_path,
-                                recursive)
+# For backward compatibility; new code should just use Transfer.
+SimpleTransfer = Transfer
 
 
 class ActivationRequirementList(object):
@@ -630,6 +678,7 @@ class ActivationRequirementList(object):
         """
         @raise KeyError: if requirement not found.
         """
+        key = type + "." + name
         return self._get_requirement(key)["value"]
 
     def is_required(self, type, name):
@@ -653,6 +702,13 @@ class ActivationRequirementList(object):
         if reqs:
             return reqs
         return None
+
+    def set_submit_type(self, type):
+        """
+        Removes requirements of other types; this is needed when submitting,
+        to indicate what type of activation is actually desired.
+        """
+        self.req_list = [req for req in self.req_list if req["type"] == type]
 
     def as_json(self):
         return json.dumps(self.json_data)
@@ -835,6 +891,9 @@ def process_args(args=None, parser=None):
     parser.add_option("-s", "--saml-cookie", dest="saml_cookie",
                       help="alternate authentication method",
                       metavar="COOKIE_DATA")
+    parser.add_option("-p", "--password-prompt", dest="password_prompt",
+                      action="store_true", default=False,
+                      help="prompt for GO password for authentication")
     parser.add_option("-b", "--base-url", dest="base_url",
                       help="alternate base URL", metavar="URL")
     parser.add_option("-t", "--socket-timeout", dest="timeout", type="int",
@@ -851,7 +910,153 @@ def process_args(args=None, parser=None):
     if len(args) < 1:
         parser.error("username arguments is required")
 
+    if not options.server_ca_file:
+        parser.error("missing required option -C (--server-ca-file)")
+
+    if options.password_prompt:
+        if options.saml_cookie or options.key_file or options.cert_file:
+            parser.error("use only one authentication method: -p, -k/-c, or -s")
+        from get_go_cookie import get_go_auth
+        username = args[0]
+        success = False
+        for i in xrange(5):
+            try:
+                result = get_go_auth(ca_certs=options.server_ca_file,
+                                     username=username)
+                args[0] = result.username
+                options.saml_cookie = result.cookie
+                success = True
+                break
+            except ValueError as e:
+                sys.stderr.write("authentication to GO failed")
+                if i < 4:
+                     sys.stderr.write(", please try again")
+                sys.stderr.write("\n")
+                username = None
+        if not success:
+            sys.stderr.write("too many failed attempts, exiting\n")
+            sys.exit(2)
+    elif options.saml_cookie:
+        if options.key_file or options.cert_file:
+            parser.error("use only one authentication method: -p, -k/-c, or -s")
+    elif not options.key_file or not options.cert_file:
+        parser.error("specify one authentication method: -p, -k/-c, or -s")
+
     return options, args
+
+
+def get_random_serial():
+    """
+    Under RFC 3820 there are many ways to generate the serial number. However
+    making the number unpredictable has security benefits, e.g. it can make
+    this style of attack more difficult:
+
+    http://www.win.tue.nl/hashclash/rogue-ca
+    """
+    return struct.unpack("<Q", os.urandom(8))[0]
+
+def create_proxy_from_file(issuer_cred_file, public_key, lifetime=3600):
+    """
+    Create a proxy of the credential in issuer_cred_file, using the
+    specified public key and lifetime.
+
+    @param issuer_cred_file: file containing a credential, including the
+                             certificate, public key, and optionally chain
+                             certs.
+    @param public_key: the public key as a PEM string
+    @param lifetime: lifetime of the proxy in seconds (default 1 hour)
+    """
+    with open(issuer_cred_file) as f:
+        issuer_cred = f.read()
+    return create_proxy(issuer_cred, public_key, lifetime)
+
+_begin_private_key = "-----BEGIN RSA PRIVATE KEY-----"
+_end_private_key = "-----END RSA PRIVATE KEY-----"
+
+# The issuer is required to have this bit set if keyUsage is present;
+# see RFC 3820 section 3.1.
+REQUIRED_KEY_USAGE = ["Digital Signature"]
+def create_proxy(issuer_cred, public_key, lifetime=3600):
+    from M2Crypto import X509, RSA, EVP, ASN1, BIO
+
+    # Standard order is cert, private key, then the chain.
+    _begin_idx = issuer_cred.index(_begin_private_key)
+    _end_idx = issuer_cred.index(_end_private_key) + len(_end_private_key)
+    issuer_key = issuer_cred[_begin_idx:_end_idx]
+    issuer_cert = issuer_cred[:_begin_idx]
+    issuer_chain = issuer_cert + issuer_cred[_end_idx:]
+
+    proxy = X509.X509()
+    proxy.set_version(2)
+    serial = get_random_serial()
+    proxy.set_serial_number(serial)
+
+    now = long(time.time())
+    not_before = ASN1.ASN1_UTCTIME()
+    not_before.set_time(now)
+    proxy.set_not_before(not_before)
+
+    not_after = ASN1.ASN1_UTCTIME()
+    not_after.set_time(now + lifetime)
+    proxy.set_not_after(not_after)
+
+    pkey = EVP.PKey()
+    tmp_bio = BIO.MemoryBuffer(str(public_key))
+    rsa = RSA.load_pub_key_bio(tmp_bio)
+    pkey.assign_rsa(rsa)
+    del rsa
+    del tmp_bio
+    proxy.set_pubkey(pkey)
+
+    issuer = X509.load_cert_string(issuer_cert)
+
+    # If the issuer has keyUsage extension, make sure it contains all
+    # the values we require.
+    try:
+        keyUsageExt = issuer.get_ext("keyUsage")
+        if keyUsageExt:
+            values = keyUsageExt.get_value().split(", ")
+            for required in REQUIRED_KEY_USAGE:
+                if required not in values:
+                    raise ValueError(
+                      "issuer contains keyUsage without required usage '%s'"
+                      % required)
+    except LookupError:
+        pass
+
+    # hack to get a copy of the X509 name that we can append to.
+    issuer_copy = X509.load_cert_string(issuer_cert)
+    proxy_subject = issuer_copy.get_subject()
+
+    proxy_subject.add_entry_by_txt(field="CN", type=ASN1.MBSTRING_ASC,
+                                   entry=str(serial),
+                                   len=-1, loc=-1, set=0)
+    proxy.set_subject(proxy_subject)
+    proxy.set_issuer(issuer.get_subject())
+
+    # create a full proxy
+    pci_ext = X509.new_extension("proxyCertInfo",
+                                 "critical,language:Inherit all", 1)
+    proxy.add_ext(pci_ext)
+
+    # Clients may wish to add restrictions to the proxy that are not
+    # present in the issuer. To do this, keyUsage and extendedKeyUsage
+    # extensions can be added to the proxy; the effictive usage is
+    # defined as the intersection of the usage. See section 4.2 of the
+    # RFC. In the absense of application specific requirements, we
+    # choose not to add either extension, in which case the usage of the
+    # issuer(s) will be inherited as is. See the example below if you
+    # wish to customize this behavior.
+    #
+    #ku_ext = X509.new_extension("keyUsage",
+    #            "Digital Signature, Key Encipherment, Data Encipherment", 1)
+    #proxy.add_ext(ku_ext)
+
+    issuer_rsa = RSA.load_key_string(issuer_key)
+    sign_pkey = EVP.PKey()
+    sign_pkey.assign_rsa(issuer_rsa)
+    proxy.sign(pkey=sign_pkey, md="sha1")
+    return proxy.as_pem() + issuer_chain
 
 
 if __name__ == '__main__':
