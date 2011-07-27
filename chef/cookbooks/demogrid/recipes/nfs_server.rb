@@ -19,7 +19,7 @@
 #
 # RECIPE: NFS Server
 #
-# Set up an organizations NFS server and its shared directories.
+# Set up a domain's NFS server and its shared directories.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,7 +28,7 @@ class Chef::Resource
 end
 
 # The subnet attribute is part of the generated topology.rb file,
-# and contains the organization's subnet IP address.
+# and contains the domain's subnet IP address.
 subnet = node[:subnet]
 
 
@@ -46,11 +46,15 @@ cookbook_file "/etc/default/nfs-kernel-server" do
   group "root"
 end
 
+# Set configuration options for NFSv4
+cookbook_file "/etc/default/nfs-common" do
+  source "nfs-common"
+  mode 0644
+  owner "root"
+  group "root"
+end
 
-
-
-
-# Only allow access to machines in the organization's subnet.
+# Only allow access to machines in the domain's subnet.
 ruby_block "add_lines" do
   block do
     if subnet
@@ -131,4 +135,20 @@ execute "nfs-kernel-server_restart" do
  group "root"
  command "/etc/init.d/nfs-kernel-server restart"
  action :run
+end
+
+case node.platform
+  when "ubuntu"
+    execute "statd_restart" do
+      user "root"
+      group "root"
+      command "service statd --full-restart"
+      action :run
+    end
+    execute "idmapd_restart" do
+      user "root"
+      group "root"
+      command "service idmapd --full-restart"
+      action :run
+    end
 end

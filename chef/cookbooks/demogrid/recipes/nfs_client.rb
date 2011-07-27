@@ -18,7 +18,7 @@
 #
 # RECIPE: NFS client
 #
-# Set up node so it will have access to it's organizations NFS server.
+# Set up node so it will have access to its domain's NFS server.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -26,9 +26,9 @@ class Chef::Resource
   include FileHelper
 end
 
-# The org_server attribute is part of the generated topology.rb file,
-# and contains the IP of the organization's NFS/NIS server.
-server = node[:org_server]
+# The nfs_server attribute is part of the generated topology.rb file,
+# and contains the IP of the domain's NFS server.
+server = node[:nfs_server]
 
 
 # Packages we need
@@ -39,6 +39,14 @@ end
 
 package "autofs" do
   action :install
+end
+
+# Set configuration options for NFSv4
+cookbook_file "/etc/default/nfs-common" do
+  source "nfs-common"
+  mode 0644
+  owner "root"
+  group "root"
 end
 
 
@@ -99,12 +107,19 @@ end
 
 case node.platform
   when "debian"
-  execute "nfs_common_restart" do
-    user "root"
-    group "root"
-    command "/etc/init.d/nfs-common restart"
-    action :run
-  end
+    execute "nfs_common_restart" do
+      user "root"
+      group "root"
+      command "/etc/init.d/nfs-common restart"
+      action :run
+    end
+  when "ubuntu"
+    execute "idmapd_restart" do
+      user "root"
+      group "root"
+      command "service idmapd --full-restart"
+      action :run
+    end
 end
 
 
@@ -116,9 +131,6 @@ execute "autofs_restart" do
  command "/etc/init.d/autofs restart"
  action :run
 end
-
-
-
 
 ruby_block "addlines" do
   block do
