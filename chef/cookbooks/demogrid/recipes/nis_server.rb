@@ -19,7 +19,7 @@
 #
 # RECIPE: NIS Server
 #
-# Set up an organization's NIS server.
+# Set up an domain's NIS server.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,7 +28,7 @@ class Chef::Resource
 end
 
 # The subnet attribute is part of the generated topology.rb file,
-# and contains the organization's subnet IP address.
+# and contains the domain's subnet IP address.
 subnet = node[:subnet]
 
 
@@ -43,7 +43,7 @@ package "portmap" do
 end
 
 
-# Only allow access to the nodes in that organization's subnet
+# Only allow access to the nodes in that domain's subnet
 
 ruby_block "hosts.allow" do
   block do

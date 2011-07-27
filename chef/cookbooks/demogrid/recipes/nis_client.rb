@@ -18,8 +18,8 @@
 #
 # RECIPE: NIS client
 #
-# Set up node so it will have access to it's organizations NIS server, allowing
-# organization users to log into it.
+# Set up node so it will have access to its domain's NIS server, allowing
+# domain users to log into it.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -27,9 +27,9 @@ class Chef::Resource
   include FileHelper
 end
 
-# The org_server attribute is part of the generated topology.rb file,
-# and contains the IP of the organization's NFS/NIS server.
-server = node[:org_server]
+# The nis_server attribute is part of the generated topology.rb file,
+# and contains the IP of the domain's NFS/NIS server.
+server = node[:nis_server]
 
 
 # Packages we need

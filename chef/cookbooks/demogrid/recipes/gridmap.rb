@@ -18,10 +18,8 @@
 #
 # RECIPE: Gridmap file
 #
-# This recipe creates a gridmap file where all grid users are authorized.
-# Local users are mapped to their local account. Remote users are mapped to
-# their "grid account" on that site (e.g., "b-user1" running on organization "a"
-# would run under account "dg-b-user1").
+# This recipe creates a gridmap file where users with their :gridmap
+# attribute set to true are added.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -29,9 +27,9 @@ class Chef::Resource
   include FileHelper
 end
 
-# The org attribute is part of the generated topology.rb file,
-# and contains the name of the organization this node belongs to.
-org = node[:org]
+# The domain attribute is part of the generated topology.rb file,
+# and contains the name of the domain this node belongs to.
+domain = node[:demogrid_domain]
 
 # Create grid-security directory.
 directory "/etc/grid-security" do
@@ -50,34 +48,16 @@ file "/etc/grid-security/grid-mapfile" do
 end
 
 # Add entries for local users.
-# The orgusers attribute is part of the generated topology.rb file,
-# and contains information on an organization's user (username,
-# whether the user is a grid user or not, etc.)
-users = node[:orgusers][org]
-users.select{|v| v[:gridenabled]}.each do |u|
+# The :users attribute is part of the generated topology.rb file,
+# and contains information on a domain's users (username,
+# password, etc.)
+users = node[:domains][domain][:users]
+users.select{|v| v[:gridmap]}.each do |u|
 	ruby_block "add_lines" do
 	  file = "/etc/grid-security/grid-mapfile"
 	  map = "\"#{u[:dn]}\" #{u[:login]}"
 	  block do
 	    add_line(file, map)
 	  end
-	end
-end
-
-# Entries for remote ("grid") users
-# We check all the other organizations, and add an entry for
-# each grid user we encounter there.
-other_orgs = node[:orgusers].select{|k,v| k != org}
-other_orgs.each do |other_org,users|
-	users.select{|v| v[:gridenabled]}.each do |u|
-		username = "dg-#{u[:login]}"
-
-		ruby_block "add_lines" do
-		  file = "/etc/grid-security/grid-mapfile"
-		  map = "\"#{u[:dn]}\" #{username}"
-		  block do
-		    add_line(file, map)
-		  end
-		end
 	end
 end
