@@ -287,38 +287,32 @@ ff02::3 ip6-allhosts
                 topology.add_domain_node(domain, gridftp_node)
                 domain.servers[constants.DOMAIN_GRIFTP_SERVER] = gridftp_node
             
-            if self.config.has_org_lrm(org_name):
-                lrm_type = self.config.get_org_lrm(org_name)
-                gram = self.config.has_org_gram(org_name)
+            if config.has_org_lrm(domain_name):
+                lrm_type = config.get_org_lrm(domain_name)
+                gram = config.has_org_gram(domain_name)
                 if lrm_type == "condor":
                     if gram:
-                        role = self.GATEKEEPER_CONDOR_ROLE
+                        node_name = "%s-gram-condor" % domain_name
+                        role = "role[domain-gram-condor]"
                     else:
-                        role = self.LRM_CONDOR_ROLE
-                    workernode_role = self.LRM_NODE_CONDOR_ROLE
-                elif lrm_type == "torque":
-                    if gram:
-                        role = self.GATEKEEPER_PBS_ROLE
-                    else:
-                        role = self.LRM_PBS_ROLE
-                    workernode_role = self.LRM_NODE_PBS_ROLE
-                    
-                gatekeeper_node = DGNode(role = role,
-                                         ip =   self.__gen_IP(org_subnet, self.GATEKEEPER_HOST),
-                                         hostname = self.__gen_hostname(self.GATEKEEPER_HOSTNAME, org = org_name),
-                                         org = org)                        
-                grid.add_org_node(org, gatekeeper_node)
-                org.lrm = gatekeeper_node
+                        node_name = "%s-condor" % domain_name
+                        role = "role[domain-condor]"
+                    workernode_role = "role[domain-clusternode-condor]"
 
-                clusternode_host = self.LRM_NODE_HOST_START
-                for i in range(self.config.get_org_num_clusternodes(org_name)):
-                    hostname = "%s-%i" % (self.LRM_NODE_HOSTNAME, i+1)
-                    clusternode_node = DGNode(role = workernode_role,
-                                              ip =   self.__gen_IP(org_subnet, clusternode_host),
-                                              hostname = self.__gen_hostname(hostname, org = org_name),
-                                              org = org)                        
-                    grid.add_org_node(org, clusternode_node)
-                    
+                lrm_node = Node(name = node_name, domain = domain)
+                lrm_node.run_list.append(role)
+                                 
+                topology.add_domain_node(domain, lrm_node)
+                domain.servers[constants.DOMAIN_LRMHEAD_SERVER] = lrm_node
+
+                clusternode_host = 1
+                for i in range(config.get_org_num_clusternodes(domain_name)):
+                    wn_name = "%s-condor-wn%i" % (domain_name, i+1)
+                    wn_node = Node(name = wn_name, domain = domain)
+                    wn_node.run_list.append(workernode_role)
+                                     
+                    topology.add_domain_node(domain, wn_node)
+
                     clusternode_host += 1
             
         return topology
