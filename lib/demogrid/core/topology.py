@@ -98,11 +98,13 @@ class Topology(object):
                 topology += "{ :login       => \"%s\",\n" % u.login
                 topology += "  :description => \"%s\",\n" % u.description
                 topology += "  :password_hash => \"%s\",\n" % u.password_hash
-                topology += "  :dn => \"%s\",\n" % u.dn
                 if u.admin:
                     topology += "  :admin => true,\n"
                 else:
                     topology += "  :admin => false,\n"
+
+                if u.ssh_pkey != None:
+                    topology += "  :ssh_pkey => \"%s\",\n" % u.ssh_pkey
                     
                 if u.cert_type != None:
                     if u.cert_type == "external":
@@ -452,11 +454,11 @@ class Node(object):
         
         
 class User(object):
-    def __init__(self, login, description, password_hash, dn, admin = False, cert_type=None):
+    def __init__(self, login, description, password_hash, ssh_pkey = None, admin = False, cert_type=None):
         self.login = login
         self.description = description
         self.password_hash = password_hash
-        self.dn = dn
+        self.ssh_pkey = ssh_pkey
         self.admin = admin
         self.cert_type = cert_type
 
@@ -464,4 +466,4 @@ class User(object):
     def from_json(cls, json):
         admin = (json.get("admin") in ("True", "true"))
             
-        return cls(json["login"], json.get("description", json["login"]), json["password_hash"], json.get("dn"), admin, json.get("cert"))
+        return cls(json["login"], json.get("description", json["login"]), json["password_hash"], json.get("ssh_pkey"), admin, json.get("cert"))
