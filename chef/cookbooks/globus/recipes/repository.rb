@@ -16,64 +16,49 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Torque worker node
+# RECIPE: Globus Toolkit 5.0.3 basic install
 #
-# Set up a Torque worker node.
+# This recipe performs a barebones install of Globus. Users on a node where this
+# recipe has been run will have access to Globus command-line utilities,
+# but little else. GridFTP, GRAM, etc. are set up in separate recipes.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Recipe
-  include MiscHelper
+
+case node.platform
+  when "ubuntu"
+    if node.platform_version == "11.04"
+      distro_id = "natty"
+    elsif node.platform_version == "10.10"
+      distro_id = "maverick"
+    end
+
+  when "debian"
+    if node.platform_version.to_f >= 6.0
+      distro_id = "squeeze"
+    elsif node.platform_version.to_f >= 5.0
+      distro_id = "lenny"
+    end
+    
 end
 
-# See torque_head for a description of what these ".sh" files are.
-include_recipe "demogrid::torque"
-
-# The lrm_head attribute is part of the generated topology.rb file,
-# and contains the FQDN of the head node.
-server_fqdn = node[:lrm_head]
-server = server_fqdn.split(".")[0]
-
-# Create configuration file. 
-file "#{node[:torque][:dir]}/mom_priv/config" do
+remote_file "#{node[:scratch_dir]}/gt5_repository.deb" do
+  action :create_if_missing 
+  source "http://www.globus.org/ftppub/gt5/5.1/5.1.1/installers/repo/globus-repository-#{distro_id}_0.0.1_all.deb"
   owner "root"
-  group "root"
+  group "root"    
   mode "0644"
-  action :create
-  # Besides telling Torque about the head node, we instruct it
-  # to not use scp/rcp when copying files to/from the home directories
-  # (since they're on a shared file system)
-  content "pbs_server = #{server}\n$usecp *:/export  /export"
 end
 
-# Tell Torque what node is the head node.
-file "#{node[:torque][:dir]}/server_name" do
-  owner "root"
-  group "root"
-  mode "0644"
-  action :create
-  content "#{server}"
+package "gt5_repository" do
+  action :install
+  source "#{node[:scratch_dir]}/gt5_repository.deb"
+  provider Chef::Provider::Package::Dpkg
 end
 
-# Create init script.
-cookbook_file "/etc/init.d/pbs_mom" do
-  source "debian.pbs_mom"
-  owner "root"
-  group "root"
-  mode "0755"
-end
-
-execute "update-rc.d" do
-  user "root"
-  group "root"
-  command "update-rc.d pbs_mom defaults"
-  action :run
-end
-
-# Restart Torque daemon
-execute "pbs_mom_restart" do
+execute "apt-get update" do
  user "root"
  group "root"
- command "/etc/init.d/pbs_mom restart"
+ command "apt-get update"
  action :run
 end

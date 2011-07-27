@@ -16,43 +16,16 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: MyProxy server
+# RECIPE: Globus Toolkit 5.0.3 basic install
 #
-# Sets up a MyProxy server. It assumes that the "globus" recipe has been run, 
-# so it just involves setting up MyProxy as a xinetd service.
-#
-# Users are added in a separate recipe, "myproxy_users"
+# This recipe performs a barebones install of Globus. Users on a node where this
+# recipe has been run will have access to Globus command-line utilities,
+# but little else. GridFTP, GRAM, etc. are set up in separate recipes.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
+include_recipe "globus::repository"
 
-package "xinetd" do
-  action :install
-end
-
-template "/etc/xinetd.d/myproxy" do
-  source "xinetd.myproxy.erb"
-  mode 0644
-  owner "root"
-  group "root"
-  variables(
-    :globus_location => node[:globus][:dir]
-  )
-end
-
-ruby_block "add_lines" do
-  block do
-    add_line("/etc/services", "myproxy-server  7512/tcp                        # Myproxy server")
-  end
-end
-
-
-execute "xinetd_restart" do
- user "root"
- group "root"
- command "/etc/init.d/xinetd restart"
- action :run
-end
+package "globus-gsi-cert-utils-progs"
+package "globus-proxy-utils"
+package "globus-gass-copy-progs"

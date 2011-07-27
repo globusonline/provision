@@ -16,11 +16,10 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: Condor common actions
+# RECIPE: MyProxy server for a single organization
 #
-# This recipe is a dependency of condor_head and condor_worker, which will set
-# up a Condor head node or worker node. This recipe handles all the actions
-# that are common to both.
+# Sets up a MyProxy server that will use the organization's NIS domain 
+# to authenticate users.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -28,43 +27,47 @@ class Chef::Resource
   include FileHelper
 end
 
-if node[:kernel][:machine] == "i686" then
-  condor_package = node[:condor][:package32]
-
-  # Needed by the Condor 32-bit deb package
-  package "libc6-amd64" do
-    action :install
-  end
-elsif node[:kernel][:machine] == "x86_64" then
-  condor_package = node[:condor][:package64]
+package "xinetd" do
+  action :install
 end
 
-case node.platform
-when "ubuntu"
-
-  cookbook_file "/etc/init/condor-dir.conf" do
-    source "condor-dir.conf"
-    mode 0644
-    owner "root"
-    group "root"
-  end
-  
+cookbook_file "#{node[:globus][:dir]}/etc/myproxy-server.config" do
+  source "myproxy-server.config"
+  mode 0644
+  owner "globus"
+  group "globus"
 end
 
-cookbook_file "#{node[:scratch_dir]}/#{condor_package}" do
-  source "#{condor_package}"
+template "/usr/local/bin/myproxy-demogrid-certificate-mapapp" do
+  source "myproxy-dnmap.erb"
+  mode 0744
+  owner "globus"
+  group "globus"
+  variables(
+    :org => node[:org]
+  )
+end
+
+template "/etc/xinetd.d/myproxy" do
+  source "xinetd.myproxy.erb"
   mode 0644
   owner "root"
   group "root"
+  variables(
+    :globus_location => node[:globus][:dir]
+  )
 end
 
-package "condor" do
-  action :install
-  provider Chef::Provider::Package::Dpkg
-  source "#{node[:scratch_dir]}/#{condor_package}"
+ruby_block "add_lines" do
+  block do
+    add_line("/etc/services", "myproxy-server  7512/tcp                        # Myproxy server")
+  end
 end
 
-# Cleanup
-file "#{node[:scratch_dir]}/#{condor_package}" do
-  action :delete
-end       
+
+execute "xinetd_restart" do
+ user "root"
+ group "root"
+ command "/etc/init.d/xinetd restart"
+ action :run
+end

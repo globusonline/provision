@@ -16,30 +16,46 @@
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# RECIPE: MyProxy server for a single organization
+# RECIPE: Condor common actions
 #
-# Sets up a MyProxy server that will use the organization's NIS domain 
-# to authenticate users.
+# This recipe is a dependency of condor_head and condor_worker, which will set
+# up a Condor head node or worker node. This recipe handles all the actions
+# that are common to both.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
-cookbook_file "#{node[:globus][:dir]}/etc/myproxy-server.config" do
-  source "myproxy-server.config.org"
-  mode 0644
-  owner "globus"
-  group "globus"
+class Chef::Resource
+  include FileHelper
 end
 
-template "/usr/local/bin/myproxy-demogrid-certificate-mapapp" do
-  source "myproxy-dnmap.erb"
-  mode 0744
-  owner "globus"
-  group "globus"
-  variables(
-    :org => node[:org]
-  )
+case node.platform
+when "ubuntu"
+
+  cookbook_file "/etc/init/condor-dir.conf" do
+    source "condor-dir.conf"
+    mode 0644
+    owner "root"
+    group "root"
+  end
+  
 end
 
-# The "myproxy" recipe actually does all the work.
-include_recipe "demogrid::myproxy"
+file "/etc/apt/sources.list.d/condor.list" do
+  owner "root"
+  group "root"
+  mode "0644"
+  action :create
+  content "deb http://www.cs.wisc.edu/condor/debian/stable/ lenny contrib\n"  
+end
+
+execute "apt-get update" do
+ user "root"
+ group "root"
+ command "apt-get update"
+ action :run
+end
+
+package "condor" do
+  action :install
+  options "--force-yes"  
+end
