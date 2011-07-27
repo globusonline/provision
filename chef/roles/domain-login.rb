@@ -1,4 +1,4 @@
-name "org-login"
-description "An organization's login machine"
-run_list "role[org-client]", "role[globus]"
+name "domain-login"
+description "A domain's login machine"
+run_list "role[domain-nfsnis-client]", "role[globus]"
 
