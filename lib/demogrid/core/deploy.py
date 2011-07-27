@@ -106,11 +106,6 @@ class ConfigureThread(DemoGridThread):
     
             self.check_continue()
 
-            # The Chef recipes will overwrite the hostname, so
-            # we need to set it again.
-            ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
-
         if self.basic:
             ssh.run("sudo update-rc.d nis defaults")     
 
