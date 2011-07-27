@@ -16,7 +16,7 @@ class demogrid_go_register_endpoint(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)    
 
-        self.optparser.add_option("-d", "--domain", 
+        self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain", 
                                   help = "Only this domain")   
 
@@ -65,7 +65,7 @@ class demogrid_go_register_endpoint(Command):
         if inst.config.get_go_auth() == "go": 
             myproxy_server = "myproxy.globusonline.org"
         else:
-            myproxy_server = gridftp.org.auth.hostname
+            myproxy_server = domain.servers[constants.DOMAIN_GRIFTP_SERVER].hostname
         
         if ep_exists:
             if not self.opt.replace:
