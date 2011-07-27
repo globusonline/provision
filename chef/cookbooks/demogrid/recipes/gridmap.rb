@@ -47,15 +47,12 @@ file "/etc/grid-security/grid-mapfile" do
   action :create
 end
 
-# Add entries for local users.
-# The :users attribute is part of the generated topology.rb file,
-# and contains information on a domain's users (username,
-# password, etc.)
-users = node[:domains][domain][:users]
-users.select{|v| v[:gridmap]}.each do |u|
+# Add gridmap entries
+gridmap = node[:domains][domain][:gridmap]
+gridmap.each do |g|
 	ruby_block "add_lines" do
 	  file = "/etc/grid-security/grid-mapfile"
-	  map = "\"#{u[:dn]}\" #{u[:login]}"
+	  map = "\"#{g[:dn]}\" #{g[:login]}"
 	  block do
 	    add_line(file, map)
 	  end

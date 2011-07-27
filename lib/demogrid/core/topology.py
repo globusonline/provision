@@ -120,6 +120,12 @@ class Topology(object):
                 topology += ",\n"
             topology += "]\n"
 
+            topology += "default[:domains][\"%s\"][:gridmap] = [\n" % domain.name
+            for (dn,login) in domain.gridmap.items():
+                topology += "{ :dn    => \"%s\",\n" % dn
+                topology += "  :login => \"%s\"},\n" % login
+            topology += "]\n"
+
         topologyfile = open(file, "w")
         topologyfile.write(topology)
         topologyfile.close()      
@@ -233,6 +239,9 @@ ff02::3 ip6-allhosts
             for user in domain["users"]:
                 user_obj = User.from_json(user) 
                 domain_obj.add_user(user_obj)
+
+            for g in domain["gridmap"]:
+                domain_obj.gridmap[g["dn"]] = g["login"]
                 
             for s in constants.DOMAIN_SERVERS:
                 if domain.has_key(s):
@@ -256,6 +265,7 @@ class Domain(object):
         self.nodes = []
         self.users = []
         self.servers = {}
+        self.gridmap = {}
 
     def add_node(self, node):
         self.nodes.append(node)
@@ -300,7 +310,7 @@ class Node(object):
                 self.chef_attrs["nfs_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NFS_SERVER).ip               
 
             if self.domain.has_server(constants.DOMAIN_MYPROXY_SERVER):
-                self.chef_attrs["auth"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
+                self.chef_attrs["myproxy"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
 
             if self.domain.has_server(constants.DOMAIN_LRMHEAD_SERVER):
                 self.chef_attrs["lrm_head"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_LRMHEAD_SERVER).hostname
