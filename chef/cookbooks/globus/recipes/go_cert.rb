@@ -64,3 +64,10 @@ cookbook_file "/etc/grid-security/certificates/4396eb4d.signing_policy" do
   owner "root"
   group "root"
 end
+
+cookbook_file "/etc/grid-security/certificates/gd-bundle_ca.cert" do
+  source "gd-bundle_ca.cert"
+  mode 0644
+  owner "root"
+  group "root"
+end
