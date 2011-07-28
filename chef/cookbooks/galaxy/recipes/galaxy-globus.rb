@@ -46,6 +46,18 @@ execute "grant_all" do
   not_if database_exists
 end
 
+case node.platform
+  when "ubuntu"
+    if node.platform_version.to_f >= 11.04
+		package "python2.6"
+		execute "update-alternatives" do
+		  user "root"
+		  command "update-alternatives --install /usr/bin/python python /usr/bin/python2.6 10"
+		  action :run
+		end
+    end    
+end
+
 execute "galaxy-setup.sh" do
   user "galaxy"
   group "galaxy"
