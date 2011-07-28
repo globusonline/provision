@@ -32,37 +32,37 @@ if ! File.exists?(node[:globus][:simpleCA] )
 	# Create the basic directory structure
 
 	directory node[:globus][:simpleCA] do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0755"
 	  action :create
 	  recursive true
 	end
 
 	directory "#{node[:globus][:simpleCA]}/certs" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0755"
 	  action :create
 	end
 
 	directory "#{node[:globus][:simpleCA]}/crl" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0755"
 	  action :create
 	end
 
 	directory "#{node[:globus][:simpleCA]}/newcerts" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0755"
 	  action :create
 	end
 
 	directory "#{node[:globus][:simpleCA]}/private" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0700"
 	  action :create
 	end
@@ -73,15 +73,15 @@ if ! File.exists?(node[:globus][:simpleCA] )
 	cookbook_file "#{node[:globus][:simpleCA]}/cacert.pem" do
 	  source "7d4be459.0"
 	  mode 0644
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	end
 
 	cookbook_file "#{node[:globus][:simpleCA]}/private/cakey.pem" do
 	  source "ca_key.pem"
 	  mode 0400
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	end
 
 
@@ -89,38 +89,25 @@ if ! File.exists?(node[:globus][:simpleCA] )
 	cookbook_file "#{node[:globus][:simpleCA]}/grid-ca-ssl.conf" do
 	  source "grid-ca-ssl.conf"
 	  mode 0644
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	end
 
 	file "#{node[:globus][:simpleCA]}/index.txt" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0644"
 	  action :create
 	end
 
 	file "#{node[:globus][:simpleCA]}/serial" do
-	  owner "globus"
-	  group "globus"
+	  owner "root"
+	  group "root"
 	  mode "0644"
 	  action :create
 	  content "01\n"
 	end
 
-
-	# SimpleCA is installed in the globus user's home directory.
-	# We also link to it from root's home directory.
-	directory "/root/.globus" do
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	  action :create
-	end
-
-	link "#{node[:globus][:rootsimpleCA]}" do
-	  to "#{node[:globus][:simpleCA]}"
-	end
 end
 
 
