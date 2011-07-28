@@ -25,7 +25,7 @@
 
 # The "condor" recipe handles actions that are common to
 # both head and worker nodes.
-include_recipe "demogrid::condor"
+include_recipe "condor::condor"
 
 
 # The lrm_head attribute is part of the generated topology.rb file,
