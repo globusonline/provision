@@ -23,39 +23,43 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+include_recipe "globus::repository"
+
 class Chef::Resource
   include FileHelper
 end
 
-package "xinetd" do
-  action :install
+package "xinetd"
+package "globus-simple-ca"
+package "myproxy-server"
+
+directory "/var/lib/myproxy" do
+  owner "root"
+  group "root"
+  mode "0700"
+  action :create
 end
 
-cookbook_file "#{node[:globus][:dir]}/etc/myproxy-server.config" do
+
+cookbook_file "/etc/myproxy-server.config" do
   source "myproxy-server.config"
-  mode 0644
-  owner "globus"
-  group "globus"
-end
-
-template "/usr/local/bin/myproxy-demogrid-certificate-mapapp" do
-  source "myproxy-dnmap.erb"
-  mode 0744
-  owner "globus"
-  group "globus"
-  variables(
-    :org => node[:org]
-  )
-end
-
-template "/etc/xinetd.d/myproxy" do
-  source "xinetd.myproxy.erb"
   mode 0644
   owner "root"
   group "root"
-  variables(
-    :globus_location => node[:globus][:dir]
-  )
+end
+
+template "/var/lib/myproxy/myproxy-certificate-mapapp" do
+  source "myproxy-dnmap.erb"
+  mode 0744
+  owner "root"
+  group "root"
+end
+
+cookbook_file "/etc/xinetd.d/myproxy" do
+  source "xinetd.myproxy"
+  mode 0644
+  owner "root"
+  group "root"
 end
 
 ruby_block "add_lines" do

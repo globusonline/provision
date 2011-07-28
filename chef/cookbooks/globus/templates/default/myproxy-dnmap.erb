@@ -7,6 +7,6 @@ if [ X"$username" = X ]; then
 fi
 
 # DN must match the signing policy for your CA.
-echo "/O=Grid/OU=DemoGrid/CN=User '${username}' of Organization <%= @org %>"
+echo "/O=Grid/OU=DemoGrid/CN=${username}"
 
 exit 0
