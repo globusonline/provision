@@ -25,6 +25,7 @@ class InstanceStore(object):
         configf.close()
 
         topology = Topology.from_json(topology_json)
+        topology.global_attributes["instance_id"] = "\"%s\"" % inst_id
         topology.save("%s/topology.dat" % inst_dir)
                                         
         inst = Instance(inst_id, inst_dir)
@@ -60,6 +61,17 @@ class Instance(object):
         self.id = inst_id
         self.config = DemoGridConfig("%s/demogrid.conf" % instance_dir)
         self.topology = self.__load_topology()
+        
+        # Save certain configuration values in the topology
+        # (these will be needed by the recipes at deploy time;
+        # ideally, these should eventually be moved to the 
+        # topology file)
+        # We load them every time an Instance is opened, in
+        # case the configuration file has changed since the
+        # time the instance was created.
+        go_username = self.config.get_go_username()
+        self.topology.global_attributes["go_username"] = "\"%s\"" % go_username 
+        self.topology.save()
         
     def __load_topology(self):
         f = open ("%s/topology.dat" % self.instance_dir, "r")
