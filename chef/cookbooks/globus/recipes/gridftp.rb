@@ -24,15 +24,17 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-package "xinetd" do
-  action :install
-end
+include_recipe "globus::repository"
 
-cookbook_file "#{node[:globus][:dir]}/etc/gridftp.conf" do
+package "xinetd"
+package "globus-gridftp-server-progs"
+package "libglobus-xio-gsi-driver-dev"
+
+cookbook_file "/etc/gridftp.conf.default" do
   source "gridftp.conf"
   mode 0644
-  owner "globus"
-  group "globus"
+  owner "root"
+  group "root"
 end
 
 template "/etc/xinetd.d/gsiftp" do
@@ -41,7 +43,6 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :globus_location => node[:globus][:dir],
     :ec2_public => node[:ec2_public],
     :public_ip => node[:public_ip]
   )
