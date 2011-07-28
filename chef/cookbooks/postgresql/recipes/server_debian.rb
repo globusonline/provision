@@ -28,8 +28,19 @@ end
 
 package "postgresql"
 
+case node.platform
+  when "ubuntu"
+    if node.platform_version.to_f >= 11.04
+		postgresql_service = "postgresql"
+	else
+		postgresql_service = "postgresql-#{node.postgresql.version}"
+    end    
+  when "debian"
+	postgresql_service = "postgresql-#{node.postgresql.version}"
+end
+
 service "postgresql" do
-  service_name "postgresql-#{node.postgresql.version}"
+  service_name postgresql_service
   supports :restart => true, :status => true, :reload => true
   action :nothing
 end
