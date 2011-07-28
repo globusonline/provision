@@ -19,11 +19,11 @@ group "galaxy" do
 end
 
 user "galaxy" do
-  comment "Globus User"
+  comment "Galaxy User"
   uid 4000
   gid 4000
   home "/nfs/home/galaxy"
-  password "$1$rmHlRI5D$xNAqmRlrB6.P6SHOi2gpw1" # Password: globus
+  password "!"
   shell "/bin/bash"
   supports :manage_home => true
 end
@@ -73,21 +73,6 @@ if ! File.exists?(node[:galaxy][:dir])
     action :create
   end
 
-  cookbook_file "#{node[:galaxy][:dir]}/eggs/galaxy-eggs.tgz" do
-    source "galaxy-eggs.tgz"
-    owner "galaxy"
-    group "galaxy"
-    mode "0644"
-  end  
-
-  execute "tar" do
-    user "galaxy"
-    group "galaxy"
-    cwd "#{node[:galaxy][:dir]}/eggs"
-    command "tar xzf galaxy-eggs.tgz"
-    action :run
-  end  	
-
   cookbook_file "#{node[:galaxy][:dir]}/galaxy-setup.sh" do
     source "galaxy-setup.sh"
     owner "galaxy"
@@ -101,7 +86,8 @@ template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
   owner "galaxy"
   group "galaxy"
   variables(
-    :db_connect => "foo"
+    :db_connect => "foo",
+    :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:demogrid_domain]}"
   )
 end  
 
