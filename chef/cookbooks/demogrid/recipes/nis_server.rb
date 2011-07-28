@@ -73,7 +73,6 @@ end
 ruby_block "yp.conf" do
   block do
     add_line("/etc/yp.conf", "domain grid.example.org server #{node[:demogrid_hostname]}")
-    add_line("/etc/yp.conf", "ypserver #{node[:nis_server]}")    
   end
 end
 
