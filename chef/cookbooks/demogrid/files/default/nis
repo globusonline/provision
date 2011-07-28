@@ -3,7 +3,7 @@
 #
 
 # Are we a NIS server and if so what kind (values: false, slave, master)?
-NISSERVER=true
+NISSERVER=master
 
 # Are we a NIS client?
 NISCLIENT=false
