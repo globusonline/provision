@@ -17,15 +17,6 @@
 # Default attributes.
 # For now, only directories where software is going to be installed.
 
-default[:globus][:dir] = "/usr/local/globus-5.0.3"
 default[:galaxy][:dir] = "/nfs/software/galaxy"
 default[:blast][:dir] = "/nfs/software/blast"
-default[:globus][:srcdir] = "gt5.0.3-all-source-installer"
-default[:globus][:simpleCA] = "/home/globus/.globus/simpleCA"
-default[:globus][:rootsimpleCA] = "/root/.globus/simpleCA"
-default[:condor][:package32] = "condor-7.6.0-1-deb_5.0_i386.deb"
-default[:condor][:package64] = "condor-7.6.0-1-deb_5.0_amd64.deb"
-default[:torque][:dir] = "/var/spool/torque"
-default[:openmpi][:dir] = "/usr/local/openmpi-1.4.3"
-
-
+default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"
