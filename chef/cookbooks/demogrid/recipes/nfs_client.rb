@@ -134,6 +134,6 @@ end
 
 ruby_block "addlines" do
   block do
-    add_line("/etc/profile", "export PATH=/nfs/software/bin:$PATH")
+    add_line("/etc/environment", "PATH=\"/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games\"")
   end
 end
