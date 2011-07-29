@@ -86,4 +86,5 @@ execute "galaxy_restart" do
  group "root"
  command "/etc/init.d/galaxy restart"
  action :run
+ environment ({'PATH' => "/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}) 
 end
