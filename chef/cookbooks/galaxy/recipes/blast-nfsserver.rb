@@ -23,8 +23,8 @@ if ! File.exists?(node[:blast][:dir])
     action :create
   end
   
-  cookbook_file "#{node[:scratch_dir]}/blast.tar.gz" do
-    source "ncbi-blast-2.2.25+-ia32-linux.tar.gz"
+  remote_file "#{node[:scratch_dir]}/blast.tar.gz" do
+    source "http://mirrors.vbi.vt.edu/mirrors/ftp.ncbi.nih.gov/blast/executables/blast+/2.2.25/ncbi-blast-2.2.25+-ia32-linux.tar.gz"
     owner "root"
     group "root"
     mode "0644"
