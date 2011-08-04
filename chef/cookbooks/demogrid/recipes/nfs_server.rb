@@ -92,6 +92,9 @@ directory "/mnt/scratch" do
   action :create
 end
 
+link "/nfs/scratch" do
+  to "/mnt/scratch"
+end
 
 # Software directories
 directory "/nfs/software" do
