@@ -70,14 +70,46 @@ users.each do |u|
 	  notifies :run, "execute[rebuild_yp]"
 	end
 
-	# Create passwordless SSH keys
-	execute "ssh-keygen" do
-	  not_if do File.exists?("#{homedirs}/#{u[:login]}/.ssh/id_rsa") end
-	  user u[:login]
-	  command "ssh-keygen -N \"\" -f #{homedirs}/#{u[:login]}/.ssh/id_rsa"
-	  action :run
-	end
-	
+	auth_keys = "#{homedirs}/#{u[:login]}/.ssh/authorized_keys"
+	key_file = "#{homedirs}/#{u[:login]}/.ssh/id_rsa"
+	pkey_file = key_file+".pub"
+
+  # Create passwordless SSH key
+  execute "ssh-keygen" do
+    not_if do File.exists?(key_file) end
+    user u[:login]
+    command "ssh-keygen -N \"\" -f #{key_file}"
+    action :run
+  end
+		
+  file auth_keys do
+    owner u[:login]
+    mode "0644"
+    action :create
+  end  
+    
+	# Create the authorized_keys file.
+  execute "add_pkey" do
+    only_if do
+        pkey = File.read(pkey_file)
+        File.read(auth_keys).index(pkey).nil?
+    end  
+    user "root"
+    group "root"
+    command "cat #{pkey_file} >> #{auth_keys}"
+    action :run
+  end  
+  
+  execute "add_topology_pkey" do
+    only_if do
+      u[:ssh_pkey] and File.read(auth_keys).index(u[:ssh_pkey]).nil?
+    end  
+    user "root"
+    group "root"
+    command "echo #{u[:ssh_pkey]} >> #{auth_keys}"
+    action :run
+  end    
+  
   case node.platform
     when "ubuntu"
       group "admin" do
@@ -86,32 +118,8 @@ users.each do |u|
         append true
         action :modify
       end
-  end	
-	
-	# Add the user's public key to its authorized_keys, so the user
-	# can SSH into other nodes in the domain.
-  execute "add-key" do
-    not_if "grep \"`cat #{homedirs}/#{u[:login]}/.ssh/id_rsa.pub`\" #{homedirs}/#{u[:login]}/.ssh/authorized_keys"
-    user u[:login]
-    command "cat #{homedirs}/#{u[:login]}/.ssh/id_rsa.pub > #{homedirs}/#{u[:login]}/.ssh/authorized_keys"
-    action :run
-  end
-  
-  ruby_block "add_pkey" do
-    only_if do u[:ssh_pkey] end
-    auth_keys = "#{homedirs}/#{u[:login]}/.ssh/authorized_keys"
-    block do
-      add_line(auth_keys, u[:ssh_pkey])
-    end
-  end  
-
-	# Various environment variables required by some of the grid tools.
-	ruby_block "add_lines" do
-	  profile = "#{homedirs}/#{u[:login]}/.profile"
-	  block do
-	    add_line(profile, "export MYPROXY_SERVER=#{node[:myproxy]}")
-	  end
-	end
+  end 
+    
 	usernum += 1
 end
 

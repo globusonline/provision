@@ -54,18 +54,27 @@ cookbook_file "/etc/default/nfs-common" do
   group "root"
 end
 
-# Only allow access to machines in the domain's subnet.
-ruby_block "add_lines" do
-  block do
-    if subnet
-      add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : #{subnet}/24")
-      add_line("/etc/hosts.deny", "mountd nfsd statd lockd rquotad : ALL")
-    else
-      add_line("/etc/hosts.allow", "mountd nfsd statd lockd rquotad : ALL")
-    end
-  end
+template "/etc/hosts.allow" do
+  source "hosts.denyallow.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet,
+    :type => :allow
+  )
 end
 
+template "/etc/hosts.deny" do
+  source "hosts.denyallow.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet,
+    :type => :deny
+  )
+end
 
 # Create directories
 
@@ -118,40 +127,30 @@ directory "/nfs/software/bin" do
 end
 
 # Add exports
-ruby_block "add_lines" do
-  block do
-    if subnet
-      add_line("/etc/exports", "/nfs/home #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/mnt/scratch #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/nfs/software #{subnet}/24(rw,root_squash,no_subtree_check,sync)")
-    else
-      add_line("/etc/exports", "/nfs/home (rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/mnt/scratch (rw,root_squash,no_subtree_check,sync)")
-      add_line("/etc/exports", "/nfs/software (rw,root_squash,no_subtree_check,sync)")
-    end
-  end
+template "/etc/exports" do
+  source "exports.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet
+  )
+  notifies :restart, "service[nfs-kernel-server]"
+  notifies :run, "execute[nfs services restart]"
 end
+
 
 # Restart NFS
-execute "nfs-kernel-server_restart" do
- user "root"
- group "root"
- command "/etc/init.d/nfs-kernel-server restart"
- action :run
-end
+service "nfs-kernel-server"
 
-case node.platform
-  when "ubuntu"
-    execute "statd_restart" do
-      user "root"
-      group "root"
-      command "service statd --full-restart"
-      action :run
-    end
-    execute "idmapd_restart" do
-      user "root"
-      group "root"
-      command "service idmapd --full-restart"
-      action :run
-    end
+execute "nfs services restart" do
+  user "root"
+  group "root"
+  action :nothing
+  case node.platform
+    when "debian"
+      command "/etc/init.d/nfs-common restart"
+    when "ubuntu"
+      command "service statd --full-restart; service idmapd --full-restart"
+  end
 end

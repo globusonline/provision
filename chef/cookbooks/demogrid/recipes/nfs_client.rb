@@ -42,6 +42,7 @@ cookbook_file "/etc/default/nfs-common" do
   mode 0644
   owner "root"
   group "root"
+  notifies :run, "execute[nfs services restart]"
 end
 
 
@@ -67,10 +68,13 @@ if ! File.exists?("/nfs")
 	end
 end
 
-ruby_block "addlines" do
-  block do
-    add_line("/etc/auto.master", "/nfs              /etc/auto.nfs")
-  end
+
+cookbook_file "/etc/auto.master" do
+  source "auto.master"
+  mode 0644
+  owner "root"
+  group "root"
+  notifies :restart, "service[autofs]"
 end
 
 template "/etc/auto.home" do
@@ -81,6 +85,7 @@ template "/etc/auto.home" do
   variables(
     :server => server
   )
+  notifies :restart, "service[autofs]"  
 end
 
 template "/etc/auto.nfs" do
@@ -91,37 +96,33 @@ template "/etc/auto.nfs" do
   variables(
     :server => server
   )
+  notifies :restart, "service[autofs]"  
 end
 
-case node.platform
-  when "debian"
-    execute "nfs_common_restart" do
-      user "root"
-      group "root"
+execute "nfs services restart" do
+  user "root"
+  group "root"
+  action :nothing
+  case node.platform
+    when "debian"
       command "/etc/init.d/nfs-common restart"
-      action :run
-    end
-  when "ubuntu"
-    execute "idmapd_restart" do
-      user "root"
-      group "root"
+    when "ubuntu"
       command "service idmapd --full-restart"
-      action :run
-    end
-end
-
-
-# Restart autofs
-
-execute "autofs_restart" do
- user "root"
- group "root"
- command "/etc/init.d/autofs restart"
- action :run
-end
-
-ruby_block "addlines" do
-  block do
-    add_line("/etc/environment", "PATH=\"/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games\"")
   end
 end
+
+service "autofs"
+
+# Add /nfs/software/bin to everyone's environment (we do this in /etc/enviroment
+# instead of /etc/profile.d/ (which is BASH-specific) because daemons started by
+# init scripts don't necessarily load BASH environment information.
+# Note that if this file is modified and /nfs/software/bin is removed from the path,
+# subsequent runs of Chef will replace it will a file with just the PATH variable
+file "/etc/environment" do
+  only_if do
+    File.read("/etc/environment").index(/PATH=.*\/nfs\/software\/bin.*/).nil?
+  end
+  owner "root"
+  mode "0644"
+  content "PATH=\"/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games\"\n"
+end  

@@ -39,18 +39,46 @@ package "portmap"
 
 
 # Modify various configuration files to enable access to the NIS server.
-ruby_block "addlines" do
-  block do
-    add_line("/etc/hosts.allow", "portmap : #{server}")
-    add_line("/etc/hosts.deny", "portmap : ALL")
-    add_line("/etc/passwd", "+::::::")
-    add_line("/etc/group", "+:::")
-    add_line("/etc/shadow", "+::::::::")
-    add_line("/etc/yp.conf", "ypserver #{server}")
-  end
+
+execute "add_passwd_entry" do
+  only_if do
+    File.read("/etc/passwd").index("+::::::").nil?
+  end  
+  user "root"
+  group "root"
+  command "echo +:::::: >> /etc/passwd"
+  action :run
+  notifies :restart, "service[nis]"
 end
 
-# Restart NIS
-service "nis" do
- action :restart
+execute "add_shadow_entry" do
+  only_if do
+    File.read("/etc/shadow").index("+::::::::").nil?
+  end  
+  user "root"
+  group "root"
+  command "echo +:::::::: >> /etc/shadow"
+  action :run
+  notifies :restart, "service[nis]"
 end
+
+execute "add_group_entry" do
+  only_if do
+    File.read("/etc/group").index("+:::").nil?
+  end  
+  user "root"
+  group "root"
+  command "echo +::: >> /etc/group"
+  action :run
+  notifies :restart, "service[nis]"
+end
+
+file "/etc/yp.conf" do
+  owner "root"
+  mode "0644"
+  content "ypserver #{server}"
+  notifies :restart, "service[nis]"
+end  
+
+# Restart NIS
+service "nis"

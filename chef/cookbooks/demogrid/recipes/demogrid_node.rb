@@ -30,3 +30,11 @@ cookbook_file "/etc/hosts" do
   owner "root"
   group "root"
 end
+
+# Create a BASH profile file with DemoGrid variables
+file "/etc/profile.d/demogrid" do
+  mode 0644
+  owner "root"
+  group "root"
+  content "export MYPROXY_SERVER=#{node[:myproxy]}"
+end

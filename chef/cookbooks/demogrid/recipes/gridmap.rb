@@ -47,14 +47,17 @@ file "/etc/grid-security/grid-mapfile" do
   action :create
 end
 
-# Add gridmap entries
+# Create gridmap
+# Note: Will be regenerated from scratch on subsequent runs of Chef.
+# TODO: Read in existing gridmap, and merge it with provided one (shouldn't be hard
+# to do, but not necessary right now)
 gridmap = node[:domains][domain][:gridmap]
-gridmap.each do |g|
-	ruby_block "add_lines" do
-	  file = "/etc/grid-security/grid-mapfile"
-	  map = "\"#{g[:dn]}\" #{g[:login]}"
-	  block do
-	    add_line(file, map)
-	  end
-	end
+template "/etc/grid-security/grid-mapfile" do
+  source "gridmap.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :gridmap => gridmap
+  )
 end

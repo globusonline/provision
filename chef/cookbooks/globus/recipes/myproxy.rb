@@ -60,18 +60,19 @@ cookbook_file "/etc/xinetd.d/myproxy" do
   mode 0644
   owner "root"
   group "root"
+  notifies :restart, "service[xinetd]"
 end
 
-ruby_block "add_lines" do
-  block do
-    add_line("/etc/services", "myproxy-server  7512/tcp                        # Myproxy server")
-  end
+execute "add_services_entry" do
+  line = "myproxy-server  7512/tcp                        # Myproxy server"
+  only_if do
+    File.read("/etc/services").index(line).nil?
+  end  
+  user "root"
+  group "root"
+  command "echo \"#{line}\" >> /etc/services"
+  action :run
+  notifies :restart, "service[xinetd]"
 end
 
-
-execute "xinetd_restart" do
- user "root"
- group "root"
- command "/etc/init.d/xinetd restart"
- action :run
-end
+service "xinetd"

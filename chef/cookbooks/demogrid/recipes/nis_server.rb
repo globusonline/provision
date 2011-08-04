@@ -40,22 +40,26 @@ package "portmap"
 
 # Only allow access to the nodes in that domain's subnet
 
-ruby_block "hosts.allow" do
-  block do
-    if subnet
-      add_line("/etc/hosts.allow", "portmap ypserv ypbind : #{subnet}/24")
-    else
-      add_line("/etc/hosts.allow", "portmap ypserv ypbind : ALL")
-    end
-  end
+template "/etc/hosts.allow" do
+  source "hosts.denyallow.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet,
+    :type => :allow
+  )
 end
 
-ruby_block "hosts.deny" do
-  block do
-    if subnet
-      add_line("/etc/hosts.deny", "portmap ypserv ypbind : ALL")
-    end
-  end
+template "/etc/hosts.deny" do
+  source "hosts.denyallow.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet,
+    :type => :deny
+  )
 end
 
 cookbook_file "/etc/default/nis" do
@@ -67,18 +71,22 @@ cookbook_file "/etc/default/nis" do
   notifies :run, "execute[ypinit]"
 end
 
-ruby_block "yp.conf" do
-  block do
-    add_line("/etc/yp.conf", "domain grid.example.org server #{node[:demogrid_hostname]}")
-  end
-end
+file "/etc/yp.conf" do
+  owner "root"
+  mode "0644"
+  content "domain grid.example.org server #{node[:demogrid_hostname]}"
+  notifies :run, "execute[ypinit]"
+end  
 
-ruby_block "ypserv.securenets" do
-  block do
-    if subnet
-      add_line("/etc/ypserv.securenets", "255.255.255.0 #{subnet}")
-    end
-  end
+template "/etc/ypserv.securenets" do
+  source "ypserv.securenets.erb"
+  mode 0644
+  owner "root"
+  group "root"
+  variables(
+    :subnet => subnet
+  )
+  notifies :run, "execute[ypinit]"
 end
 
 
