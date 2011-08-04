@@ -4,6 +4,7 @@ Created on Apr 6, 2011
 @author: borja
 '''
 from OpenSSL import crypto, SSL
+import os.path
 
 class CertificateGenerator(object):
     def __init__(self, ca_cert = None, ca_key = None):
@@ -58,15 +59,17 @@ class CertificateGenerator(object):
         
         return cert, k 
     
-    # TODO: Implement force
+    # TODO: Return something meaningful depending on whether the
+    # certificate was regenerated or not
     def save_certificate(self, cert, key, cert_file, key_file, force = False):
-        cert_file = open(cert_file, "w")
-        cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
-        cert_file.close()  
-    
-        key_file = open(key_file, "w")
-        key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
-        key_file.close()        
+        if not os.path.exists(cert_file) or force:
+            cert_file = open(cert_file, "w")
+            cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert))
+            cert_file.close()  
+        
+            key_file = open(key_file, "w")
+            key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, key))
+            key_file.close()        
         
     def load_certificate(self, cert_file, key_file):
         cert_file = open(cert_file, "r")
