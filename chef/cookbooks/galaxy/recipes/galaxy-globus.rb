@@ -59,6 +59,14 @@ case node.platform
 		end
     end    
 end
+
+execute "galaxy-setup.sh" do
+  user "galaxy"
+  group "galaxy"
+  cwd node[:galaxy][:dir]
+  command "./galaxy-setup.sh"
+  action :run
+end  
  
 # Add init script
 cookbook_file "/etc/init.d/galaxy" do
