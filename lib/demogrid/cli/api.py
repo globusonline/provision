@@ -31,8 +31,6 @@ class demogrid_create(Command):
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
                                   help = "Topology file.")        
-         
-
                 
     def run(self):    
         self.parse_options()
@@ -102,6 +100,10 @@ class demogrid_reconfigure(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)
 
+        self.optparser.add_option("-t", "--topology", 
+                                  action="store", type="string", dest="topology",
+                                  help = "Topology file.")        
+
         self.optparser.add_option("-n", "--no-cleanup", 
                                   action="store_true", dest="no_cleanup", 
                                   help = "Don't release resources on failure.")
@@ -113,7 +115,11 @@ class demogrid_reconfigure(Command):
     def run(self):    
         t_start = time.time()        
         self.parse_options()
-        
+
+        jsonfile = open(self.opt.topology)
+        topology_json = jsonfile.read()
+        jsonfile.close()
+                
         inst_id = self.args[1]
 
         if self.opt.extra_files != None:
@@ -122,7 +128,7 @@ class demogrid_reconfigure(Command):
             extra_files = []
 
         api = API(self.dg_location, self.opt.dir)
-        api.reconfigure(inst_id, self.opt.no_cleanup, extra_files)
+        api.reconfigure(inst_id, topology_json, self.opt.no_cleanup, extra_files)
 
         t_end = time.time()
         

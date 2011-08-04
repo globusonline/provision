@@ -192,6 +192,13 @@ ff02::3 ip6-allhosts
         dump(self, f, protocol = HIGHEST_PROTOCOL)
         f.close()
         
+    # TODO: Just updating the users for now. Need to turn this
+    # into an exhaustive update that diffs the two topologies and
+    # determines what changes have been made (including hosts, etc.)
+    def update(self, new_topology):
+        for domain in self.domains:
+            self.domains[domain].users = new_topology.domains[domain].users
+        
     def bind_to_example(self):
         global_node_num = 1
         for node in self.global_nodes:

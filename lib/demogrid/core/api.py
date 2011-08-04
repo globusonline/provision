@@ -95,11 +95,13 @@ class API(object):
         inst.topology.save()
 
 
-    def reconfigure(self, inst_id, no_cleanup, extra_files):
+    def reconfigure(self, inst_id, topology_json, no_cleanup, extra_files):
         SIGINTWatcher(self.cleanup_after_kill)
         
         istore = InstanceStore(self.instances_dir)
         inst = istore.get_instance(inst_id)
+        
+        inst.update_topology(topology_json)
         
         # TODO: Choose the right deployer based on config file
         deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
@@ -107,8 +109,19 @@ class API(object):
         
         nodes = inst.topology.get_nodes()
 
-        log.info("Setting up DemoGrid on instances")        
+        # Generate certificates
+        inst.gen_certificates()
+
+        for n in nodes:
+            n.gen_chef_attrs()        
+        inst.topology.save()
         
+        inst.topology.gen_ruby_file(inst.instance_dir + "/topology.rb")
+        inst.topology.gen_hosts_file(inst.instance_dir + "/hosts") 
+        inst.topology.gen_csv_file(inst.instance_dir + "/topology.csv")
+
+        log.info("Setting up DemoGrid on instances")        
+
         node_vm = deployer.get_node_vm(nodes)
         
         self.__configure_vms(deployer, node_vm)

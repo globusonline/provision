@@ -79,7 +79,10 @@ class Instance(object):
         f.close()   
         return topology     
 
-
+    def update_topology(self, topology_json):
+        new_topology = Topology.from_json(topology_json)
+        self.topology.update(new_topology)
+        self.topology.save("%s/topology.dat" % self.instance_dir)
 
     def gen_hosts_file(self):
         hosts = """127.0.0.1    localhost
