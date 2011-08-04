@@ -93,7 +93,7 @@ class demogrid_go_register_endpoint(Command):
                     print code, msg
                     exit(1)
                 ep["public"] = True
-                (code, msg, data) = api.endpoint_update(ep)
+                (code, msg, data) = api.endpoint_update(ep_name, ep)
                 if code >= 400:
                     print code, msg
                     exit(1)
