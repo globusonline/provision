@@ -67,6 +67,7 @@ users.each do |u|
 	  password u[:password_hash]
 	  shell "/bin/bash"
 	  supports :manage_home => true
+	  notifies :run, "execute[rebuild_yp]"
 	end
 
 	# Create passwordless SSH keys
@@ -90,6 +91,7 @@ users.each do |u|
 	# Add the user's public key to its authorized_keys, so the user
 	# can SSH into other nodes in the domain.
   execute "add-key" do
+    not_if "grep \"`cat #{homedirs}/#{u[:login]}/.ssh/id_rsa.pub`\" #{homedirs}/#{u[:login]}/.ssh/authorized_keys"
     user u[:login]
     command "cat #{homedirs}/#{u[:login]}/.ssh/id_rsa.pub > #{homedirs}/#{u[:login]}/.ssh/authorized_keys"
     action :run
@@ -145,5 +147,5 @@ execute "rebuild_yp" do
  user "root"
  group "root"
  command "make -C /var/yp"
- action :run
+ action :nothing
 end

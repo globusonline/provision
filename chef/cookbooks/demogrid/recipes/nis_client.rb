@@ -34,13 +34,8 @@ server = node[:nis_server]
 
 # Packages we need
 
-package "nis" do
-  action :install
-end
-
-package "portmap" do
-  action :install
-end
+package "nis"
+package "portmap"
 
 
 # Modify various configuration files to enable access to the NIS server.
@@ -55,17 +50,7 @@ ruby_block "addlines" do
   end
 end
 
-execute "portmap_restart" do
- user "root"
- group "root"
- command "/etc/init.d/portmap restart"
- action :run
-end
-
 # Restart NIS
-execute "nis_restart" do
- user "root"
- group "root"
- command "/etc/init.d/nis restart"
- action :run
+service "nis" do
+ action :restart
 end

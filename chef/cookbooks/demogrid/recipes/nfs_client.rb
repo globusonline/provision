@@ -33,13 +33,8 @@ server = node[:nfs_server]
 
 # Packages we need
 
-package "nfs-common" do
-  action :install
-end
-
-package "autofs" do
-  action :install
-end
+package "nfs-common"
+package "autofs"
 
 # Set configuration options for NFSv4
 cookbook_file "/etc/default/nfs-common" do
@@ -96,13 +91,6 @@ template "/etc/auto.nfs" do
   variables(
     :server => server
   )
-end
-
-execute "portmap_restart" do
- user "root"
- group "root"
- command "/etc/init.d/portmap restart"
- action :run
 end
 
 case node.platform

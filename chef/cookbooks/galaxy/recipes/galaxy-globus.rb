@@ -51,20 +51,14 @@ case node.platform
     if node.platform_version.to_f >= 11.04
 		package "python2.6"
 		execute "update-alternatives" do
+		  python_version = `python -c "import sys; print sys.version_info[0] * 10 + sys.version_info[1]"`.to_f
+		  only_if do python_version > 26 end
 		  user "root"
 		  command "update-alternatives --install /usr/bin/python python /usr/bin/python2.6 10"
 		  action :run
 		end
     end    
 end
-
-execute "galaxy-setup.sh" do
-  user "galaxy"
-  group "galaxy"
-  cwd node[:galaxy][:dir]
-  command "./galaxy-setup.sh"
-  action :run
-end  
  
 # Add init script
 cookbook_file "/etc/init.d/galaxy" do
@@ -72,13 +66,14 @@ cookbook_file "/etc/init.d/galaxy" do
   owner "root"
   group "root"
   mode "0755"
+  notifies :run, "execute[update-rc.d]"
 end
   
 execute "update-rc.d" do
   user "root"
   group "root"
   command "update-rc.d galaxy defaults"
-  action :run
+  action :nothing
 end  
 
 execute "galaxy_restart" do

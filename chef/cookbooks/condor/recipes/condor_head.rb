@@ -49,13 +49,7 @@ template "/etc/condor/condor_config.local" do
     :domain => domain,    
     :daemons => "COLLECTOR, MASTER, NEGOTIATOR, SCHEDD"
   )
+  notifies :restart, "service[condor]"
 end
 
-
-# Restart Condor
-execute "condor_restart" do
- user "root"
- group "root"
- command "/etc/init.d/condor restart"
- action :run
-end
+service "condor" 

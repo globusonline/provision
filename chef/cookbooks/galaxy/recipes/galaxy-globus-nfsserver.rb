@@ -26,6 +26,7 @@ user "galaxy" do
   password "!"
   shell "/bin/bash"
   supports :manage_home => true
+  notifies :run, "execute[ypinit]"
 end
 
 # We need to run this for changes to take effect in the NIS server.
@@ -33,7 +34,7 @@ execute "ypinit" do
  user "root"
  group "root"
  command "echo | /usr/lib/yp/ypinit -m"
- action :run
+ action :nothing
 end
 
 if ! File.exists?(node[:galaxy][:dir])

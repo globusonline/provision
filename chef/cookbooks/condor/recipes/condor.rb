@@ -46,13 +46,14 @@ file "/etc/apt/sources.list.d/condor.list" do
   mode "0644"
   action :create
   content "deb http://www.cs.wisc.edu/condor/debian/stable/ lenny contrib\n"  
+  notifies :run, "execute[apt-get update]"
 end
 
 execute "apt-get update" do
  user "root"
  group "root"
  command "apt-get update"
- action :run
+ action :nothing
 end
 
 package "condor" do

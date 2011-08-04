@@ -34,13 +34,8 @@ subnet = node[:subnet]
 
 # Packages we need
 
-package "nis" do
-  action :install
-end
-
-package "portmap" do
-  action :install
-end
+package "nis"
+package "portmap"
 
 
 # Only allow access to the nodes in that domain's subnet
@@ -68,6 +63,8 @@ cookbook_file "/etc/default/nis" do
   mode 0644
   owner "root"
   group "root"
+  notifies :restart, "service[nis]"
+  notifies :run, "execute[ypinit]"
 end
 
 ruby_block "yp.conf" do
@@ -91,19 +88,7 @@ execute "ypinit" do
  user "root"
  group "root"
  command "echo | /usr/lib/yp/ypinit -m"
- action :run
+ action :nothing
 end
 
-execute "portmap_restart" do
- user "root"
- group "root"
- command "/etc/init.d/portmap restart"
- action :run
-end
-
-execute "nis_restart" do
- user "root"
- group "root"
- command "/etc/init.d/nis restart"
- action :run
-end
+service "nis"

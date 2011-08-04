@@ -46,11 +46,7 @@ template "/etc/xinetd.d/gsiftp" do
     :ec2_public => node[:ec2_public],
     :public_ip => node[:public_ip]
   )
+  notifies :restart, "service[xinetd]"
 end
 
-execute "xinetd_restart" do
- user "root"
- group "root"
- command "/etc/init.d/xinetd restart"
- action :run
-end
+service "xinetd"

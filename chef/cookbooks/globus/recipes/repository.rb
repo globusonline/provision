@@ -54,11 +54,12 @@ package "gt5_repository" do
   action :install
   source "#{node[:scratch_dir]}/gt5_repository.deb"
   provider Chef::Provider::Package::Dpkg
+  notifies :run, "execute[apt-get update]"
 end
 
 execute "apt-get update" do
  user "root"
  group "root"
  command "apt-get update"
- action :run
+ action :nothing
 end
