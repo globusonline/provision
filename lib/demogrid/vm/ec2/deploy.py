@@ -62,34 +62,30 @@ class EC2Deployer(Deployer):
     def allocate_vm(self, node):
         instance_type = node.deploy_data["ec2"]["instance_type"]
         ami = node.deploy_data["ec2"]["ami"]
-        try:
-            image = self.conn.get_image(ami)
-            if image == None:
-                # Workaround for this bug:
-                # https://bugs.launchpad.net/eucalyptus/+bug/495670
-                image = [i for i in self.conn.get_all_images() if i.id == ami][0]
-            
-            log.info(" |- Launching a %s instance for %s." % (instance_type, node.node_id))
-            reservation = image.run(min_count=1, 
-                                    max_count=1,
-                                    instance_type=instance_type,
-                                    security_groups= ["default"],
-                                    key_name=self.instance.config.get_keypair(),
-                                    placement = None)
-            instance = reservation.instances[0]
-        except EC2ResponseError, exc:
-            self.handle_ec2response_exception(exc, "requesting instances")
+
+        image = self.conn.get_image(ami)
+        if image == None:
+            # Workaround for this bug:
+            # https://bugs.launchpad.net/eucalyptus/+bug/495670
+            image = [i for i in self.conn.get_all_images() if i.id == ami][0]
+        
+        log.info(" |- Launching a %s instance for %s." % (instance_type, node.node_id))
+        reservation = image.run(min_count=1, 
+                                max_count=1,
+                                instance_type=instance_type,
+                                security_groups= ["default"],
+                                key_name=self.instance.config.get_keypair(),
+                                placement = None)
+        instance = reservation.instances[0]
         
         return EC2VM(instance)
 
     def resume_vm(self, node):
         ec2_instance_id = node.deploy_data["ec2_instance"]
-        try:
-            log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.node_id))
-            started = self.conn.start_instances([ec2_instance_id])            
-            log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
-        except EC2ResponseError, exc:
-            self.handle_ec2response_exception(exc, "requesting instances")
+
+        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.node_id))
+        started = self.conn.start_instances([ec2_instance_id])            
+        log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
         
         return EC2VM(started[0])
 
@@ -157,15 +153,7 @@ class EC2Deployer(Deployer):
             newstate = obj.update()
             if newstate == state:
                 return True
-        # TODO: Check errors
-
-    def handle_ec2response_exception(self, exc, what=""):
-        if what != "": what = " when " + what
-        print "\033[1;31mERROR\033[0m - EC2 returned an error when %s." % what
-        print "        Reason: %s" % exc.reason
-        print "        Body: %s" % exc.body
-        self.cleanup()
-        exit(1)        
+        # TODO: Check errors    
         
 
     def cleanup(self):

@@ -30,6 +30,7 @@ class DemoGridThread (threading.Thread):
         self.multi = multi
         self.name = name
         self.exception = None
+        self.stack_trace = None
         self.status = -1
         self.depends = depends
         
@@ -44,10 +45,11 @@ class DemoGridThread (threading.Thread):
         try:
             self.run2()
             self.status = 0
-        except Exception, e:
-            self.exception = e
+        except Exception:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.exception = exc_value
+            self.stack_trace = traceback.format_exception(exc_type, exc_value, exc_traceback)
             self.status = 1
-            raise e
             self.multi.thread_failure(self)
             
         if self.status == 0:
@@ -99,7 +101,7 @@ class MultiThread(object):
         return all([t.status == 0 for t in self.threads.values()])
         
     def get_exceptions(self):
-        return dict([(t.name, t.exception) for t in self.threads.values() if t.status == 1]) 
+        return dict([(t.name, (t.exception, t.stack_trace)) for t in self.threads.values() if t.status == 1]) 
 
 # From http://code.activestate.com/recipes/496735-workaround-for-missed-sigint-in-multithreaded-prog/
 # Modified so it will run a cleanup function

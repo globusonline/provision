@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_add_hosts
-import sys
-
-c = demogrid_add_hosts(sys.argv)
-c.run()

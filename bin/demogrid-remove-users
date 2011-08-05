@@ -1,0 +1,7 @@
+#!/usr/bin/python
+
+from demogrid.cli.api import demogrid_remove_users
+import sys
+
+c = demogrid_remove_users(sys.argv)
+c.run()

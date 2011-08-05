@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_reconfigure
-import sys
-
-c = demogrid_reconfigure(sys.argv)
-c.run()

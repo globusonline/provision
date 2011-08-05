@@ -65,7 +65,11 @@ class API(object):
         
         nodes = inst.topology.get_nodes()
 
-        node_vm = self.__allocate_vms(deployer, nodes, resuming)
+        (success, message, node_vm) = self.__allocate_vms(deployer, nodes, resuming)
+        
+        if not success:
+            deployer.cleanup()
+            return (False, message)
           
         log.info("Instances are running.")
 
@@ -89,13 +93,18 @@ class API(object):
 
         log.info("Setting up DemoGrid on instances")        
         
-        self.__configure_vms(deployer, node_vm)
+        (success, message) = self.__configure_vms(deployer, node_vm)
+        if not success:
+            deployer.cleanup()
+            return (False, message)
 
         inst.topology.state = Topology.STATE_RUNNING
         inst.topology.save()
+        
+        return (True, "Success")
 
 
-    def reconfigure(self, inst_id, topology_json, no_cleanup, extra_files):
+    def update_topology(self, inst_id, topology_json, no_cleanup, extra_files):
         SIGINTWatcher(self.cleanup_after_kill)
         
         istore = InstanceStore(self.instances_dir)
@@ -267,33 +276,7 @@ class API(object):
             deployer.terminate_vms(nodes)
             topology.remove_nodes(nodes)
         topology.save()
-
-    def handle_unexpected_exception(self, exc, what=""):
-        if what != "": what = " when " + what
-        print "\033[1;31mERROR\033[0m - An unexpected '%s' exception has been raised" % what
-        print "        Message: %s" % exc
-        print "        Stack trace:"
-        traceback.print_exc()
-        self.cleanup()
-        exit(1)        
-
-    def handle_mt_exceptions(self, exceptions, what):
-        print "\033[1;31mERROR\033[0m - " + what
-        for name, exception in exceptions.items():
-            if isinstance(exception, SSHCommandFailureException):
-                print "        %s: Error while running '%s'" % (name, exception.command)
-            elif isinstance(exception, EC2ResponseError):
-                print "        %s: EC2 error '%s'" % (name, exception.reason)
-                print "        Body: %s" % exception.body
-            else:          
-                print "        %s: Unexpected exception '%s'" % (name, exception.__class__.__name__)
-                print "        Message: %s" % exception
-            
-        self.cleanup()
-        exit(1)
         
-        
-
              
     def cleanup_after_kill(self):
         print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
@@ -316,9 +299,9 @@ class API(object):
                 else:
                     vm = deployer.resume_vm(n)
                 node_vm[n] = vm
-            except Exception as exc:
-                raise
-                #self.handle_unexpected_exception(exc)
+            except Exception:
+                message = self.__unexpected_exception_to_text()
+                return (False, message, None)
         
             if sequential:
                 log.debug("Waiting for instance to start.")
@@ -333,9 +316,10 @@ class API(object):
             
             mt_instancewait.run()
             if not mt_instancewait.all_success():
-                self.handle_mt_exceptions(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
+                message = self.__mt_exceptions_to_text(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
+                return (False, message, None)
             
-        return node_vm
+        return (True, "Success", node_vm)
 
 
     def __configure_vms(self, deployer, node_vm, basic = True, chef = True):
@@ -361,7 +345,40 @@ class API(object):
         
         mt_configure.run()
         if not mt_configure.all_success():
-            self.handle_mt_exceptions(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
+            message = self.__mt_exceptions_to_text(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
+            return (False, message)
+        
+        return (True, "Success")
+
+    def __mt_exceptions_to_text(self, exceptions, what):
+        msg = "ERROR - " + what
+        for thread_name in exceptions:
+            msg += "\n\n"
+            exception_obj, exception_trace = exceptions[thread_name]
+            if isinstance(exception_obj, SSHCommandFailureException):
+                msg += "        %s: Error while running '%s'\n" % (thread_name, exception_obj.command)
+            elif isinstance(exception_obj, EC2ResponseError):
+                msg += "        %s: EC2 error '%s'\n" % (thread_name, exception_obj.reason)
+                msg += "        Body: %s\n" % exception_obj.body
+            else:          
+                msg += "        %s: Unexpected exception '%s'\n" % (thread_name, exception_obj.__class__.__name__)
+                msg += "        Message: %s\n" % exception_obj
+            for l in exception_trace:
+                msg += l
+        return msg
+
+            
+    def __unexpected_exception_to_text(self, what=""):
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        if what != "": what = " when " + what
+        msg = "ERROR - An unexpected '%s' exception has been raised" % what
+        msg += "        Message: %s\n" % exc_value
+        msg += "        Stack trace:\n"
+        trace = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        for l in trace:
+            msg += l
+        return msg
+
 
     def __stop_vms(self, deployer, nodes):
         order = Node.get_launch_order(nodes)

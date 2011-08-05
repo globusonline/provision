@@ -83,19 +83,23 @@ class demogrid_start(Command):
             run_cmds = []
 
         api = API(self.dg_location, self.opt.dir)
-        api.start(inst_id, self.opt.no_cleanup, extra_files, run_cmds)
-
-        t_end = time.time()
+        success, message = api.start(inst_id, self.opt.no_cleanup, extra_files, run_cmds)
         
-        delta = t_end - t_start
-        minutes = int(delta / 60)
-        seconds = int(delta - (minutes * 60))
-        print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
-        #print "You just went \033[1;34mfrom zero to grid\033[0m in \033[1;37m%i minutes and %s seconds\033[0m!" % (minutes, seconds)
+        if not success:
+            print "Unable to start instance. Reason:"
+            print message
+        else:
+            t_end = time.time()
+            
+            delta = t_end - t_start
+            minutes = int(delta / 60)
+            seconds = int(delta - (minutes * 60))
+            print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
 
-class demogrid_reconfigure(Command):
+
+class demogrid_update_topology(Command):
     
-    name = "demogrid-reconfigure"
+    name = "demogrid-update-topology"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -128,13 +132,14 @@ class demogrid_reconfigure(Command):
             extra_files = []
 
         api = API(self.dg_location, self.opt.dir)
-        api.reconfigure(inst_id, topology_json, self.opt.no_cleanup, extra_files)
+        api.update_topology(inst_id, topology_json, self.opt.no_cleanup, extra_files)
 
         t_end = time.time()
         
         delta = t_end - t_start
         minutes = int(delta / 60)
         seconds = int(delta - (minutes * 60))
+        
         
 class demogrid_stop(Command):
     
@@ -167,6 +172,7 @@ class demogrid_terminate(Command):
         api = API(self.dg_location, self.opt.dir)
         api.terminate(inst_id)
 
+
 class demogrid_list_instances(Command):
     
     name = "demogrid-list-instances"
@@ -194,16 +200,16 @@ class demogrid_list_instances(Command):
                     if self.opt.debug:
                         print "\t%s" % node.deploy_data
 
-class demogrid_add_users(Command):
+
+# TODO: The following commands don't have corresponding API functions. They will simply
+# provide easier access to update_topology 
+
+class demogrid_add_user(Command):
     
-    name = "demogrid-add-users"
+    name = "demogrid-add-user"
     
     def __init__(self, argv):
-        Command.__init__(self, argv)
-
-        self.optparser.add_option("-j", "--json", 
-                                  action="store", type="string", dest="json",
-                                  help = "json file.")        
+        Command.__init__(self, argv)    
 
                 
     def run(self):    
@@ -211,47 +217,25 @@ class demogrid_add_users(Command):
         
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
-        api.add_users(inst_id)            
+        api = API(self.dg_location, self.opt.dir)   
         
-class demogrid_add_hosts(Command):
+class demogrid_add_host(Command):
     
-    name = "demogrid-add-hosts"
+    name = "demogrid-add-host"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
 
-        self.optparser.add_option("-j", "--json", 
-                                  action="store", type="string", dest="json",
-                                  help = "json file.")        
-
-        self.optparser.add_option("-n", "--no-cleanup", 
-                                  action="store_true", dest="no_cleanup", 
-                                  help = "Don't release resources on failure.")
-
-        self.optparser.add_option("-x", "--extra-files", 
-                                  action="store", type="string", dest="extra_files", 
-                                  help = "Upload extra files")
                 
     def run(self):    
         self.parse_options()
         
-        jsonfile = open(self.opt.json)
-        hosts_json = jsonfile.read()
-        jsonfile.close()        
-
-        if self.opt.extra_files != None:
-            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
-        else:
-            extra_files = []
-        
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
-        api.add_hosts(inst_id, hosts_json, self.opt.no_cleanup, extra_files)       
+        api = API(self.dg_location, self.opt.dir)    
         
 
-class demogrid_remove_user(Command):
+class demogrid_remove_users(Command):
     
     name = "demogrid-remove-user"
     
@@ -262,10 +246,9 @@ class demogrid_remove_user(Command):
         self.parse_options()
         
         inst_id = self.args[1]
-        user = self.args[2]
+        users = self.args[2:]
 
         api = API(self.dg_location, self.opt.dir)
-        api.remove_user(inst_id)
         
         
 class demogrid_remove_hosts(Command):
@@ -282,5 +265,4 @@ class demogrid_remove_hosts(Command):
         hosts = self.args[2:]
 
         api = API(self.dg_location, self.opt.dir)
-        api.remove_hosts(inst_id, hosts)
                 
