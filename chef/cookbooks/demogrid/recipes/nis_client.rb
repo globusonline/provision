@@ -77,7 +77,7 @@ file "/etc/yp.conf" do
   owner "root"
   mode "0644"
   content "ypserver #{server}"
-  notifies :restart, "service[nis]"
+  notifies :restart, "service[nis]", :immediately
 end  
 
 # Restart NIS

@@ -42,7 +42,7 @@ cookbook_file "/etc/default/nfs-common" do
   mode 0644
   owner "root"
   group "root"
-  notifies :run, "execute[nfs services restart]"
+  notifies :run, "execute[nfs services restart]", :immediately
 end
 
 
@@ -74,7 +74,7 @@ cookbook_file "/etc/auto.master" do
   mode 0644
   owner "root"
   group "root"
-  notifies :restart, "service[autofs]"
+  notifies :restart, "service[autofs]", :immediately
 end
 
 template "/etc/auto.home" do
@@ -85,7 +85,7 @@ template "/etc/auto.home" do
   variables(
     :server => server
   )
-  notifies :restart, "service[autofs]"  
+  notifies :restart, "service[autofs]", :immediately  
 end
 
 template "/etc/auto.nfs" do
@@ -96,7 +96,7 @@ template "/etc/auto.nfs" do
   variables(
     :server => server
   )
-  notifies :restart, "service[autofs]"  
+  notifies :restart, "service[autofs]", :immediately  
 end
 
 execute "nfs services restart" do
