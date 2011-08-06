@@ -39,9 +39,10 @@ class demogrid_go_register_endpoint(Command):
         istore = InstanceStore(self.opt.dir)
         inst = istore.get_instance(inst_id)        
 
-        go_username = inst.config.get_go_username()
-        go_cert_file, go_key_file = inst.config.get_go_credentials()
-        go_server_ca = inst.config.get_go_server_ca()
+        go_username = inst.config.get("go_username")
+        go_cert_file = inst.config.get("go-cert-file")
+        go_key_file = inst.config.get("go-cert-key")
+        go_server_ca = inst.config.get("go-server-ca")
 
         api = TransferAPIClient(go_username, go_server_ca, go_cert_file, go_key_file)
                 
@@ -68,7 +69,7 @@ class demogrid_go_register_endpoint(Command):
                     print ce
                     exit(1)
             
-            if inst.config.get_go_auth() == "go": 
+            if inst.config.get("go-auth") == "go": 
                 myproxy_server = "myproxy.globusonline.org"
             else:
                 myproxy_server = domain.servers[constants.DOMAIN_MYPROXY_SERVER].hostname

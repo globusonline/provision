@@ -29,22 +29,26 @@ class EC2Deployer(Deployer):
     def set_instance(self, inst):
         self.instance = inst
         self.__connect()
-        if inst.config.get_ec2_access_type() == "public":
+        if inst.config.get("ec2-public"):
             inst.topology.global_attributes["ec2_public"] = "true"
         else:
             inst.topology.global_attributes["ec2_public"] = "false"            
     
     def __connect(self):
         config = self.instance.config
-        keypair = config.get_keypair()
-        zone = config.get_ec2_zone()
+        keypair = config.get("ec2-keypair")
+        zone = config.get("ec2-availability-zone")
         
         try:
             log.debug("Connecting to EC2...")
-            if config.has_ec2_hostname():
-                self.conn = create_ec2_connection(config.get_ec2_hostname(),
-                                                  config.get_ec2_path(),
-                                                  config.get_ec2_port()) 
+            ec2_server_hostname = config.get("ec2-server-hostname")
+            ec2_server_port = config.get("ec2-server-port")
+            ec2_server_path = config.get("ec2-server-path")
+            
+            if ec2_server_hostname != None:
+                self.conn = create_ec2_connection(ec2_server_hostname,
+                                                  ec2_server_port,
+                                                  ec2_server_path) 
             else:
                 self.conn = create_ec2_connection()
             
@@ -74,7 +78,7 @@ class EC2Deployer(Deployer):
                                 max_count=1,
                                 instance_type=instance_type,
                                 security_groups= ["default"],
-                                key_name=self.instance.config.get_keypair(),
+                                key_name=self.instance.config.get("ec2-keypair"),
                                 placement = None)
         instance = reservation.instances[0]
         
@@ -115,11 +119,11 @@ class EC2Deployer(Deployer):
         node.deploy_data["public_hostname"] = "\"%s\"" % instance.public_dns_name
         # TODO: The following won't work on EC2-ish systems behind a firewall.
         node.deploy_data["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
-        if config.get_ec2_access_type() == "public":
+        if config.get("ec2-public"):
             node.hostname = instance.public_dns_name
             node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
             node.chef_attrs["public_ip"] = "\"%s\"" % ".".join(instance.public_dns_name.split(".")[0].split("-")[1:])
-        elif config.get_ec2_access_type() == "private":
+        else:
             node.hostname = "%s.demogrid.example.org" % node.node_id
             node.chef_attrs["demogrid_hostname"] = "\"%s\"" % node.hostname
             node.chef_attrs["public_ip"] = "nil"
@@ -198,7 +202,7 @@ class EC2InstanceConfigureThread(ConfigureThread):
         self.ec2_instance = self.vm.ec2_instance
         
     def connect(self):
-        return self.ssh_connect(self.config.get_ec2_username(), self.ec2_instance.public_dns_name, self.config.get_keyfile())
+        return self.ssh_connect(self.config.get("ec2-username"), self.ec2_instance.public_dns_name, self.config.get("ec2-keyfile"))
     
     def pre_configure(self, ssh):
         node = self.node

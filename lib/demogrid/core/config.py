@@ -1,97 +1,174 @@
 import ConfigParser
 from demogrid.core.topology import Domain, User, Node, Topology
 from demogrid.common import constants
+from demogrid.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 
-class DemoGridConfig(object):
+class DemoGridConfig(Config):
     
-    GENERAL_SEC = "general"
-    CACERT_OPT = "ca-cert"
-    CAKEY_OPT = "ca-key"
-    SCRATCHDIR_OPT = "scratch-dir"
+    sections = []    
     
-    EC2_SEC = "ec2"
-    AMI_OPT = "ami"
-    SNAP_OPT = "snap"
-    KEYPAIR_OPT = "keypair"
-    KEYFILE_OPT = "keyfile"
-    INSTYPE_OPT = "instance_type"
-    ZONE_OPT = "availability_zone"
-    ACCESS_OPT = "access"
-    HOSTNAME_OPT = "hostname"
-    PATH_OPT = "path"
-    PORT_OPT = "port"
-    USERNAME_OPT = "username"
-
-    GO_SEC = "globusonline"
-    GO_USERNAME_OPT = "username"
-    GO_CERT_OPT = "cert-file"
-    GO_KEY_OPT = "key-file"
-    GO_SERVER_CA_OPT = "server-ca-file"
-    GO_AUTH_OPT = "auth"
+    # ============================= #
+    #                               #
+    #        GENERAL OPTIONS        #
+    #                               #
+    # ============================= #    
     
-    def __init__(self, configfile):
-        self.config = ConfigParser.ConfigParser()
-        self.config.readfp(open(configfile, "r"))
+    general = Section("general", required=True,
+                      doc = "This section is used for general options affecting DemoGrid as a whole.")
+    general.options = \
+    [
+     Option(name        = "ca-cert",
+            getter      = "ca-cert",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            Location of CA certificate (PEM-encoded) used to generate user
+            and host certificates. If blank, DemoGrid will generate a self-signed
+            certificate from scratch.        
+            """),    
+     Option(name        = "ca-key",
+            getter      = "ca-key",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            Location of the private key (PEM-encoded) for the certificate
+            specified in "ca-cert".
+            """),
+     Option(name        = "scratch-dir",
+            getter      = "scratch-dir",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            default     = "/var/tmp",
+            doc         = """
+            Scratch directory that Chef will use (on the provisioned machines)
+            while configuring them.
+            """)
+    ]
 
-    def has_ca(self):
-        return self.config.has_option(self.GENERAL_SEC, self.CACERT_OPT) and self.config.has_option(self.GENERAL_SEC, self.CAKEY_OPT)
-    
-    def get_ca(self):
-        return self.config.get(self.GENERAL_SEC, self.CACERT_OPT), self.config.get(self.GENERAL_SEC, self.CAKEY_OPT)
+    sections.append(general)
 
-    def get_scratch_dir(self):
-        return self.config.get(self.GENERAL_SEC, self.SCRATCHDIR_OPT)
-    
-    def get_ami(self):
-        return self.config.get(self.EC2_SEC, self.AMI_OPT)
+    # ====================== #
+    #                        #
+    #      EC2 OPTIONS       #
+    #                        #
+    # ====================== #
 
-    def has_snap(self):
-        return self.config.has_option(self.EC2_SEC, self.SNAP_OPT)
-    
-    def get_snap(self):
-        return self.config.get(self.EC2_SEC, self.SNAP_OPT)
+    ec2 = Section("ec2", required=True,
+                  doc = "EC2 options.")
+    ec2.options = \
+    [                
+     Option(name        = "keypair",
+            getter      = "ec2-keypair",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "keyfile",
+            getter      = "ec2-keyfile",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "username",
+            getter      = "ec2-username",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),     
+     Option(name        = "availability-zone",
+            getter      = "ec2-availability-zone",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            default     = None,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "public",
+            getter      = "ec2-public",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = True,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "server-hostname",
+            getter      = "ec2-server-hostname",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "server-port",
+            getter      = "ec2-server-port",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "server-path",
+            getter      = "ec2-server-path",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO
+            """)                                    
+    ]    
+    sections.append(ec2)
 
-    def get_keypair(self):
-        return self.config.get(self.EC2_SEC, self.KEYPAIR_OPT)
+    # ================================ #
+    #                                  #
+    #      GLOBUS ONLINE OPTIONS       #
+    #                                  #
+    # ================================ #
 
-    def get_keyfile(self):
-        return self.config.get(self.EC2_SEC, self.KEYFILE_OPT)
-    
-    def get_instance_type(self):
-        return self.config.get(self.EC2_SEC, self.INSTYPE_OPT)
-    
-    def get_ec2_zone(self):
-        return self.config.get(self.EC2_SEC, self.ZONE_OPT)        
-    
-    def get_ec2_access_type(self):
-        return self.config.get(self.EC2_SEC, self.ACCESS_OPT) 
-
-    def get_go_username(self):
-        return self.config.get(self.GO_SEC, self.GO_USERNAME_OPT) 
-            
-    def get_go_credentials(self):
-        return (self.config.get(self.GO_SEC, self.GO_CERT_OPT),self.config.get(self.GO_SEC, self.GO_KEY_OPT))
-    
-    def get_go_server_ca(self):
-        return self.config.get(self.GO_SEC, self.GO_SERVER_CA_OPT)
-
-    def get_go_auth(self):
-        return self.config.get(self.GO_SEC, self.GO_AUTH_OPT)
-
-    def has_ec2_hostname(self):
-        return self.config.has_option(self.EC2_SEC, self.HOSTNAME_OPT)
-            
-    def get_ec2_hostname(self):
-        return self.config.get(self.EC2_SEC, self.HOSTNAME_OPT)
-
-    def get_ec2_path(self):
-        return self.config.get(self.EC2_SEC, self.PATH_OPT)
-    
-    def get_ec2_port(self):
-        return int(self.config.get(self.EC2_SEC, self.PORT_OPT))
-
-    def get_ec2_username(self):
-        return self.config.get(self.EC2_SEC, self.USERNAME_OPT)
+    go = Section("globusonline", required=True,
+                  doc = "Globus Online options.")
+    go.options = \
+    [       
+     Option(name        = "username",
+            getter      = "go-username",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "cert-file",
+            getter      = "go-cert-file",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),         
+     Option(name        = "key-file",
+            getter      = "go-key-file",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),        
+     Option(name        = "server-ca-file",
+            getter      = "go-server-ca-file",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),           
+     Option(name        = "auth",
+            getter      = "go-auth",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            valid       = ["go", "myproxy"],
+            doc         = """
+            TODO
+            """)
+    ]         
+    sections.append(go)
+      
+    def __init__(self, config_file):
+        Config.__init__(self, config_file, self.sections)
 
 
 class SimpleTopologyConfig(object):

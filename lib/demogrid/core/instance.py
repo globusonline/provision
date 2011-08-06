@@ -69,7 +69,7 @@ class Instance(object):
         # We load them every time an Instance is opened, in
         # case the configuration file has changed since the
         # time the instance was created.
-        go_username = self.config.get_go_username()
+        go_username = self.config.get("go-username")
         self.topology.global_attributes["go_username"] = "\"%s\"" % go_username 
         self.topology.save()
         
@@ -114,9 +114,10 @@ ff02::3 ip6-allhosts
         certg = CertificateGenerator()
 
         cert_files = []
+        ca_cert_file = self.config.get("ca-cert")
+        ca_cert_key = self.config.get("ca-key")
         
-        if self.config.has_ca():
-            ca_cert_file, ca_cert_key = self.config.get_ca()
+        if ca_cert_file != None:
             ca_cert, ca_key = certg.load_certificate(ca_cert_file, ca_cert_key)
         else:
             ca_cert, ca_key = certg.gen_selfsigned_ca_cert("DemoGrid CA")

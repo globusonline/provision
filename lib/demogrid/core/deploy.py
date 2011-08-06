@@ -100,9 +100,9 @@ class ConfigureThread(DemoGridThread):
             ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
                     "/tmp/chef.conf")        
             
-            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get_scratch_dir(), node.node_id), expectnooutput=True)
+            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), node.node_id), expectnooutput=True)
     
-            ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
+            ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
     
             self.check_continue()
 

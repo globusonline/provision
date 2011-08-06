@@ -85,18 +85,13 @@ class EC2AMICreator(object):
         self.snapshot = snapshot
         self.config = config
 
-        self.keypair = config.get_keypair()
-        self.keyfile = config.get_keyfile()
-        if config.has_ec2_hostname():
-            self.hostname = config.get_ec2_hostname()
-            self.path = config.get_ec2_path()
-            self.port = config.get_ec2_port()
-        else:
-            self.hostname = None
-            self.path = None
-            self.port = None
-        self.username = config.get_ec2_username()
-        self.scratch_dir = config.get_scratch_dir()
+        self.keypair = config.get("ec2-keypair")
+        self.keyfile = config.get("ec2-keyfile")
+        self.hostname = config.get("ec2-server-hostname")
+        self.port = config.get("ec2-server-port")
+        self.path = config.get("ec2-server-path")
+        self.username = config.get("ec2-username")
+        self.scratch_dir = config.get("scratch-dir")
 
     def run(self):
         log.init_logging(2)
@@ -210,17 +205,12 @@ class EC2AMIUpdater(object):
         
         self.config = config
 
-        self.keypair = config.get_keypair()
-        self.keyfile = config.get_keyfile()
-        if config.has_ec2_hostname():
-            self.hostname = config.get_ec2_hostname()
-            self.path = config.get_ec2_path()
-            self.port = config.get_ec2_port()
-        else:
-            self.hostname = None
-            self.path = None
-            self.port = None
-        self.username = config.get_ec2_username()
+        self.keypair = config.get("ec2-keypair")
+        self.keyfile = config.get("ec2-keyfile")
+        self.hostname = config.get("ec2-server-hostname")
+        self.port = config.get("ec2-server-port")
+        self.path = config.get("ec2-server-path")
+        self.username = config.get("ec2-username")
 
     def run(self):
         log.init_logging(2)
