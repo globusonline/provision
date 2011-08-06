@@ -205,26 +205,7 @@ class EC2InstanceConfigureThread(ConfigureThread):
         instance = self.ec2_instance
         
         log.info("Setting up instance %s. Hostname: %s" % (instance.id, instance.public_dns_name), node)
-        if self.chef and self.config.has_snap():
-            log.debug("Creating Chef volume.", node)
-            self.vol = self.deployer.conn.create_volume(1, instance.placement, self.config.get_snap())
-            log.debug("Created Chef volume %s. Attaching." % self.vol.id, node)
-            self.vol.attach(instance.id, '/dev/sdh')
-            log.debug("Chef volume attached. Waiting for it to become in-use.", node)
-            self.deployer.wait_state(self.vol, "in-use")
-            log.debug("Volume is in-use", node)
-    
-            self.deployer.vols.append(self.vol)
-
-            log.debug("Mounting Chef volume", node)
-            ssh.run("sudo mount -t ext3 /dev/sdh /chef", expectnooutput=True)
             
     def post_configure(self, ssh):
-        if self.chef and self.config.has_snap():
-            ssh.run("sudo umount /chef", expectnooutput=True)
-            self.vol.detach()
-            self.deployer.wait_state(self.vol, "available")        
-            self.vol.delete()
-            
-            self.deployer.vols.remove(self.vol)
+        pass
             
