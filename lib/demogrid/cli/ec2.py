@@ -4,7 +4,7 @@ Created on Jun 16, 2011
 @author: borja
 '''
 from demogrid.cli import Command
-from demogrid.vm.ec2.images import EC2ChefVolumeCreator, EC2AMICreator,\
+from demogrid.deploy.ec2.images import EC2ChefVolumeCreator, EC2AMICreator,\
     EC2AMIUpdater
 from demogrid.common import defaults
 from demogrid.core.config import DemoGridConfig

@@ -7,7 +7,7 @@ from demogrid.common.utils import DemoGridThread, SSH
 from demogrid.common import log
 import sys
 
-class Deployer(object):
+class BaseDeployer(object):
     def __init__(self, demogrid_dir, no_cleanup = False, extra_files = [], run_cmds = []):
         self.demogrid_dir = demogrid_dir
         self.instance = None
@@ -20,8 +20,9 @@ class VM(object):
         pass
     
 class ConfigureThread(DemoGridThread):
-    def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+    def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
         DemoGridThread.__init__(self, multi, name, depends)
+        self.domain = domain
         self.node = node
         self.vm = vm
         self.deployer = deployer
@@ -59,6 +60,7 @@ class ConfigureThread(DemoGridThread):
         return ssh
         
     def configure(self, ssh):
+        domain = self.domain
         node = self.node
         instance_dir = self.deployer.instance.instance_dir        
         
@@ -100,7 +102,7 @@ class ConfigureThread(DemoGridThread):
             ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
                     "/tmp/chef.conf")        
             
-            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), node.node_id), expectnooutput=True)
+            ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"domain_id\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), domain.id, node.id), expectnooutput=True)
     
             ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
     
