@@ -42,7 +42,16 @@ class DemoGridConfig(Config):
             doc         = """
             Scratch directory that Chef will use (on the provisioned machines)
             while configuring them.
-            """)
+            """),
+     Option(name        = "deploy",
+            getter      = "deploy",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            valid       = ["ec2", "dummy"],
+            doc         = """
+            Scratch directory that Chef will use (on the provisioned machines)
+            while configuring them.
+            """)     
     ]
 
     sections.append(general)
@@ -53,8 +62,9 @@ class DemoGridConfig(Config):
     #                        #
     # ====================== #
 
-    ec2 = Section("ec2", required=True,
-                  doc = "EC2 options.")
+    ec2 = Section("ec2", required=False,
+                         required_if = [(("general","deploy"),"ec2")],
+                         doc = "EC2 options.")
     ec2.options = \
     [                
      Option(name        = "keypair",

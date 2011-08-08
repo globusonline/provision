@@ -9,21 +9,14 @@ from demogrid.common.certs import CertificateGenerator
 from demogrid.core.instance import Instance, InstanceStore
 from demogrid.common.utils import parse_extra_files_files, MultiThread,\
     SSHCommandFailureException, SIGINTWatcher
-from demogrid.vm.ec2.deploy import EC2Deployer, EC2InstanceWaitThread,\
-    EC2InstanceConfigureThread
 from demogrid.common import log
 from boto.exception import EC2ResponseError
 import traceback
 from copy import deepcopy
 import json
 
-try:
-    from mako.template import Template
-except Exception, e:
-    print "Mako Templates for Python are not installed."
-    print "You can download them at http://www.makotemplates.org/"
-    print "or 'apt-get install python-mako' on most Debian/Ubuntu systems"
-    exit(1)
+import demogrid.deploy.ec2 as ec2_deploy
+import demogrid.deploy.dummy as dummy_deploy
 
 class API(object):
     
@@ -59,8 +52,9 @@ class API(object):
             inst.topology.state = Topology.STATE_RESUMING
         inst.topology.save()
         
-        # TODO: Choose the right deployer based on config file
-        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()
@@ -112,8 +106,9 @@ class API(object):
         
         inst.update_topology(topology_json)
         
-        # TODO: Choose the right deployer based on config file
-        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files)
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()
@@ -148,8 +143,9 @@ class API(object):
         inst.topology.state = Topology.STATE_STOPPING
         inst.topology.save()
         
-        # TODO: Choose the right deployer based on config file
-        deployer = EC2Deployer(self.demogrid_dir)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir)
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()
@@ -169,8 +165,9 @@ class API(object):
         inst.topology.state = Topology.STATE_TERMINATING
         inst.topology.save()
         
-        # TODO: Choose the right deployer based on config file
-        deployer = EC2Deployer(self.demogrid_dir)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir)
         deployer.set_instance(inst)    
         
         nodes = inst.topology.get_nodes()
@@ -188,7 +185,9 @@ class API(object):
         inst = istore.get_instance(inst_id)
         topology = inst.topology
 
-        deployer = EC2Deployer(self.demogrid_dir, no_cleanup, extra_files)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files)
         deployer.set_instance(inst)
 
         existing_nodes = inst.topology.get_nodes()
@@ -258,7 +257,9 @@ class API(object):
         inst = istore.get_instance(inst_id)
         topology = inst.topology
 
-        deployer = EC2Deployer(self.demogrid_dir)
+        deployer_class = self.__get_deployer_class(inst)
+        
+        deployer = deployer_class(self.demogrid_dir)
         deployer.set_instance(inst)
                         
         # We assume there's only one domain.
@@ -282,6 +283,13 @@ class API(object):
         print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
         print "Please make sure you manually release all DemoGrid instances and volumes."
         
+    def __get_deployer_class(self, inst):
+        if inst.config.get("deploy") == "ec2":
+            deploy_module = ec2_deploy
+        elif inst.config.get("deploy") == "dummy":
+            deploy_module = dummy_deploy
+            
+        return deploy_module.Deployer        
         
     def __allocate_vms(self, deployer, nodes, resuming):
         # TODO: Make this an option
@@ -305,14 +313,14 @@ class API(object):
         
             if sequential:
                 log.debug("Waiting for instance to start.")
-                wait = EC2InstanceWaitThread(None, "wait-%s" % str(vm), n, vm, deployer)
+                wait = deployer.NodeWaitThread(None, "wait-%s" % str(vm), n, vm, deployer)
                 wait.run2()
                 
         if not sequential:        
             log.debug("Waiting for instances to start.")
             mt_instancewait = MultiThread()
             for node, vm in node_vm.items():
-                mt_instancewait.add_thread(EC2InstanceWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
+                mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer))
             
             mt_instancewait.run()
             if not mt_instancewait.all_success():
@@ -330,8 +338,9 @@ class API(object):
         
         threads = {}
         for nodeset in order:
-            rest = dict([(n, EC2InstanceConfigureThread(mt_configure, 
-                            "configure-%s" % n.node_id, 
+            rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
+                            "configure-%s" % n.id, 
+                            d,
                             n, 
                             node_vm[n], 
                             deployer, 
