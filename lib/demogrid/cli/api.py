@@ -195,8 +195,8 @@ class demogrid_list_instances(Command):
             t = i.topology
             print "%s\t%s" % (i.id, Topology.state_str[t.state])
             if self.opt.verbose:
-                for node in t.get_nodes():
-                    print "\t%s\t%s\t%s" % (node.node_id, node.hostname, node.ip)
+                for domain, node in t.get_nodes():
+                    print "\t%s\t%s\t%s" % (node.id, node.hostname, node.ip)
                     if self.opt.debug:
                         print "\t%s" % node.deploy_data
 

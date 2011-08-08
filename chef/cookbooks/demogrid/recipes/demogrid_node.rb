@@ -23,6 +23,9 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+demogrid_domain = node[:topology][:domains][node[:domain_id]]
+demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
+
 # Copy the hosts file
 cookbook_file "/etc/hosts" do
   source "hosts"
@@ -36,5 +39,5 @@ file "/etc/profile.d/demogrid" do
   mode 0644
   owner "root"
   group "root"
-  content "export MYPROXY_SERVER=#{node[:myproxy]}"
+  content "export MYPROXY_SERVER=#{demogrid_domain[:myproxy_server]}"
 end

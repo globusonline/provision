@@ -67,21 +67,17 @@ class API(object):
           
         log.info("Instances are running.")
 
-        for node, vm in node_vm.items():
-            deployer.post_allocate(node, vm)
+        for (domain, node), vm in node_vm.items():
+            deployer.post_allocate(domain, node, vm)
 
         # Generate certificates
         if not resuming:
             inst.gen_certificates(force_hosts=False, force_users=False)
         else:
-            inst.gen_certificates(force_hosts=True, force_users=False)
-
-        for n in nodes:
-            n.gen_chef_attrs()        
+            inst.gen_certificates(force_hosts=True, force_users=False)    
         
-        inst.topology.gen_ruby_file(inst.instance_dir + "/topology.rb")
-        inst.topology.gen_hosts_file(inst.instance_dir + "/hosts") 
-        inst.topology.gen_csv_file(inst.instance_dir + "/topology.csv")                
+        inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
+        inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
 
         inst.topology.save()
 
@@ -300,13 +296,13 @@ class API(object):
         else:
             log.info("Resuming %i VMs" % len(nodes))
         node_vm = {}
-        for n in nodes:
+        for (domain, n) in nodes:
             try:
                 if not resuming:
                     vm = deployer.allocate_vm(n)
                 else:
                     vm = deployer.resume_vm(n)
-                node_vm[n] = vm
+                node_vm[(domain, n)] = vm
             except Exception:
                 message = self.__unexpected_exception_to_text()
                 return (False, message, None)
@@ -333,8 +329,8 @@ class API(object):
     def __configure_vms(self, deployer, node_vm, basic = True, chef = True):
         nodes = node_vm.keys()
         mt_configure = MultiThread()
-
-        order = Node.get_launch_order(nodes)
+        topology = deployer.instance.topology
+        order = topology.get_launch_order(nodes)
         
         threads = {}
         for nodeset in order:
@@ -342,11 +338,11 @@ class API(object):
                             "configure-%s" % n.id, 
                             d,
                             n, 
-                            node_vm[n], 
+                            node_vm[(d,n)], 
                             deployer, 
-                            depends=threads.get(n.depends),
+                            depends=threads.get(topology.get_depends(n)),
                             basic = basic,
-                            chef = chef)) for n in nodeset])
+                            chef = chef)) for d, n in nodeset])
             threads.update(rest)
         
         for thread in threads.values():

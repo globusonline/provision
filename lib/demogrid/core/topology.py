@@ -1,17 +1,7 @@
-'''
-Created on Dec 7, 2010
-
-@author: borja
-'''
-from cPickle import dump, load, HIGHEST_PROTOCOL
-from copy import deepcopy
-import json
-
-import demogrid.common.constants as constants
-from demogrid.common import DemoGridException
-
-class Topology(object):    
+from demogrid.common.persistence import PersistentObject, PropertyTypes,\
+    Property
     
+class Topology(PersistentObject):
     STATE_NEW = 1
     STATE_STARTING = 2
     STATE_RUNNING = 3
@@ -29,108 +19,21 @@ class Topology(object):
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
                  STATE_TERMINATING : "Terminating",
-                 STATE_TERMINATED : "Terminated"}    
+                 STATE_TERMINATED : "Terminated"}        
     
-    def __init__(self):
-        self.global_attributes = {}
-        self.global_nodes = []
-        self.domains = {}
-        self.default_deploy_data = {}
-        self.pickledfile = None
-        self.state = Topology.STATE_NEW
-        
-    def add_domain(self, domain):
-        self.domains[domain.name] = domain
-
-    def add_domain_node(self, domain, node):
-        domain.nodes.append(node)
-
-    def add_global_node(self, node):
-        self.global_nodes.append(node)
-        
     def get_nodes(self):
-        nodes = self.global_nodes[:]
-        for domain in self.domains.values():
-            nodes += domain.get_nodes()
-        return nodes
-
-    def remove_nodes(self, nodes):
-        for n in nodes:
-            if n in self.global_nodes:
-                self.global_nodes.remove(n)
-            
-            for domain in self.domains.values():
-                if n in domain.nodes:
-                    domain.nodes.remove(n)
-    
-    def get_node_by_id(self, node_id):
-        nodes = self.get_nodes()
-        node = [n for n in nodes if n.node_id == node_id]
-        if len(node) == 1:
-            return node[0]
-        else:
-            return None
+        nodes = []
+        for domain in self.domains:
+            nodes += [(domain, n) for n in domain.get_nodes()]
+        return nodes    
     
     def get_users(self):
         users = []
-        for domain in self.domains.values():
+        for domain in self.domains:
             users += domain.get_users()
         return users    
     
-    def gen_ruby_file(self, file):
-        topology = ""
-
-        for k,v in self.global_attributes.items():
-            topology += "node.normal[:%s] = %s\n" % (k,v)
-            
-        topology += "\n"
-      
-        nodes = self.get_nodes()
-        for n in nodes:
-            topology += "if node[:node_id] == \"%s\"\n" % n.node_id
-            for k,v in n.chef_attrs.items():
-                topology += "  node.normal[:%s] = %s\n" % (k,v)
-            topology += "end\n\n"            
-
-        for domain in self.domains.values():
-            topology += "default[:domains][\"%s\"][:users] = [\n" % domain.name
-            for u in domain.users:
-                topology += "{ :login       => \"%s\",\n" % u.login
-                topology += "  :description => \"%s\",\n" % u.description
-                topology += "  :password_hash => \"%s\",\n" % u.password_hash
-                if u.admin:
-                    topology += "  :admin => true,\n"
-                else:
-                    topology += "  :admin => false,\n"
-
-                if u.ssh_pkey != None:
-                    topology += "  :ssh_pkey => \"%s\",\n" % u.ssh_pkey
-                    
-                if u.cert_type != None:
-                    if u.cert_type == "external":
-                        topology += "  :gridenabled => true}"
-                    else:
-                        topology += "  :gridenabled => true,\n"
-                        if u.cert_type == "generated":
-                            topology += "  :auth_type   => :certs}"
-                        elif u.cert_type == "myproxy":
-                            topology += "  :auth_type   => :myproxy}"
-                else:
-                    topology += "  :gridenabled => false}"
-                topology += ",\n"
-            topology += "]\n"
-
-            topology += "default[:domains][\"%s\"][:gridmap] = [\n" % domain.name
-            for (dn,login) in domain.gridmap.items():
-                topology += "{ :dn    => \"%s\",\n" % dn
-                topology += "  :login => \"%s\"},\n" % login
-            topology += "]\n"
-
-        topologyfile = open(file, "w")
-        topologyfile.write(topology)
-        topologyfile.close()      
-        
-    def gen_hosts_file(self, filename, extra_entries = []):
+    def gen_hosts_file(self, filename):
         hosts = """127.0.0.1    localhost
 
 # The following lines are desirable for IPv6 capable hosts
@@ -142,229 +45,349 @@ ff02::2 ip6-allrouters
 ff02::3 ip6-allhosts
 
 """
-        for ip, hostname in extra_entries:
-            hosts += "%s %s %s\n" % (ip, hostname, hostname.split(".")[0])
         
-        nodes = self.get_nodes()
+        nodes = [n for d,n in self.get_nodes()]
         for n in nodes:
             hosts += " ".join((n.ip, n.hostname, n.hostname.split(".")[0], "\n"))
         
         hostsfile = open(filename, "w")
         hostsfile.write(hosts)
-        hostsfile.close()        
+        hostsfile.close()         
         
-    def gen_csv_file(self, filename):
-        attr_names = set()
-        #deploy_data = set()
-        nodes = self.get_nodes()
+    def gen_chef_ruby_file(self, filename):
         
-        for n in nodes:
-            attr_names.update(n.chef_attrs.keys())
-            #deploy_data.update(n.deploy_data.keys())
-            
-        attr_names = list(attr_names)
-        #deploy_data = list(deploy_data)
-#        csv = "org,hostname,run_list,ip," + ",".join(attr_names+deploy_data) +"\n"
-        csv = "org,hostname,run_list,ip," + ",".join(attr_names) +"\n"
-        
-        for n in nodes:
-            if n.domain:
-                domainname = n.domain.name
+        def gen_topology_line(server_name, domain_id, recipes):
+            server = domain.find_with_recipes(recipes)
+            if len(server) > 0:
+                server_node = server[0]
+                if len(server) > 1:
+                    # TODO: Print a warning saying more than one NFS server has been found
+                    pass
+                return "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
             else:
-                domainname = ""
-            fields = [domainname, n.hostname, ";".join(n.run_list), n.ip]
-            for name in attr_names:
-                fields.append(n.chef_attrs.get(name,""))
-            #for name in deploy_data:    
-            #    fields.append(n.deploy_data.get(name,""))
-            csv += ",".join(fields) + "\n"
-            
-        csvfile = open(filename, "w")
-        csvfile.write(csv)
-        csvfile.close()                
+                return ""                              
         
-    def save(self, filename = None):
-        if self.pickledfile == None and filename == None:
-            raise DemoGridException("Don't know where to save this topology")
-        if filename != None:
-            self.pickledfile = filename
-        f = open (self.pickledfile, "w")
-        dump(self, f, protocol = HIGHEST_PROTOCOL)
-        f.close()
-        
-    # TODO: Just updating the users for now. Need to turn this
-    # into an exhaustive update that diffs the two topologies and
-    # determines what changes have been made (including hosts, etc.)
-    def update(self, new_topology):
+        topology = "default[:topology] = %s\n" % self.to_ruby_hash_string(indexable_array_as_dicts=True)
+
         for domain in self.domains:
-            self.domains[domain].users = new_topology.domains[domain].users
+            topology += gen_topology_line("nfs_server", domain.id, ["recipe[demogrid::nfs_server]", "role[domain-nfsnis]"])
+            topology += gen_topology_line("nis_server", domain.id, ["recipe[demogrid::nis_server]", "role[domain-nfsnis]"])
+            topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
+            topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]"])
         
-    def bind_to_example(self):
-        global_node_num = 1
-        for node in self.global_nodes:
-            node.ip = self.__gen_example_IP(constants.EXAMPLE_GLOBAL_SUBNET, global_node_num)
-            node.hostname = self.__gen_example_hostname(node.node_id)
-            global_node_num += 1
-            
-        domain_subnet = constants.EXAMPLE_DOMAIN_SUBNET_START
-        for domain in self.domains.values():
-            domain_node_num = 1
-            domain.subnet = self.__gen_example_IP(domain_subnet, 0)
-            for node in domain.nodes:
-                node.ip = self.__gen_example_IP(domain_subnet, domain_node_num)
-                node.hostname = self.__gen_example_hostname(node.node_id)
-                domain_node_num += 1            
-                
-            domain_subnet += 1
-            
-        for n in self.get_nodes():
-            n.gen_chef_attrs()
-                 
-
-    @classmethod
-    def from_json(cls, jsonstr):
-        topology = cls()
-        
-        topology_json = json.loads(jsonstr)
-        
-        if topology_json.has_key("default_deploy_data"):
-            topology.default_deploy_data.update(deepcopy(topology_json["default_deploy_data"]))
-
-        for domain in topology_json["domains"]:
-            domain_obj = Domain(domain["name"])
-            topology.add_domain(domain_obj)
-            
-            for node in domain["nodes"]:
-                node_obj = Node.from_json(node, domain_obj, topology.default_deploy_data)
-                topology.add_domain_node(domain_obj, node_obj)
-
-            for node in domain_obj.nodes:
-                if node.depends != None:
-                    depends_node = topology.get_node_by_id(node.depends[5:])
-                    node.depends = depends_node                    
-
-            for user in domain["users"]:
-                user_obj = User.from_json(user) 
-                domain_obj.add_user(user_obj)
-
-            for g in domain["gridmap"]:
-                domain_obj.gridmap[g["dn"]] = g["login"]
-                
-            for s in constants.DOMAIN_SERVERS:
-                if domain.has_key(s):
-                    if domain[s].startswith("node:"):
-                        node = topology.get_node_by_id(domain[s][5:])
-                        domain_obj.servers[s] = node
+        topologyfile = open(filename, "w")
+        topologyfile.write(topology)
+        topologyfile.close()        
     
-        return topology
-
-   
-    def __gen_example_IP(self, subnet, host):
-        return "%s.%i.%i" % (constants.EXAMPLE_SUBNET, subnet, host)
-    
-    def __gen_example_hostname(self, name):
-        return "%s.%s" % (name, constants.EXAMPLE_DOMAIN)
-   
-class Domain(object):    
-    def __init__(self, name):
-        self.name = name
-        self.subnet = None
-        self.nodes = []
-        self.users = []
-        self.servers = {}
-        self.gridmap = {}
-
-    def add_node(self, node):
-        self.nodes.append(node)
+    def get_depends(self, node):
+        if not hasattr(node, "depends"):
+            return None
+        else:
+            return self.get_node_by_id(node.depends[5:])
         
-    def get_nodes(self):
-        return self.nodes[:]
-        
-    def add_user(self, user):
-        self.users.append(user)   
-        
-    def get_users(self):
-        return self.users
-    
-    def has_server(self, s):
-        return self.servers.has_key(s)
-    
-    def get_server(self, s):
-        return self.servers.get(s)
-    
-class Node(object):
-    def __init__(self, node_id, domain = None):
-        self.node_id = node_id
-        self.domain = domain
-        self.run_list = None
-        self.depends = None
-        self.ip = None
-        self.hostname = None
-        self.chef_attrs = {}
-        self.deploy_data = {}
-        
-    def gen_chef_attrs(self):
-        self.chef_attrs["demogrid_hostname"] = "\"%s\"" % self.hostname
-        self.chef_attrs["node_id"] = "\"%s\"" % self.node_id
-        self.chef_attrs["run_list"] = "[ %s ]" % ",".join("\"%s\"" % r for r in self.run_list)
-        if self.domain != None:
-            self.chef_attrs["demogrid_domain"] = "\"%s\"" % self.domain.name
-
-            if self.domain.has_server(constants.DOMAIN_NIS_SERVER):
-                self.chef_attrs["nis_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NIS_SERVER).ip               
-
-            if self.domain.has_server(constants.DOMAIN_NFS_SERVER):
-                self.chef_attrs["nfs_server"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_NFS_SERVER).ip               
-
-            if self.domain.has_server(constants.DOMAIN_MYPROXY_SERVER):
-                self.chef_attrs["myproxy"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_MYPROXY_SERVER).hostname
-
-            if self.domain.has_server(constants.DOMAIN_LRMHEAD_SERVER):
-                self.chef_attrs["lrm_head"] = "\"%s\"" % self.domain.get_server(constants.DOMAIN_LRMHEAD_SERVER).hostname
-
-            if self.domain.subnet == None:
-                self.chef_attrs["subnet"] = "nil"
-            else:
-                self.chef_attrs["subnet"] = "\"%s\"" % self.domain.subnet
-        
-
-    @classmethod
-    def from_json(cls, json, domain_obj, default_deploy_data):
-        node = json
-        node_obj = cls(node["id"], domain = domain_obj)
-        node_obj.run_list = node.get("run_list")
-        node_obj.depends = node.get("depends")
-        
-        node_obj.deploy_data.update(deepcopy(default_deploy_data))                
-        
-        if node.has_key("deploy_data"):
-            for k,v in node["deploy_data"].items():
-                node_obj.deploy_data.setdefault(k,{}).update(v)
-                
-        return node_obj
-    
-    @staticmethod
-    def get_launch_order(nodes):
+    def get_launch_order(self, domain_nodes):
         order = []
-        parents = [n for n in nodes if n.depends == None or n.depends not in nodes]
-        threads = {}
+        nodes = [n for d,n in domain_nodes]
+        parents = [(d,n) for d, n in domain_nodes if self.get_depends(n) == None or self.get_depends(n) not in nodes]
         while len(parents) > 0:
             order.append(parents)
-            parents = [n for n in nodes if n.depends in parents]    
-        return order
+            parents_nodes = [n for d,n in parents]
+            parents = [(d,n) for d, n in domain_nodes if self.get_depends(n) in parents_nodes]   
+        print "FOOOOO %s" % order 
+        return order        
+    
+    def get_node_by_id(self, node_id):
+        nodes = self.get_nodes()
+        node = [n for d,n in nodes if n.id == node_id]
+        if len(node) == 1:
+            return node[0]
+        else:
+            return None    
         
+    def get_deploy_data(self, node, deployer, p_name):
+        if node.has_property("deploy_data") and node.deploy_data.has_property(deployer):
+            deploy_data = node.deploy_data.get_property(deployer)
+            if deploy_data.has_property(p_name):
+                return deploy_data.get_property(p_name)
         
-class User(object):
-    def __init__(self, login, description, password_hash, ssh_pkey = None, admin = False, cert_type=None):
-        self.login = login
-        self.description = description
-        self.password_hash = password_hash
-        self.ssh_pkey = ssh_pkey
-        self.admin = admin
-        self.cert_type = cert_type
-
-    @classmethod
-    def from_json(cls, json):
-        admin = (json.get("admin") in ("True", "true"))
+        # If node doesn't have requested deploy data, return default (if any)
+        if self.has_property("default_deploy_data") and self.default_deploy_data.has_property(deployer):
+            deploy_data = self.default_deploy_data.get_property(deployer)
+            if deploy_data.has_property(p_name):
+                return deploy_data.get_property(p_name)
             
-        return cls(json["login"], json.get("description", json["login"]), json["password_hash"], json.get("ssh_pkey"), admin, json.get("cert"))
+        return None
+        
+    
+    
+class Domain(PersistentObject):
+
+    def get_nodes(self):
+        return self.nodes[:]
+    
+    def get_users(self):
+        return self.users        
+    
+    def find_with_recipes(self, recipes):
+        nodes = []
+        for node in self.nodes:
+            for r in recipes:
+                if r in node.run_list:
+                    nodes.append(node)
+                    continue
+        return nodes
+
+class DeployData(PersistentObject):
+    pass
+
+class EC2DeployData(PersistentObject):
+    pass
+
+class Node(PersistentObject):
+    pass
+
+
+class User(PersistentObject):
+    pass
+
+class GridMapEntry(PersistentObject):
+    pass
+
+class GOEndpoint(PersistentObject):
+    pass
+
+Topology.properties = { 
+                       "id":
+                       Property(name="id",
+                                proptype = PropertyTypes.STRING,
+                                required = False,
+                                editable = False,
+                                description = """TODO"""),       
+                       "state":
+                       Property(name="state",
+                                proptype = PropertyTypes.INTEGER,
+                                required = False,
+                                editable = False,
+                                description = """TODO"""),                                                      
+                       "domains": 
+                       Property(name = "domains",
+                                proptype = PropertyTypes.ARRAY,
+                                items = Domain,
+                                indexable = True,
+                                required = True,
+                                description = """TODO"""),
+
+                       "default_deploy_data":
+                       Property(name = "default_deploy_data",
+                                proptype = DeployData,
+                                required = False,
+                                description = """TODO""")          
+                       }
+
+DeployData.properties = { "ec2":
+                            Property(name = "ec2",
+                                     proptype = EC2DeployData,
+                                     required = False,
+                                     editable = False,
+                                     description = """TODO""")          
+                       }
+
+EC2DeployData.properties = { 
+                            "instance_type":
+                                Property(name = "instance_type",
+                                         proptype = PropertyTypes.STRING,
+                                         required = False,
+                                         editable = False,
+                                         description = """TODO"""),
+                            "instance_id":
+                                Property(name = "instance_id",
+                                         proptype = PropertyTypes.STRING,
+                                         required = False,
+                                         editable = False,
+                                         description = """TODO"""),               
+                            "ami":
+                                Property(name = "ami",
+                                         proptype = PropertyTypes.STRING,
+                                         required = False,
+                                         editable = False,
+                                         description = """TODO""")
+                       }
+
+
+Domain.properties = {
+                     "id":
+                     Property(name="id",
+                              proptype = PropertyTypes.STRING,
+                              required = True,
+                              unique = True,
+                              description = """TODO"""),               
+                              
+                     "nodes":
+                     Property(name="nodes",
+                              proptype = PropertyTypes.ARRAY,
+                              items = Node,
+                              indexable = True,
+                              required = True,
+                              editable = True,
+                              description = """TODO"""),
+                              
+                     "go_endpoints":                    
+                     Property(name="go_endpoints",
+                              proptype = PropertyTypes.ARRAY,
+                              items = GOEndpoint,
+                              required = False,
+                              editable = True,
+                              description = """TODO"""),
+                                    
+                     "users": 
+                     Property(name="users",
+                              proptype = PropertyTypes.ARRAY,
+                              items = User,
+                              indexable = True,
+                              required = True,
+                              editable = True,
+                              description = """TODO"""),
+                            
+                     "gridmap":                                           
+                     Property(name="gridmap",
+                              proptype = PropertyTypes.ARRAY,
+                              items = GridMapEntry,
+                              required = False,
+                              editable = True,
+                              description = """TODO"""),
+                     }
+
+Node.properties = {
+                   "id":
+                   Property(name="id",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            unique = True,
+                            description = """TODO"""),
+                            
+                   "run_list":
+                   Property(name="run_list",
+                            proptype = PropertyTypes.ARRAY,
+                            items = PropertyTypes.STRING,
+                            required = True,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "depends":
+                   Property(name="depends",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "hostname":
+                   Property(name="hostname",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            description = """TODO"""),
+                            
+                   "ip":
+                   Property(name="ip",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            description = """TODO"""),
+                            
+                   "public_ip":
+                   Property(name="public_ip",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            description = """TODO"""),                            
+                            
+                   "deploy_data":
+                   Property(name = "deploy_data",
+                            proptype = DeployData,
+                            required = False,
+                            description = """TODO""")     
+                   }          
+
+
+User.properties = {
+                   "id":
+                   Property(name="id",                          
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """TODO"""),
+                            
+                   "description":
+                   Property(name="description",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "password_hash":
+                   Property(name="password_hash",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "ssh_pkey":
+                   Property(name="ssh_pkey",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "admin":
+                   Property(name="admin",
+                            proptype = PropertyTypes.BOOLEAN,
+                            required = False,
+                            editable = True,
+                            description = """TODO"""),
+                            
+                   "certificate":
+                   Property(name = "certificate",
+                            proptype = PropertyTypes.STRING,
+                            required = False,
+                            description = """TODO"""),           
+                   }            
+
+GridMapEntry.properties = {                   
+                           "dn": 
+                           Property(name="dn",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    description = """TODO"""),
+                                   
+                           "login":
+                           Property(name="login",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    editable = True,
+                                    description = """TODO"""),
+                           }       
+
+GOEndpoint.properties = {           
+                         
+                           "user":
+                           Property(name="user",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    description = """TODO"""),
+                           "name":
+                           Property(name="name",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    description = """TODO"""),
+                                   
+                           "gridftp":
+                           Property(name="gridftp",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    editable = True,
+                                    description = """TODO"""),
+                                   
+                           "myproxy":
+                           Property(name="myproxy",
+                                    proptype = PropertyTypes.STRING,
+                                    required = True,
+                                    editable = True,
+                                    description = """TODO""")                 
+                           
+                        }                                                                                                                 

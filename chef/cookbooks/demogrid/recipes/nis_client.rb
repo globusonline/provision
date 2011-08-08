@@ -23,13 +23,12 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
+demogrid_domain = node[:topology][:domains][node[:domain_id]]
+demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
 
 # The nis_server attribute is part of the generated topology.rb file,
 # and contains the IP of the domain's NFS/NIS server.
-server = node[:nis_server]
+server = demogrid_domain[:nis_server]
 
 
 # Packages we need

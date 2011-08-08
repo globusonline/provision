@@ -23,14 +23,10 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
+demogrid_domain = node[:topology][:domains][node[:domain_id]]
+demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
 
-# The subnet attribute is part of the generated topology.rb file,
-# and contains the domain's subnet IP address.
-subnet = node[:subnet]
-
+subnet = nil
 
 # Install the NFS server package
 package "nfs-kernel-server" do

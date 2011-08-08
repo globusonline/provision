@@ -14,7 +14,7 @@ class InstanceStore(object):
     def create_new_instance(self, topology_json, config_txt):
         created = False
         while not created:
-            inst_id = "xgi-" + hex(random.randint(1,2**32))[2:].rjust(8,"0")
+            inst_id = "xgi-" + hex(random.randint(1,2**31-1))[2:].rjust(8,"0")
             inst_dir = "%s/%s" % (self.instances_dir, inst_id)
             if not os.path.exists(inst_dir):
                 os.makedirs(inst_dir)
@@ -24,9 +24,10 @@ class InstanceStore(object):
         configf.write(config_txt)
         configf.close()
 
-        topology = Topology.from_json(topology_json)
-        topology.global_attributes["instance_id"] = "\"%s\"" % inst_id
-        topology.save("%s/topology.dat" % inst_dir)
+        topology = Topology.from_json_string(topology_json)
+        topology.set_property("id", inst_id)
+        topology.set_property("state", Topology.STATE_NEW)
+        topology.save("%s/topology.json" % inst_dir)
                                         
         inst = Instance(inst_id, inst_dir)
         
@@ -62,49 +63,19 @@ class Instance(object):
         self.config = DemoGridConfig("%s/demogrid.conf" % instance_dir)
         self.topology = self.__load_topology()
         
-        # Save certain configuration values in the topology
-        # (these will be needed by the recipes at deploy time;
-        # ideally, these should eventually be moved to the 
-        # topology file)
-        # We load them every time an Instance is opened, in
-        # case the configuration file has changed since the
-        # time the instance was created.
-        go_username = self.config.get("go-username")
-        self.topology.global_attributes["go_username"] = "\"%s\"" % go_username 
-        self.topology.save()
-        
     def __load_topology(self):
-        f = open ("%s/topology.dat" % self.instance_dir, "r")
-        topology = load(f)
+        topology_file = "%s/topology.json" % self.instance_dir
+        f = open (topology_file, "r")
+        json_string = f.read()
+        topology = Topology.from_json_string(json_string)
+        topology._json_file = topology_file
         f.close()   
         return topology     
 
     def update_topology(self, topology_json):
-        new_topology = Topology.from_json(topology_json)
+        new_topology = Topology.from_json_string(topology_json)
         self.topology.update(new_topology)
         self.topology.save("%s/topology.dat" % self.instance_dir)
-
-    def gen_hosts_file(self):
-        hosts = """127.0.0.1    localhost
-
-# The following lines are desirable for IPv6 capable hosts
-::1     localhost ip6-localhost ip6-loopback
-fe00::0 ip6-localnet
-ff00::0 ip6-mcastprefix
-ff02::1 ip6-allnodes
-ff02::2 ip6-allrouters
-ff02::3 ip6-allhosts
-
-"""
-        
-        nodes = self.topology.get_nodes()
-        for n in nodes:
-            hosts += " ".join((n.ip, n.hostname, n.hostname.split(".")[0], "\n"))
-        
-        hostsfile = open(self.generated_dir + "/hosts", "w")
-        hostsfile.write(hosts)
-        hostsfile.close()
-
 
     def gen_certificates(self, force_hosts = False, force_users = False, force_ca = False):
         certs_dir = self.instance_dir + self.CERTS_DIR
@@ -140,12 +111,12 @@ ff02::3 ip6-allhosts
                               key_file = ca_key_file, 
                               force = force_ca)
 
-        users = [u for u in self.topology.get_users() if u.cert_type=="generated"]
+        users = [u for u in self.topology.get_users() if u.certificate=="generated"]
         for user in users:        
-            cert, key = certg.gen_user_cert(cn = user.description) 
+            cert, key = certg.gen_user_cert(cn = user.id) 
             
-            cert_file = "%s/%s_cert.pem" % (certs_dir, user.login)
-            key_file = "%s/%s_key.pem" % (certs_dir, user.login)
+            cert_file = "%s/%s_cert.pem" % (certs_dir, user.id)
+            key_file = "%s/%s_key.pem" % (certs_dir, user.id)
             cert_files.append(cert_file)
             cert_files.append(key_file)    
             certg.save_certificate(cert = cert,
@@ -154,11 +125,11 @@ ff02::3 ip6-allhosts
                                     key_file = key_file, 
                                     force = force_users)
         
-        nodes = self.topology.get_nodes()
+        nodes = [n for d,n in self.topology.get_nodes()]
         for n in nodes:
             cert, key = certg.gen_host_cert(hostname = n.hostname) 
             
-            filename = n.node_id
+            filename = n.id
             
             cert_file = "%s/%s_cert.pem" % (certs_dir, filename)
             key_file = "%s/%s_key.pem" % (certs_dir, filename)

@@ -23,13 +23,8 @@
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
-
-# The domain attribute is part of the generated topology.rb file,
-# and contains the name of the domain this node belongs to.
-domain = node[:demogrid_domain]
+demogrid_domain = node[:topology][:domains][node[:domain_id]]
+demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
 
 # Create grid-security directory.
 directory "/etc/grid-security" do
@@ -51,7 +46,7 @@ end
 # Note: Will be regenerated from scratch on subsequent runs of Chef.
 # TODO: Read in existing gridmap, and merge it with provided one (shouldn't be hard
 # to do, but not necessary right now)
-gridmap = node[:domains][domain][:gridmap]
+gridmap = demogrid_domain[:gridmap].to_hash
 template "/etc/grid-security/grid-mapfile" do
   source "gridmap.erb"
   mode 0644
