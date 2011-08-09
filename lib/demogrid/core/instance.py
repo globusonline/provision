@@ -7,6 +7,7 @@ from demogrid.core.config import DemoGridConfig
 from demogrid.core.topology import Topology
 from demogrid.common.certs import CertificateGenerator
 from demogrid.common.config import ConfigException
+from demogrid.common.persistence import ObjectValidationException
 
 class InstanceException(Exception):
     pass
@@ -81,17 +82,42 @@ class Instance(object):
         return topology     
 
     def update_topology(self, topology_json):
-        topology_file = "%s/topology.json" % self.instance_dir        
-        new_topology = Topology.from_json_string(topology_json)
-        new_topology._json_file = topology_file
+        try:
+            topology_file = "%s/topology.json" % self.instance_dir        
+            new_topology = Topology.from_json_string(topology_json)
+            new_topology._json_file = topology_file
+        except ObjectValidationException, ove:
+            message = "Error in topology file: %s" % ove 
+            return (False, message, [], [])
         
-        # TODO: Validate that update is allowed
-        # TODO: Determine hosts to add/remove
+        try:
+            topology_changes = self.topology.validate_update(new_topology)
+        except ObjectValidationException, ove:
+            message = "Could not update topology: %s" % ove 
+            return (False, message, [], [])
+
+        add_hosts = []
+        remove_hosts = []
+
+        if topology_changes.changes.has_key("domains"):
+            for domain in topology_changes.changes["domains"].add:
+                d = [x for x in new_topology.domains if x.id == domain][0]
+                add_hosts += [n.id for n in d.nodes] 
+
+            for domain in topology_changes.changes["domains"].remove:
+                d = [x for x in self.topology.domains if x.id == domain][0]
+                remove_hosts += [n.id for n in d.nodes] 
+            
+            for domain in topology_changes.changes["domains"].edit:
+                if topology_changes.changes["domains"].edit[domain].changes.has_key("nodes"):
+                    nodes_changes = topology_changes.changes["domains"].edit[domain].changes["nodes"]
+                    add_hosts += nodes_changes.add
+                    remove_hosts += nodes_changes.remove
 
         self.topology = new_topology
         self.topology.save()
         
-        return (True, "Success", [], [])
+        return (True, "Success", add_hosts, remove_hosts)
 
     def gen_certificates(self, force_hosts = False, force_users = False, force_ca = False):
         certs_dir = self.instance_dir + self.CERTS_DIR
