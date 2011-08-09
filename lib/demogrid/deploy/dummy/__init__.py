@@ -48,7 +48,7 @@ class Deployer(BaseDeployer):
             WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
                         
         def wait(self):
-            log.info("Dummy node is running.")
+            log.info("Waiting for state %s" % Node.state_str[self.state])
             
     class NodeConfigureThread(ConfigureThread):
         def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
