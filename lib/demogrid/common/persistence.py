@@ -2,6 +2,10 @@ from demogrid.common.utils import enum
 
 import json
 
+class ObjectValidationException(Exception):
+    """A simple exception class used for validation exceptions"""
+    pass
+
 PropertyTypes = enum("STRING",
                      "INTEGER",
                      "NUMBER",
@@ -116,13 +120,13 @@ class PersistentObject(object):
                             elem_obj = elem.to_json_dict()
                             value.append(elem_obj)
                         elif property.items in (PropertyTypes.ARRAY):
-                            raise Exception("ARRAYs of ARRAYs not supported.")                            
+                            raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                         elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                            raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                            raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 elif issubclass(property.type, PersistentObject):
                     value = getattr(self, name).to_json_dict()              
                 elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                    raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                    raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 json[name] = value
                 
         return json
@@ -173,16 +177,16 @@ class PersistentObject(object):
                         elif issubclass(property.items, PersistentObject):
                             items.append( elem.to_ruby_hash_string(indexable_array_as_dicts) )
                         elif property.items in (PropertyTypes.ARRAY):
-                            raise Exception("ARRAYs of ARRAYs not supported.")                            
+                            raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                         elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                            raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                            raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
 
                     value_str += ", ".join(items)
                     value_str += "]"
                 elif issubclass(property.type, PersistentObject):
                     value_str = value.to_ruby_hash_string(indexable_array_as_dicts) 
                 elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                    raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                    raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 obj_items[name] = value_str        
 
         hash_str += ", ".join([" :%s => %s" % (k,v) for k,v in obj_items.items()])
@@ -193,14 +197,17 @@ class PersistentObject(object):
 
     @classmethod
     def from_json_string(cls, json_string):
-        return cls.from_json_dict(json.loads(json_string))
-
+        try:
+            json_dict = json.loads(json_string)
+            return cls.from_json_dict(json_dict)
+        except ValueError, ve:
+            raise ObjectValidationException("Error parsing JSON. %s" % ve)
 
     @classmethod
     def from_json_dict(cls, obj_dict):
         obj = cls()
         if not isinstance(obj_dict, dict):
-            raise Exception("JSON provided for %s is not a dictionary" % cls.__name__)
+            raise ObjectValidationException("JSON provided for %s is not a dictionary" % cls.__name__)
         
         given_names = set(obj_dict.keys())
         required_names = set([p.name for p in cls.properties.values() if p.required])
@@ -209,17 +216,17 @@ class PersistentObject(object):
         # Check whether required fields are present
         missing = required_names - given_names
         if len(missing) > 0:
-            raise Exception("JSON provided for %s is missing required properties: %s" % (cls.__name__, ", ".join(missing)))
+            raise ObjectValidationException("JSON provided for %s is missing required properties: %s" % (cls.__name__, ", ".join(missing)))
         
         # Check whether there are any unexpected fields
         unexpected = given_names - valid_names
         if len(unexpected) > 0:
-            raise Exception("Encountered unexpected properties in JSON provided for %s: %s" % (cls.__name__, ", ".join(unexpected)))
+            raise ObjectValidationException("Encountered unexpected properties in JSON provided for %s: %s" % (cls.__name__, ", ".join(unexpected)))
         
         for p_name, p_value in obj_dict.items():
             property = cls.properties[p_name]
             if not validate_property_type(p_value, property.type, property.items):
-                raise Exception("'%s' is not a valid value for %s.%s. Expected a %s." % (p_value, cls.__name__, p_name, pt_to_str(property.type, property.items)))
+                raise ObjectValidationException("'%s' is not a valid value for %s.%s. Expected a %s." % (p_value, cls.__name__, p_name, pt_to_str(property.type, property.items)))
             else:
                 if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
                     setattr(obj, p_name, p_value)
@@ -232,14 +239,14 @@ class PersistentObject(object):
                             elem_obj = property.items.from_json_dict(elem)
                             l.append(elem_obj)
                         elif property.items in (PropertyTypes.ARRAY):
-                            raise Exception("ARRAYs of ARRAYs not supported.")                            
+                            raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                         elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                            raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                            raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                     obj.set_property(p_name, l)
                 elif issubclass(property.type, PersistentObject):
                     p_value_obj = property.type.from_json_dict(p_value)
                     obj.set_property(p_name, p_value_obj)               
                 elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                    raise Exception("Arbitrary types (OBJECT, ANY) not supported.")
+                    raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 
         return obj

@@ -4,28 +4,38 @@ from demogrid.common.persistence import PersistentObject, PropertyTypes,\
 class Topology(PersistentObject):
     STATE_NEW = 1
     STATE_STARTING = 2
-    STATE_RUNNING = 3
-    STATE_STOPPING = 4
-    STATE_STOPPED = 5
-    STATE_RESUMING = 6
-    STATE_TERMINATING = 7
-    STATE_TERMINATED = 8
+    STATE_CONFIGURING = 3
+    STATE_RUNNING = 4
+    STATE_STOPPING = 5
+    STATE_STOPPED = 6
+    STATE_RESUMING = 7
+    STATE_TERMINATING = 8
+    STATE_TERMINATED = 9
+    STATE_FAILED = 10
     
     # String representation of states
     state_str = {STATE_NEW : "New",
                  STATE_STARTING : "Starting",
+                 STATE_CONFIGURING : "Configuring",
                  STATE_RUNNING : "Running",
                  STATE_STOPPING : "Stopping",
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
                  STATE_TERMINATING : "Terminating",
-                 STATE_TERMINATED : "Terminated"}        
+                 STATE_TERMINATED : "Terminated",
+                 STATE_FAILED : "Failed"}        
     
     def get_nodes(self):
         nodes = []
         for domain in self.domains:
-            nodes += [(domain, n) for n in domain.get_nodes()]
+            nodes += [n for n in domain.get_nodes()]
         return nodes    
+    
+    def get_domain_nodes(self):
+        nodes = []
+        for domain in self.domains:
+            nodes += [(domain, n) for n in domain.get_nodes()]
+        return nodes        
     
     def get_users(self):
         users = []
@@ -46,7 +56,7 @@ ff02::3 ip6-allhosts
 
 """
         
-        nodes = [n for d,n in self.get_nodes()]
+        nodes = self.get_nodes()
         for n in nodes:
             hosts += " ".join((n.ip, n.hostname, n.hostname.split(".")[0], "\n"))
         
@@ -93,12 +103,11 @@ ff02::3 ip6-allhosts
             order.append(parents)
             parents_nodes = [n for d,n in parents]
             parents = [(d,n) for d, n in domain_nodes if self.get_depends(n) in parents_nodes]   
-        print "FOOOOO %s" % order 
         return order        
     
     def get_node_by_id(self, node_id):
         nodes = self.get_nodes()
-        node = [n for d,n in nodes if n.id == node_id]
+        node = [n for n in nodes if n.id == node_id]
         if len(node) == 1:
             return node[0]
         else:
@@ -144,7 +153,28 @@ class EC2DeployData(PersistentObject):
     pass
 
 class Node(PersistentObject):
-    pass
+    STATE_STARTING = 1
+    STATE_RUNNING_UNCONFIGURED = 2
+    STATE_CONFIGURING = 3
+    STATE_RUNNING = 4
+    STATE_STOPPING = 5
+    STATE_STOPPED = 6
+    STATE_RESUMING = 7
+    STATE_TERMINATING = 8
+    STATE_TERMINATED = 9
+    STATE_FAILED = 10
+    
+    # String representation of states
+    state_str = {STATE_STARTING : "Starting",
+                 STATE_RUNNING_UNCONFIGURED : "Running (unconfigured)",
+                 STATE_CONFIGURING : "Configuring",
+                 STATE_RUNNING : "Running",
+                 STATE_STOPPING : "Stopping",
+                 STATE_STOPPED : "Stopped",
+                 STATE_RESUMING : "Resuming",
+                 STATE_TERMINATING : "Terminating",
+                 STATE_TERMINATED : "Terminated",
+                 STATE_FAILED : "Failed"}   
 
 
 class User(PersistentObject):
@@ -264,7 +294,12 @@ Node.properties = {
                             required = True,
                             unique = True,
                             description = """TODO"""),
-                            
+                   "state":
+                   Property(name="state",
+                            proptype = PropertyTypes.INTEGER,
+                            required = False,
+                            editable = False,
+                            description = """TODO"""),                            
                    "run_list":
                    Property(name="run_list",
                             proptype = PropertyTypes.ARRAY,

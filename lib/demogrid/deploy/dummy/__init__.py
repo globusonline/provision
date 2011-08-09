@@ -1,7 +1,8 @@
 from demogrid.common.utils import DemoGridThread
 import sys
 from demogrid.common import log
-from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread
+from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
+from demogrid.core.topology import Node
 
 class DummyVM(VM):
     def __init__(self):
@@ -27,10 +28,10 @@ class Deployer(BaseDeployer):
         node.hostname = "%s.demogrid.example.org" % node.id
         node.ip = "1.2.3.4"
 
-    def get_node_vm(self, nodes):
+    def get_node_vm(self, domain_nodes):
         node_vm = {}
-        for n in nodes:
-            node_vm[n] = DummyVM()
+        for d,n in domain_nodes:
+            node_vm[d,n] = DummyVM()
         return node_vm
 
     def stop_vms(self, nodes):
@@ -42,12 +43,11 @@ class Deployer(BaseDeployer):
     def cleanup(self):
         log.info("Dummy cleanup is done.")        
             
-    class NodeWaitThread(DemoGridThread):
-        def __init__(self, multi, name, node, vm, deployer, depends = None):
-            DemoGridThread.__init__(self, multi, name, depends)
-            self.deployer = deployer
+    class NodeWaitThread(WaitThread):
+        def __init__(self, multi, name, node, vm, deployer, state, depends = None):
+            WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
                         
-        def run2(self):
+        def wait(self):
             log.info("Dummy node is running.")
             
     class NodeConfigureThread(ConfigureThread):
@@ -55,5 +55,12 @@ class Deployer(BaseDeployer):
             ConfigureThread.__init__(self, multi, name, domain, node, vm, deployer, depends, basic, chef)
             
         def run2(self):
+            topology = self.deployer.instance.topology
+            
+            self.node.state = Node.STATE_CONFIGURING
+            topology.save()
+    
+            self.node.state = Node.STATE_RUNNING
+            topology.save()            
             log.info("Dummy configure done")
             

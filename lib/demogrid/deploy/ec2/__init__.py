@@ -8,8 +8,8 @@ import sys
 import traceback
 from demogrid.common import log
 from demogrid.common.certs import CertificateGenerator
-from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread
-from demogrid.core.topology import DeployData, EC2DeployData
+from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
+from demogrid.core.topology import DeployData, EC2DeployData, Node
 
 class EC2VM(VM):
     def __init__(self, ec2_instance):
@@ -126,24 +126,24 @@ class Deployer(BaseDeployer):
             self.supports_create_tags = False
 
 
-    def get_node_vm(self, nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in nodes]
+    def get_node_vm(self, domain_nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
         reservations = self.conn.get_all_instances(ec2_instance_ids)
         node_vm = {}
         for r in reservations:
             instance = r.instances[0]
-            node = [n for n in nodes if n.deploy_data.ec2.instance_id==instance.id][0]
+            node = [(d,n) for d,n in domain_nodes if n.deploy_data.ec2.instance_id==instance.id][0]
             node_vm[node] = EC2VM(instance)
         return node_vm
 
-    def stop_vms(self, nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in nodes]
+    def stop_vms(self, domain_nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
         log.info("Stopping EC2 instances %s." % ", ".join(ec2_instance_ids))
         stopped = self.conn.stop_instances(ec2_instance_ids)
         log.info("Stopped EC2 instances %s." % ", ".join([i.id for i in stopped]))
 
-    def terminate_vms(self, nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in nodes]
+    def terminate_vms(self, domain_nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
         log.info("Terminating EC2 instances %s." % ", ".join(ec2_instance_ids))
         terminated = self.conn.terminate_instances(ec2_instance_ids)
         log.info("Terminated EC2 instances %s." % ", ".join([i.id for i in terminated]))
@@ -184,15 +184,21 @@ class Deployer(BaseDeployer):
                     print "Please make sure the following volumes have been deleted: " % [v.id for v in self.vols]
         
             
-    class NodeWaitThread(DemoGridThread):
+    class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, depends = None):
-            DemoGridThread.__init__(self, multi, name, depends)
+            WaitThread.__init__(self, multi, name, node, vm, deployer, depends)
             self.ec2_instance = vm.ec2_instance
             self.deployer = deployer
                         
-        def run2(self):
-            self.deployer.wait_state(self.ec2_instance, "running")
-            log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
+        def wait(self):
+            if self.state == Node.STATE_RUNNING_UNCONFIGURED:
+                self.deployer.wait_state(self.ec2_instance, "running")
+                log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
+            elif self.state == Node.STATE_STOPPED:
+                self.deployer.wait_state(self.ec2_instance, "stopped")
+            elif self.state == Node.STATE_TERMINATED:
+                self.deployer.wait_state(self.ec2_instance, "terminated")
+            
             
     class NodeConfigureThread(ConfigureThread):
         def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):

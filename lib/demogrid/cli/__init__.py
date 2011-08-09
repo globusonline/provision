@@ -1,6 +1,7 @@
 import subprocess
 from optparse import OptionParser
 import os
+import os.path
 import getpass
 from demogrid.common import defaults
 from demogrid.common import log
@@ -68,3 +69,17 @@ class Command(object):
             print "Error when running %s" % cmd
             exit(1)        
         return retcode
+    
+    def _check_exists_file(self, filename):
+        if not os.path.exists(filename):
+            print "File %s does not exist" % filename
+            exit(1)
+            
+    def _print_error(self, what, reason):
+        print " \033[1;31mERROR\033[0m: %s" % what
+        print "\033[1;37mReason\033[0m: %s" % reason
+        
+    def cleanup_after_kill(self):
+        print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
+        print "Please make sure you manually release all DemoGrid instances and volumes."        
+        

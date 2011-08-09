@@ -6,6 +6,10 @@ from demogrid.common import DemoGridException
 from demogrid.core.config import DemoGridConfig
 from demogrid.core.topology import Topology
 from demogrid.common.certs import CertificateGenerator
+from demogrid.common.config import ConfigException
+
+class InstanceException(Exception):
+    pass
 
 class InstanceStore(object):
     def __init__(self, instances_dir):
@@ -24,6 +28,10 @@ class InstanceStore(object):
         configf.write(config_txt)
         configf.close()
 
+        # We don't do anything with it. Just use it to raise an exception
+        # if there is anything wrong with the configuration file
+        DemoGridConfig("%s/demogrid.conf" % inst_dir)
+
         topology = Topology.from_json_string(topology_json)
         topology.set_property("id", inst_id)
         topology.set_property("state", Topology.STATE_NEW)
@@ -37,7 +45,7 @@ class InstanceStore(object):
         inst_dir = "%s/%s" % (self.instances_dir, inst_id)
 
         if not os.path.exists(inst_dir):
-            raise DemoGridException("Instance does not exist")
+            raise InstanceException("Instance %s does not exist" % inst_id)
         return Instance(inst_id, inst_dir)
 
     def get_instances(self):
@@ -73,9 +81,17 @@ class Instance(object):
         return topology     
 
     def update_topology(self, topology_json):
+        topology_file = "%s/topology.json" % self.instance_dir        
         new_topology = Topology.from_json_string(topology_json)
-        self.topology.update(new_topology)
-        self.topology.save("%s/topology.dat" % self.instance_dir)
+        new_topology._json_file = topology_file
+        
+        # TODO: Validate that update is allowed
+        # TODO: Determine hosts to add/remove
+
+        self.topology = new_topology
+        self.topology.save()
+        
+        return (True, "Success", [], [])
 
     def gen_certificates(self, force_hosts = False, force_users = False, force_ca = False):
         certs_dir = self.instance_dir + self.CERTS_DIR
@@ -125,7 +141,7 @@ class Instance(object):
                                     key_file = key_file, 
                                     force = force_users)
         
-        nodes = [n for d,n in self.topology.get_nodes()]
+        nodes = self.topology.get_nodes()
         for n in nodes:
             cert, key = certg.gen_host_cert(hostname = n.hostname) 
             

@@ -134,7 +134,7 @@ class DemoGridConfig(Config):
     #                                  #
     # ================================ #
 
-    go = Section("globusonline", required=True,
+    go = Section("globusonline", required=False,
                   doc = "Globus Online options.")
     go.options = \
     [       

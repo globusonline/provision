@@ -6,6 +6,7 @@ Created on Jun 17, 2011
 from demogrid.common.utils import DemoGridThread, SSH
 from demogrid.common import log
 import sys
+from demogrid.core.topology import Node
 
 class BaseDeployer(object):
     def __init__(self, demogrid_dir, no_cleanup = False, extra_files = [], run_cmds = []):
@@ -19,6 +20,22 @@ class VM(object):
     def __init__(self):
         pass
     
+class WaitThread(DemoGridThread):
+    def __init__(self, multi, name, node, vm, deployer, state, depends):
+        DemoGridThread.__init__(self, multi, name, depends)
+        self.node = node
+        self.vm = vm
+        self.deployer = deployer
+        self.state = state
+
+    def run2(self):
+        topology = self.deployer.instance.topology
+        
+        self.wait()
+        
+        self.node.state = self.state
+        topology.save()
+    
 class ConfigureThread(DemoGridThread):
     def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
         DemoGridThread.__init__(self, multi, name, depends)
@@ -31,6 +48,11 @@ class ConfigureThread(DemoGridThread):
         self.chef = chef
 
     def run2(self):
+        topology = self.deployer.instance.topology
+        
+        self.node.state = Node.STATE_CONFIGURING
+        topology.save()
+        
         ssh = self.connect()
         self.check_continue()
         self.pre_configure(ssh)
@@ -39,6 +61,9 @@ class ConfigureThread(DemoGridThread):
         self.check_continue()
         self.post_configure(ssh)
         self.check_continue()
+
+        self.node.state = Node.STATE_RUNNING
+        topology.save()
 
         
     def ssh_connect(self, username, hostname, keyfile):
