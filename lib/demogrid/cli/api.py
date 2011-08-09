@@ -12,7 +12,7 @@ from demogrid.cli import Command
 from demogrid.core.api import API
 from demogrid.common.utils import parse_extra_files_files, SIGINTWatcher
 import time
-from demogrid.core.topology import Topology, Node
+from demogrid.core.topology import Topology, Node, User
 
 
         
@@ -180,6 +180,8 @@ class demogrid_update_topology(Command):
                                   help = "Run commands after configuration")        
                 
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill) 
+                
         t_start = time.time()        
         self.parse_options()
 
@@ -248,12 +250,20 @@ class demogrid_terminate(Command):
         Command.__init__(self, argv)
                 
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill)        
+        
         self.parse_options()
         
         inst_id = self.args[1]
 
         api = API(self.dg_location, self.opt.dir)
-        api.terminate(inst_id)
+        status_code, message = api.instance_terminate(inst_id)
+        
+        if status_code == API.STATUS_SUCCESS:
+            print "Instance %s terminated" % inst_id
+        elif status_code == API.STATUS_FAIL:
+            self._print_error("Could not start instance.", message)
+            exit(1)  
 
 
 class demogrid_list_instances(Command):
@@ -284,9 +294,6 @@ class demogrid_list_instances(Command):
                         print "\t%s" % node.deploy_data
 
 
-# TODO: The following commands don't have corresponding API functions. They will simply
-# provide easier access to update_topology 
-
 class demogrid_add_user(Command):
     
     name = "demogrid-add-user"
@@ -294,13 +301,81 @@ class demogrid_add_user(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)    
 
+        self.optparser.add_option("-m", "--domain", 
+                                  action="store", type="string", dest="domain",
+                                  help = "Add user to this domain")  
+
+        self.optparser.add_option("-l", "--login", 
+                                  action="store", type="string", dest="login",
+                                  help = "User's UNIX login name")        
+
+        self.optparser.add_option("-p", "--password-hash", 
+                                  action="store", type="string", dest="passwd", 
+                                  default = "!",
+                                  help = "Password hash (default is disabled password)")
+        
+        self.optparser.add_option("-s", "--ssh-pubkey", 
+                                  action="store", type="string", dest="ssh", 
+                                  help = "User's public SSH key")        
+
+        self.optparser.add_option("-a", "--admin", 
+                                  action="store_true", dest="admin", 
+                                  help = "Give the user sudo privileges.")
+        
+        self.optparser.add_option("-c", "--certificate", 
+                                  action="store", type="string", dest="certificate", 
+                                  default = "generated",                                  
+                                  help = "Type of certificate (default is generate a certificate for the user)")   
+
                 
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill) 
+                
+        t_start = time.time()        
         self.parse_options()
-        
+                
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)   
+        api = API(self.dg_location, self.opt.dir)
+        (status_code, message, topology_json) = api.instance(inst_id)
+        
+        if status_code != API.STATUS_SUCCESS:
+            self._print_error("Could not access instance.", message)
+            exit(1) 
+        else:
+            t = Topology.from_json_string(topology_json)
+            
+            d = [x for x in t.domains if x.id == self.opt.domain]
+            
+            if len(d) == 0:
+                self._print_error("Could not add user", "Domain '%s' does not exist" % self.opt.domain)
+                exit(1) 
+            
+            domain = d[0]
+            
+            user = User()
+            user.set_property("id", self.opt.login)
+            user.set_property("password_hash", self.opt.passwd)
+            user.set_property("ssh_pkey", self.opt.ssh)
+            user.set_property("admin", self.opt.admin)
+            user.set_property("certificate", self.opt.certificate)
+
+            domain.users.append(user)
+            
+            topology_json = t.to_json_string()
+
+            status_code, message = api.instance_update(inst_id, topology_json, False, [], [])
+            
+            if status_code == API.STATUS_SUCCESS:
+                t_end = time.time()
+                
+                delta = t_end - t_start
+                minutes = int(delta / 60)
+                seconds = int(delta - (minutes * 60))
+                print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+            elif status_code == API.STATUS_FAIL:
+                self._print_error("Could not update topology.", message)
+                exit(1)
         
 class demogrid_add_host(Command):
     
@@ -309,13 +384,70 @@ class demogrid_add_host(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)
 
+        self.optparser.add_option("-m", "--domain", 
+                                  action="store", type="string", dest="domain",
+                                  help = "Add node to this domain")  
+
+        self.optparser.add_option("-n", "--id", 
+                                  action="store", type="string", dest="id",
+                                  help = "New node's ID")        
+
+        self.optparser.add_option("-p", "--depends", 
+                                  action="store", type="string", dest="depends", 
+                                  default = None,
+                                  help = "Node (if any) the new node depends on.")
+        
+        self.optparser.add_option("-r", "--run-list", 
+                                  action="store", type="string", dest="runlist", 
+                                  help = "Node's run list")     
                 
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill) 
+                
+        t_start = time.time()        
         self.parse_options()
-        
+                
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)    
+        api = API(self.dg_location, self.opt.dir)
+        (status_code, message, topology_json) = api.instance(inst_id)
+        
+        if status_code != API.STATUS_SUCCESS:
+            self._print_error("Could not access instance.", message)
+            exit(1) 
+        else:
+            t = Topology.from_json_string(topology_json)
+            
+            d = [x for x in t.domains if x.id == self.opt.domain]
+            
+            if len(d) == 0:
+                self._print_error("Could not add user", "Domain '%s' does not exist" % self.opt.domain)
+                exit(1) 
+            
+            domain = d[0]
+            
+            node = Node()
+            node.set_property("id", self.opt.id)
+            node.set_property("run_list", self.opt.runlist.split(","))
+            if self.opt.depends != None:
+                node.set_property("depends", "node:%s" % self.opt.depends)
+
+            domain.nodes.append(node)
+            
+            topology_json = t.to_json_string()
+
+            status_code, message = api.instance_update(inst_id, topology_json, False, [], [])
+            
+            if status_code == API.STATUS_SUCCESS:
+                t_end = time.time()
+                
+                delta = t_end - t_start
+                minutes = int(delta / 60)
+                seconds = int(delta - (minutes * 60))
+                print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+            elif status_code == API.STATUS_FAIL:
+                self._print_error("Could not update topology.", message)
+                exit(1) 
         
 
 class demogrid_remove_users(Command):

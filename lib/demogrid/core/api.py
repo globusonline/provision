@@ -150,6 +150,7 @@ class API(object):
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
     
+            old_topology = inst.topology
             try:
                 (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
             except ObjectValidationException, ove:
@@ -161,9 +162,39 @@ class API(object):
             deployer.set_instance(inst)            
 
             domain_nodes = inst.topology.get_domain_nodes()
-    
-            # TODO: Destroy hosts removed from the topology
-            # TODO: Allocate new nodes        
+
+            if len(destroy_hosts) > 0:
+                old_domain_nodes = old_topology.get_domain_nodes()
+                log.info("Terminating hosts %s" % destroy_hosts)   
+                old_domain_nodes = [(d,n) for d, n in old_domain_nodes if n.id in destroy_hosts]
+                (success, message) = self.__terminate_vms(deployer, old_domain_nodes)
+                
+                if not success:
+                    deployer.cleanup()
+                    inst.topology.state = Topology.STATE_FAILED
+                    inst.topology.save()
+                    return (API.STATUS_FAIL, message)       
+                
+                inst.topology.save()         
+                  
+            if len(create_hosts) > 0:
+                domain_nodes = inst.topology.get_domain_nodes()
+                log.info("Allocating VMs for hosts %s" % create_hosts)   
+                new_domain_nodes = [(d,n) for d, n in domain_nodes if n.id in create_hosts]
+                (success, message, node_vm) = self.__allocate_vms(deployer, new_domain_nodes, resuming = False)
+        
+                if not success:
+                    deployer.cleanup()
+                    inst.topology.state = Topology.STATE_FAILED
+                    inst.topology.save()
+                    return (API.STATUS_FAIL, message)
+            
+                inst.topology.save()
+                
+                for (domain, node), vm in node_vm.items():
+                    deployer.post_allocate(domain, node, vm)
+
+                inst.topology.save()
 
             # Generate certificates
             inst.gen_certificates()
@@ -173,7 +204,16 @@ class API(object):
 
             log.info("Setting up DemoGrid on instances")        
             
-            # TODO: Reconfigure nodes
+            # Right now we reconfigure all nodes. It shouldn't be hard to follow
+            # the dependency tree to make sure only the new nodes and "ancestor"
+            # nodes are updated
+            node_vm = deployer.get_node_vm(domain_nodes)
+            (success, message) = self.__configure_vms(deployer, node_vm)
+            if not success:
+                deployer.cleanup()
+                inst.topology.state = Topology.STATE_FAILED
+                inst.topology.save()
+                return (API.STATUS_FAIL, message)
     
             inst.topology.state = Topology.STATE_RUNNING
             inst.topology.save()
@@ -208,9 +248,9 @@ class API(object):
             deployer = deployer_class(self.demogrid_dir)
             deployer.set_instance(inst)    
             
-            nodes = inst.topology.get_domain_nodes()            
+            domain_nodes = inst.topology.get_domain_nodes()            
     
-            (success, message) = self.__stop_vms(deployer, nodes)
+            (success, message) = self.__stop_vms(deployer, domain_nodes)
             
             if not success:
                 deployer.cleanup()
@@ -235,84 +275,47 @@ class API(object):
 
 
     def instance_terminate(self, inst_id):
-        SIGINTWatcher(self.cleanup_after_kill)
+        (success, message, inst) = self.__get_instance(inst_id)
         
-        istore = InstanceStore(self.instances_dir)
+        if not success:
+            return (API.STATUS_FAIL, message)
         
-        inst = istore.get_instance(inst_id)
-        inst.topology.state = Topology.STATE_TERMINATING
-        inst.topology.save()
+        try:
+            if inst.topology.state in [Topology.STATE_NEW]:
+                message = "Cannot terminate an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
+                return (API.STATUS_FAIL, message)
         
-        deployer_class = self.__get_deployer_class(inst)
+            inst.topology.state = Topology.STATE_TERMINATING
+            inst.topology.save()
+            
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class(self.demogrid_dir)
+            deployer.set_instance(inst)    
+            
+            domain_nodes = inst.topology.get_domain_nodes()            
+    
+            (success, message) = self.__terminate_vms(deployer, domain_nodes)
+            
+            if not success:
+                deployer.cleanup()
+                inst.topology.state = Topology.STATE_FAILED
+                inst.topology.save()
+                return (API.STATUS_FAIL, message)            
         
-        deployer = deployer_class(self.demogrid_dir)
-        deployer.set_instance(inst)    
-        
-        nodes = inst.topology.get_nodes()
-
-        deployer.terminate_vms(nodes)
-          
-        inst.topology.state = Topology.STATE_TERMINATED
-        inst.topology.save()
-        
-    def add_hosts(self, inst_id, hosts_json, no_cleanup, extra_files):
-        SIGINTWatcher(self.cleanup_after_kill)
-        
-        istore = InstanceStore(self.instances_dir)
-        
-        inst = istore.get_instance(inst_id)
-        topology = inst.topology
-
-        deployer_class = self.__get_deployer_class(inst)
-        
-        deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files)
-        deployer.set_instance(inst)
-
-        existing_nodes = inst.topology.get_nodes()
-        existing_nodes_vm = deployer.get_node_vm(existing_nodes)
-                        
-        # We assume there's only one domain.
-        domain = inst.topology.domains.values()[0]
-
-        json_nodes = json.loads(hosts_json)
-        nodes = []
-        for node in json_nodes:
-            node_obj = Node.from_json(node, domain, topology.default_deploy_data)
-            if topology.get_node_by_id(node_obj.node_id) == None:           
-                topology.add_domain_node(domain, node_obj)
-                nodes.append(node_obj)
-            else:
-                print "Node %s already exists" % (node_obj.node_id)
-                
-        for node in nodes:
-            if node.depends != None:
-                depends_node = topology.get_node_by_id(node.depends[5:])
-                node.depends = depends_node                   
-
-        node_vm = self.__allocate_vms(deployer, nodes, resuming=False)
-
-        for node, vm in node_vm.items():
-            deployer.post_allocate(node, vm)
-        topology.save()
-
-        # Generate certificates
-        inst.gen_certificates()
-
-        for n in nodes:
-            n.gen_chef_attrs()        
-        topology.save()
-        
-        inst.topology.gen_ruby_file(inst.instance_dir + "/topology.rb")
-        inst.topology.gen_hosts_file(inst.instance_dir + "/hosts") 
-        inst.topology.gen_csv_file(inst.instance_dir + "/topology.csv")                
-
-        # TODO: Update hosts file on existing nodes
-        log.info("Updating existing nodes")        
-        self.__configure_vms(deployer, existing_nodes_vm, chef = False)
-
-        log.info("Setting up DemoGrid on instances")        
-        self.__configure_vms(deployer, node_vm)
-        topology.save()
+            inst.topology.state = Topology.STATE_TERMINATED
+            inst.topology.save()
+              
+            log.info("Instances have been stopped running.")
+            return (API.STATUS_SUCCESS, "Success")
+        except:
+            message = self.__unexpected_exception_to_text(what = "starting the instance.")
+            try:
+                if inst != None:
+                    inst.topology.state = Topology.STATE_FAILED
+                    inst.topology.save()
+            except:
+                message += "\nNote: Unable to update instance's state to 'Failed'"
+            return (API.STATUS_FAIL, message)
 
 
     def instance_list(self, inst_ids):
@@ -326,35 +329,6 @@ class API(object):
         # TODO: Return JSON
         return insts
 
-                        
-    def remove_hosts(self, inst_id, hosts):
-        SIGINTWatcher(self.cleanup_after_kill)
-        
-        istore = InstanceStore(self.instances_dir)
-        
-        inst = istore.get_instance(inst_id)
-        topology = inst.topology
-
-        deployer_class = self.__get_deployer_class(inst)
-        
-        deployer = deployer_class(self.demogrid_dir)
-        deployer.set_instance(inst)
-                        
-        # We assume there's only one domain.
-        domain = inst.topology.domains.values()[0]
-        
-        nodes = []
-        for host in hosts:
-            node = topology.get_node_by_id(host)
-            if node == None:
-                print "Warning: Node %s is not part of this topology" % host
-            else:
-                nodes.append(node)
-        
-        if len(nodes) > 0:
-            deployer.terminate_vms(nodes)
-            topology.remove_nodes(nodes)
-        topology.save()
         
     def __get_instance(self, inst_id):
         try:
@@ -505,6 +479,23 @@ class API(object):
             
         return (True, "Success")
         
+    def __terminate_vms(self, deployer, domain_nodes):
+        topology = deployer.instance.topology
 
+        deployer.terminate_vms(domain_nodes)
+        
+        node_vm = deployer.get_node_vm(domain_nodes)
+        
+        log.debug("Waiting for instances to terminate.")
+        mt_instancewait = MultiThread()
+        for (domain, node), vm in node_vm.items():
+            mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_TERMINATED))
+        
+        mt_instancewait.run()
+        if not mt_instancewait.all_success():
+            message = self.__mt_exceptions_to_text(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
+            return (False, message)
+            
+        return (True, "Success")
         
         
