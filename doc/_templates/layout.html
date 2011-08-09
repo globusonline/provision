@@ -1,0 +1,23 @@
+{% extends "basic/layout.html" %}
+
+{% block rootrellink %}
+        <li><a href="{{ pathto('index') }}">home</a>|&nbsp;</li>
+        <li><a href="{{ pathto('whatis') }}">what is globus provision?</a>|&nbsp;</li>
+        <li><a href="{{ pathto('download') }}">download</a>|&nbsp;</li>
+        <li><a href="{{ pathto('support') }}">support</a>|&nbsp;</li>
+       <li><a href="{{ pathto('docs') }}">documentation </a> &raquo;</li>
+{% endblock %}
+
+{% block relbar1 %}
+
+<div style="background-color: white; text-align: left; padding: 10px 10px 15px 35px">
+<a href="{{ pathto('index') }}"><img src="{{
+pathto("_static/logo.png", 1) }}" border="0" alt="Globus Provision"/></a>
+</div>
+{{ super() }}
+{% endblock %}
+
+
+{# put the sidebar before the body #}
+{% block sidebar1 %}{{ sidebar() }}{% endblock %}
+{% block sidebar2 %}{% endblock %}
