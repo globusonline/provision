@@ -191,18 +191,17 @@ Topology.properties = {
                        Property(name="id",
                                 proptype = PropertyTypes.STRING,
                                 required = False,
-                                editable = False,
                                 description = """TODO"""),       
                        "state":
                        Property(name="state",
                                 proptype = PropertyTypes.INTEGER,
                                 required = False,
-                                editable = False,
                                 description = """TODO"""),                                                      
                        "domains": 
                        Property(name = "domains",
                                 proptype = PropertyTypes.ARRAY,
                                 items = Domain,
+                                editable = True,
                                 indexable = True,
                                 required = True,
                                 description = """TODO"""),
@@ -211,6 +210,7 @@ Topology.properties = {
                        Property(name = "default_deploy_data",
                                 proptype = DeployData,
                                 required = False,
+                                editable = True,                                
                                 description = """TODO""")          
                        }
 
@@ -218,7 +218,7 @@ DeployData.properties = { "ec2":
                             Property(name = "ec2",
                                      proptype = EC2DeployData,
                                      required = False,
-                                     editable = False,
+                                     editable = True,
                                      description = """TODO""")          
                        }
 
@@ -227,19 +227,18 @@ EC2DeployData.properties = {
                                 Property(name = "instance_type",
                                          proptype = PropertyTypes.STRING,
                                          required = False,
-                                         editable = False,
+                                         editable = True,
                                          description = """TODO"""),
                             "instance_id":
                                 Property(name = "instance_id",
                                          proptype = PropertyTypes.STRING,
                                          required = False,
-                                         editable = False,
                                          description = """TODO"""),               
                             "ami":
                                 Property(name = "ami",
                                          proptype = PropertyTypes.STRING,
                                          required = False,
-                                         editable = False,
+                                         editable = True,
                                          description = """TODO""")
                        }
 
