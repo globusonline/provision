@@ -29,10 +29,11 @@ class ConfigException(Exception):
     pass
 
 class Section(object):
-    def __init__(self, name, required, required_if=None, doc=None):
+    def __init__(self, name, required, multiple = None, required_if=None, doc=None):
         self.name = name
         self.required = required
         self.required_if = required_if
+        self.multiple = multiple
         self.doc = doc
         self.options = {}
         
@@ -65,39 +66,47 @@ class Config(object):
         self.__load_all()
         
     def __load_all(self):
+        multi_sections = [s for s in self.sections if s.multiple != None]
         required_sections = [s for s in self.sections if s.required]
         conditional_sections = [s for s in self.sections if not s.required and s.required_if != None]
         optional_sections = [s for s in self.sections if not s.required and s.required_if == None]
         
-        sections = required_sections + conditional_sections + optional_sections
+        sections = multi_sections + required_sections + conditional_sections + optional_sections
         
         for sec in sections:
-            has_section = self.config.has_section(sec.name)
+            if sec.multiple != None:
+                valid = self.config.get(sec.multiple[0],sec.multiple[1]).split()
+                for v in valid:
+                    secname = "%s-%s" % (sec.name, v)
+                    if self.config.has_section(secname):
+                        for opt in sec.options:
+                            self.__load_option(sec, secname, opt, multiname = v)                        
+            else:
+                has_section = self.config.has_section(sec.name)
             
-            # If the section is required, check if it exists
-            if sec.required and not has_section:
-                raise ConfigException, "Required section [%s] not found" % sec.name
-            
-            # If the section is conditionally required, check that
-            # it meets the conditions
-            if sec.required_if != None:
-                for req in sec.required_if:
-                    (condsec,condopt) = req[0]
-                    condvalue = req[1]
-                    
-                    if self.config.has_option(condsec,condopt) and self.config.get(condsec,condopt) == condvalue:
-                        if not has_section:
-                            raise ConfigException, "Section '%s' is required when %s.%s==%s" % (sec.name, condsec, condopt, condvalue)
-                    
-            # Load options
-            if has_section:
-                for opt in sec.options:
-                    self.__load_option(sec, opt)
+                # If the section is required, check if it exists
+                if sec.required and not has_section:
+                    raise ConfigException, "Required section [%s] not found" % sec.name
+                
+                # If the section is conditionally required, check that
+                # it meets the conditions
+                if sec.required_if != None:
+                    for req in sec.required_if:
+                        (condsec,condopt) = req[0]
+                        condvalue = req[1]
+                        
+                        if self.config.has_option(condsec,condopt) and self.config.get(condsec,condopt) == condvalue:
+                            if not has_section:
+                                raise ConfigException, "Section '%s' is required when %s.%s==%s" % (sec.name, condsec, condopt, condvalue)
+                        
+                # Load options
+                if has_section:
+                    for opt in sec.options:
+                        self.__load_option(sec, sec.name, opt)
 
     
-    def __load_option(self, sec, opt):
+    def __load_option(self, sec, secname, opt, multiname = None):
         # Load a single option
-        secname = sec.name
         optname = opt.name
         
         has_option = self.config.has_option(secname, optname)
@@ -127,11 +136,17 @@ class Config(object):
             if opt.valid != None:
                 if not value in opt.valid:
                     raise ConfigException, "Invalid value '%s' specified for '%s.%s'. Valid values are %s" % (value, secname, optname, opt.valid)
-                  
-        self._options[opt.getter] = value
+        
+        if sec.multiple != None:
+            self._options[(multiname,opt.getter)] = value
+        else:
+            self._options[opt.getter] = value
         
     def get(self, opt):
         return self._options[opt]
+    
+    def has(self, opt):
+        return self._options.has_key(opt)    
         
     @classmethod
     def from_file(cls, configfile):

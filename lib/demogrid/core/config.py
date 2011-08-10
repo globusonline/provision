@@ -2,9 +2,10 @@ import ConfigParser
 from demogrid.core.topology import Domain, User, Node, Topology
 from demogrid.common import constants
 from demogrid.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
+import os.path
 
 class DemoGridConfig(Config):
-    
+
     sections = []    
     
     # ============================= #
@@ -181,166 +182,255 @@ class DemoGridConfig(Config):
         Config.__init__(self, config_file, self.sections)
 
 
-class SimpleTopologyConfig(object):
+class SimpleTopologyConfig(Config):
     
-    GENERAL_SEC = "general"
-    ORGANIZATIONS_OPT = "organizations"
+    sections = []    
     
-    ORGANIZATION_SEC = "organization-"
-    USERSFILE_OPT = "users-file"
-    GRIDUSERS_OPT = "grid-users"
-    GRIDUSERS_AUTH_OPT = "grid-users-auth"
-    NONGRIDUSERS_OPT = "nongrid-users"
-    LOGIN_OPT = "login"
-    GRAM_OPT = "gram"
-    GRIDFTP_OPT = "gridftp"
-    LRM_OPT = "lrm"
-    CLUSTER_NODES_OPT = "cluster-nodes"
+    # ============================= #
+    #                               #
+    #        GENERAL OPTIONS        #
+    #                               #
+    # ============================= #    
+    
+    general = Section("general", required=True,
+                      doc = "This section is used for general options affecting DemoGrid as a whole.")
+    general.options = \
+    [    
+     Option(name        = "domains",
+            getter      = "domains",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO      
+            """),    
+     Option(name        = "deploy",
+            getter      = "deploy",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            valid       = ["ec2", "dummy"],
+            doc         = """
+            TODO
+            """),
+     Option(name        = "ssh-pubkey",
+            getter      = "ssh-pubkey",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """)                                   
+    ]     
+    
+    sections.append(general)
+    
+    domain = Section("domain", required=False, multiple=("general", "domains"),
+                     doc = "This section is used for general options affecting DemoGrid as a whole.")
+    domain.options = \
+    [    
+     Option(name        = "users-file",
+            getter      = "users-file",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO        
+            """),    
+     Option(name        = "grid-users",
+            getter      = "grid-users",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            TODO        
+            """),             
+     Option(name        = "grid-users-auth",
+            getter      = "grid-users-auth",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                   
+     Option(name        = "nongrid-users",
+            getter      = "nongrid-users",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                   
+     Option(name        = "login",
+            getter      = "login",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                   
+     Option(name        = "gram",
+            getter      = "gram",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                   
+     Option(name        = "gridftp",
+            getter      = "gridftp",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                   
+     Option(name        = "lrm",
+            getter      = "lrm",
+            type        = OPTTYPE_STRING,
+            valid       = ["none", "condor"],
+            default     = "none",
+            required    = False,
+            doc         = """
+            TODO        
+            """),           
+     Option(name        = "cluster-nodes",
+            getter      = "cluster-nodes",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                        
+    ]     
+    sections.append(domain)
+    
+    ec2 = Section("ec2", required=False,
+                         required_if = [(("general","deploy"),"ec2")],
+                         doc = "EC2 options.")    
+    ec2.options = \
+    [                
+     Option(name        = "ami",
+            getter      = "ec2-ami",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),
+     Option(name        = "instance-type",
+            getter      = "ec2-instance-type",
+            type        = OPTTYPE_STRING,
+            required    = True,
+            doc         = """
+            TODO
+            """),              
+    ]    
+    sections.append(ec2)    
   
     def __init__(self, configfile):
-        self.config = ConfigParser.ConfigParser()
-        self.config.readfp(open(configfile, "r"))
+        Config.__init__(self, configfile, self.sections)
+
+    def to_topology(self):
+        ssh_pubkeyf = os.path.expanduser(self.get("ssh-pubkey"))
+        ssh_pubkeyf = open(ssh_pubkeyf)
+        ssh_pubkey = ssh_pubkeyf.read()
+        ssh_pubkeyf.close()        
         
-        if self.config.has_option(self.GENERAL_SEC, self.ORGANIZATIONS_OPT):
-            organizations = self.config.get(self.GENERAL_SEC, self.ORGANIZATIONS_OPT)
-            self.organizations = organizations.split()
-        else:
-            self.organizations = []
-
-    def has_org_users_file(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.has_option(org_sec, self.USERSFILE_OPT)    
-
-    def get_org_users_file(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.get(org_sec, self.USERSFILE_OPT)    
-
-    def get_org_num_gridusers(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getint(org_sec, self.GRIDUSERS_OPT)    
-
-    def get_org_num_nongridusers(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getint(org_sec, self.NONGRIDUSERS_OPT)    
-
-    def get_org_user_auth(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.get(org_sec, self.GRIDUSERS_AUTH_OPT)    
-    
-    def has_org_gridftp(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getboolean(org_sec, self.GRIDFTP_OPT)
-
-    def has_org_login(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getboolean(org_sec, self.LOGIN_OPT)
-
-    def has_org_gram(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getboolean(org_sec, self.GRAM_OPT)
-
-    def has_org_auth(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getboolean(org_sec, self.MYPROXY_OPT)
-    
-    def has_org_lrm(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        lrm = self.config.get(org_sec, self.LRM_OPT)
-        return lrm != "none"
-        
-    def get_org_lrm(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.get(org_sec, self.LRM_OPT)
-    
-    def get_org_num_clusternodes(self, org_name):
-        org_sec = self.__get_org_sec(org_name)
-        return self.config.getint(org_sec, self.CLUSTER_NODES_OPT)
-        
-    def __get_org_sec(self, org_name):
-        return self.ORGANIZATION_SEC + org_name
-
-    def gen_topology(self):
         topology = Topology()
-        
-        for domain_name in self.domains:
-            domain = Domain(domain_name)
-            topology.add_domain(domain)
+        domains = self.get("domains").split()
+        for domain_name in domains:
+            print domain_name
+            domain = Domain()
+            domain.set_property("id", domain_name)
+            topology.add_to_array("domains", domain)
+
+            user = User()
+            user.set_property("id", "gp-admin")
+            user.set_property("password_hash", "!")
+            user.set_property("certificate", "none")
+            user.set_property("admin", True)
+            user.set_property("ssh_pkey", ssh_pubkey)
+            domain.add_user(user)            
+
+            usersfile = self.get((domain_name, "users-file"))
             
-            if self.has_org_users_file(domain_name):
-                usersfile = self.get_org_users_file(domain_name)
+            if usersfile != None:                
+                print domain_name, usersfile
                 usersfile = open(usersfile, "r")
                 
                 for line in usersfile:
                     fields = line.split()
                     type = fields[0]
                     username = fields[1]
-                    password_hash = fields[2]
-                    
-                    if type == "G":
-                        cert_type = self.get_org_user_auth(domain_name)
+                    if len(fields) == 3:
+                        user_ssh_pubkey = fields[2]
                     else:
-                        cert_type = None
+                        user_ssh_pubkey = ssh_pubkey
                     
-                    user = User(login = username,
-                                description = "User '%s' of Organization %s" % (username, domain_name),
-                                password_hash = password_hash,
-                                cert_type = cert_type)
+                    user = User()
+                    user.set_property("id", username)
+                    user.set_property("password_hash", "!")
+                    user.set_property("ssh_pkey", user_ssh_pubkey)
+                    if type == "G":
+                        users_auth = self.get((domain_name,"grid-users-auth"))
+                        if users_auth == "certificate":
+                            user.set_property("certificate", "generated")
+                        else:
+                            user.set_property("certificate", "none")           
+                    else:
+                        user.set_property("certificate", "none")
                         
                     domain.add_user(user)
                     
                 usersfile.close()
             else:
                 usernum = 1
-                for i in range(self.get_org_num_gridusers(domain_name)):
+                for i in range(self.get((domain_name, "grid-users"))):
                     username = "%s-user%i" % (domain_name, usernum)
-                    user = User(login = username,
-                                description = "User '%s' of Organization %s" % (username, domain_name),
-                                password_hash = "TODO",
-                                cert_type = self.get_org_user_auth(domain_name))
+                    user = User()
+                    user.set_property("id", username)
+                    user.set_property("password_hash", "!")
+                    user.set_property("ssh_pkey", ssh_pubkey)
+                    users_auth = self.get((domain_name,"grid-users-auth"))
+                    if users_auth == "certificate":
+                        user.set_property("certificate", "generated")
+                    else:
+                        user.set_property("certificate", "none")           
                     domain.add_user(user)
                     usernum += 1
     
-                for i in range(self.get_org_num_nongridusers(domain_name)):
+                for i in range(self.get((domain_name, "nongrid-users"))):
                     username = "%s-user%i" % (domain_name, usernum)
-                    user = User(login = username,
-                                description = "User '%s' of Organization %s" % (username, domain_name),
-                                password_hash = "TODO",
-                                cert_type = None)
+                    user = User()
+                    user.set_property("id", username)
+                    user.set_property("password_hash", "!")
+                    user.set_property("ssh_pkey", ssh_pubkey)
+                    user.set_property("certificate", "none")           
                     domain.add_user(user)
                     usernum += 1
-                
             
-            server_node = Node(name = "%s-nfsnis" % domain_name, domain = domain)
-            server_node.run_list.append("role[domain-nfsnis]")
-                        
-            topology.add_domain_node(domain, server_node)
-            domain.servers[constants.DOMAIN_NIS_SERVER] = server_node
-            domain.servers[constants.DOMAIN_NFS_SERVER] = server_node
-            
-            if self.has_domain_login(domain_name):            
-                login_node = Node(name = "%s-login" % domain_name, domain = domain)
-                login_node.run_list.append("role[domain-login]")
-                                 
-                topology.add_domain_node(domain, login_node)
+            server_node = Node()
+            server_name = "%s-server" % domain_name
+            server_node.set_property("id", server_name)
+            server_node.add_to_array("run_list", "role[domain-nfsnis]")
+            domain.add_node(server_node)
 
-            if self.get_org_user_auth(domain_name) == "myproxy":
-                myproxy_node = Node(name = "%s-myproxy" % domain_name, domain = domain)
-                myproxy_node.run_list.append("role[domain-myproxy]")
-                                 
-                topology.add_domain_node(domain, myproxy_node)
-                domain.servers[constants.DOMAIN_MYPROXY_SERVER] = myproxy_node
+            if self.get((domain_name,"login")):            
+                login_node = Node()
+                login_node.set_property("id", "%s-login" % domain_name)
+                login_node.set_property("depends", "node:%s" % server_name)
+                login_node.add_to_array("run_list", "role[domain-login]")
+                domain.add_node(login_node)
+            else:
+                server_node.add_to_array("run_list", "role[globus]")
 
-            if self.has_org_gridftp(domain_name):
-                gridftp_node = Node(name = "%s-gridftp" % domain_name, domain = domain)
-                gridftp_node.run_list.append("role[domain-gridftp]")
-                                 
-                topology.add_domain_node(domain, gridftp_node)
-                domain.servers[constants.DOMAIN_GRIFTP_SERVER] = gridftp_node
+            if self.get((domain_name,"grid-users-auth")) == "myproxy":
+                myproxy_node = Node()
+                myproxy_node.set_property("id", "%s-myproxy" % domain_name)
+                myproxy_node.set_property("depends", "node:%s" % server_name)
+                myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
+                domain.add_node(myproxy_node)
+
+            if self.get((domain_name,"gridftp")):
+                gridftp_node = Node()
+                gridftp_node.set_property("id", "%s-gridftp" % domain_name)
+                gridftp_node.set_property("depends", "node:%s" % server_name)
+                gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
+                domain.add_node(gridftp_node)                
             
-            if self.has_org_lrm(domain_name):
-                lrm_type = self.get_org_lrm(domain_name)
-                gram = self.has_org_gram(domain_name)
-                if lrm_type == "condor":
+            lrm = self.get((domain_name,"lrm"))
+            if lrm != "none":
+                gram = self.get((domain_name,"gram"))
+                if lrm == "condor":
                     if gram:
                         node_name = "%s-gram-condor" % domain_name
                         role = "role[domain-gram-condor]"
@@ -349,19 +439,21 @@ class SimpleTopologyConfig(object):
                         role = "role[domain-condor]"
                     workernode_role = "role[domain-clusternode-condor]"
 
-                lrm_node = Node(name = node_name, domain = domain)
-                lrm_node.run_list.append(role)
-                                 
-                topology.add_domain_node(domain, lrm_node)
-                domain.servers[constants.DOMAIN_LRMHEAD_SERVER] = lrm_node
+                lrm_node = Node()
+                lrm_node.set_property("id", node_name)
+                lrm_node.set_property("depends", "node:%s" % server_name)
+                lrm_node.add_to_array("run_list", role)
+                domain.add_node(lrm_node)
 
                 clusternode_host = 1
-                for i in range(self.get_org_num_clusternodes(domain_name)):
+                for i in range(self.get((domain_name,"cluster-nodes"))):
                     wn_name = "%s-condor-wn%i" % (domain_name, i+1)
-                    wn_node = Node(name = wn_name, domain = domain)
-                    wn_node.run_list.append(workernode_role)
-                                     
-                    topology.add_domain_node(domain, wn_node)
+
+                    wn_node = Node()
+                    wn_node.set_property("id", wn_name)
+                    wn_node.set_property("depends", "node:%s" % node_name)
+                    wn_node.add_to_array("run_list", workernode_role)
+                    domain.add_node(wn_node)
 
                     clusternode_host += 1
             

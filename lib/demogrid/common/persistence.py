@@ -38,7 +38,7 @@ def pt_to_str(pt, items_type = None):
     else:
         return "unknown"
 
-def validate_property_type(value, expected_type, items_type = None):
+def validate_property_type(value, expected_type, items_type = None, json = False):
     if expected_type == PropertyTypes.STRING:
         valid = isinstance(value, basestring)
     elif expected_type == PropertyTypes.INTEGER:
@@ -53,11 +53,11 @@ def validate_property_type(value, expected_type, items_type = None):
         if isinstance(value, list):
             valid = True
             for elem in value:
-                valid &= validate_property_type(elem, items_type)
+                valid &= validate_property_type(elem, items_type, json = json)
         elif isinstance(value, dict):
             valid = True
             for elem in value.values():
-                valid &= validate_property_type(elem, items_type)
+                valid &= validate_property_type(elem, items_type, json = json)
         else:
             valid = False    
     elif expected_type == PropertyTypes.NULL:
@@ -67,7 +67,10 @@ def validate_property_type(value, expected_type, items_type = None):
     elif issubclass(expected_type, PersistentObject):
         # Further validation is done when we convert
         # this object
-        valid = isinstance(value, dict)
+        if json:
+            valid = isinstance(value, dict)
+        else:
+            valid = isinstance(value, expected_type)
     else:
         valid = False    
     
@@ -157,6 +160,37 @@ class PersistentObject(object):
     def get_property(self, p_name):
         # TODO: Validation
         return getattr(self, p_name)        
+    
+    def add_to_array(self, p_name, item_value):
+        if not self.properties.has_key(p_name):
+            raise ObjectValidationException("%s does not have a %s property" % (type(self).__name__, p_name))
+        
+        p = self.properties[p_name]
+        
+        if p.type != PropertyTypes.ARRAY:
+            raise ObjectValidationException("Tried to add %s to %s.%s, but it is not an array." % (item_value, type(self).__name__, p_name))
+        
+        if not validate_property_type(item_value, p.items):
+            raise ObjectValidationException("Tried to add %s to %s.%s, but this array contains %s." % (item_value, type(self).__name__, p_name, pt_to_str(p.items)))
+        
+        if p.items_unique and inspect.isclass(p.items) and issubclass(p.items, PersistentObject):
+            if not self.has_property(p_name):
+                p_value = {}
+                self.set_property(p_name, p_value)
+            else:
+                p_value = self.get_property(p_name)
+                
+            setattr(item_value, "parent_%s" % type(self).__name__, self)
+            p_value[item_value.id] = item_value
+        else:
+            if not self.has_property(p_name):
+                p_value = []
+                self.set_property(p_name, p_value)
+            else:
+                p_value = self.get_property(p_name)
+                
+            p_value.append(item_value)
+            
     
     def validate_update(self, pobj):
         if type(self) != type(pobj):
@@ -365,7 +399,7 @@ class PersistentObject(object):
         
         for p_name, p_value in obj_dict.items():
             property = cls.properties[p_name]
-            if not validate_property_type(p_value, property.type, property.items):
+            if not validate_property_type(p_value, property.type, property.items, json = True):
                 raise ObjectValidationException("'%s' is not a valid value for %s.%s. Expected a %s." % (p_value, cls.__name__, p_name, pt_to_str(property.type, property.items)))
             else:
                 if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):

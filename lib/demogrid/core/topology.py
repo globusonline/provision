@@ -118,6 +118,9 @@ ff02::3 ip6-allhosts
                 return deploy_data.get_property(p_name)
             
         return None
+    
+    def add_domain(self, domain):
+        self.add_to_array("domains", domain)
         
     
     
@@ -137,6 +140,12 @@ class Domain(PersistentObject):
                     nodes.append(node)
                     continue
         return nodes
+
+    def add_user(self, user):
+        self.add_to_array("users", user)
+        
+    def add_node(self, node):
+        self.add_to_array("nodes", node)        
 
 class DeployData(PersistentObject):
     pass
