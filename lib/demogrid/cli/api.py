@@ -13,6 +13,8 @@ from demogrid.core.api import API
 from demogrid.common.utils import parse_extra_files_files, SIGINTWatcher
 import time
 from demogrid.core.topology import Topology, Node, User
+from demogrid.core.config import SimpleTopologyConfig
+from demogrid.common.config import ConfigException
 
 
         
@@ -38,10 +40,24 @@ class demogrid_create(Command):
         self._check_exists_file(self.opt.topology)
         self._check_exists_file(self.opt.conf)
         
-        jsonfile = open(self.opt.topology)
-        topology_json = jsonfile.read()
-        jsonfile.close()
-          
+        if self.opt.topology.endswith(".json"):
+            jsonfile = open(self.opt.topology)
+            topology_json = jsonfile.read()
+            jsonfile.close()
+        elif self.opt.topology.endswith(".conf"):
+            try:
+                conf = SimpleTopologyConfig(self.opt.topology)
+                topology = conf.to_topology()
+                topology_json = topology.to_json_string()
+                print topology_json
+            except ConfigException, cfge:
+                self._print_error("Error in topology configuration file.", cfge)
+                exit(1)         
+        else:   
+            self._print_error("Unrecognized topology file format.", "File must be either a JSON (.json) or configuration (.conf) file.")
+            exit(1)         
+
+        exit(0)
         configf = open(self.opt.conf)
         config_txt = configf.read()
         configf.close()
