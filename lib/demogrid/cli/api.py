@@ -125,10 +125,6 @@ class demogrid_start(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)
 
-        self.optparser.add_option("-n", "--no-cleanup", 
-                                  action="store_true", dest="no_cleanup", 
-                                  help = "Don't release resources on failure.")
-
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
                                   help = "Upload extra files")
@@ -158,7 +154,7 @@ class demogrid_start(Command):
             run_cmds = []
 
         api = API(self.dg_location, self.opt.dir)
-        status_code, message = api.instance_start(inst_id, self.opt.no_cleanup, extra_files, run_cmds)
+        status_code, message = api.instance_start(inst_id, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
             t_end = time.time()
@@ -181,11 +177,7 @@ class demogrid_update_topology(Command):
 
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
-                                  help = "Topology file.")        
-
-        self.optparser.add_option("-n", "--no-cleanup", 
-                                  action="store_true", dest="no_cleanup", 
-                                  help = "Don't release resources on failure.")
+                                  help = "Topology file.")
 
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
@@ -220,7 +212,7 @@ class demogrid_update_topology(Command):
             run_cmds = []            
 
         api = API(self.dg_location, self.opt.dir)
-        status_code, message = api.instance_update(inst_id, topology_json, self.opt.no_cleanup, extra_files, run_cmds)
+        status_code, message = api.instance_update(inst_id, topology_json, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
             t_end = time.time()

@@ -9,12 +9,11 @@ import sys
 from demogrid.core.topology import Node
 
 class BaseDeployer(object):
-    def __init__(self, demogrid_dir, no_cleanup = False, extra_files = [], run_cmds = []):
+    def __init__(self, demogrid_dir, extra_files = [], run_cmds = []):
         self.demogrid_dir = demogrid_dir
         self.instance = None
         self.extra_files = extra_files
         self.run_cmds = run_cmds
-        self.no_cleanup = no_cleanup
         
 class VM(object):
     def __init__(self):

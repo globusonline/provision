@@ -59,7 +59,7 @@ class API(object):
         
         return (API.STATUS_SUCCESS, "Success", json_string)
         
-    def instance_start(self, inst_id, no_cleanup, extra_files, run_cmds):
+    def instance_start(self, inst_id, extra_files, run_cmds):
         
         (success, message, inst) = self.__get_instance(inst_id)
         
@@ -83,7 +83,7 @@ class API(object):
             inst.topology.save()
             
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
+            deployer = deployer_class(self.demogrid_dir, extra_files, run_cmds)
             deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()
@@ -91,7 +91,6 @@ class API(object):
             (success, message, node_vm) = self.__allocate_vms(deployer, nodes, resuming)
             
             if not success:
-                deployer.cleanup()
                 inst.topology.state = Topology.STATE_FAILED
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)
@@ -119,7 +118,6 @@ class API(object):
             
             (success, message) = self.__configure_vms(deployer, node_vm)
             if not success:
-                deployer.cleanup()
                 inst.topology.state = Topology.STATE_FAILED
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)
@@ -139,7 +137,7 @@ class API(object):
             return (API.STATUS_FAIL, message)
 
 
-    def instance_update(self, inst_id, topology_json, no_cleanup, extra_files, run_cmds):
+    def instance_update(self, inst_id, topology_json, extra_files, run_cmds):
         try:
             (success, message, inst) = self.__get_instance(inst_id)
             
@@ -158,7 +156,7 @@ class API(object):
                 return (API.STATUS_FAIL, message)   
 
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
+            deployer = deployer_class(self.demogrid_dir, extra_files, run_cmds)
             deployer.set_instance(inst)            
 
             nodes = inst.topology.get_nodes()
@@ -170,7 +168,6 @@ class API(object):
                 (success, message) = self.__terminate_vms(deployer, old_nodes)
                 
                 if not success:
-                    deployer.cleanup()
                     inst.topology.state = Topology.STATE_FAILED
                     inst.topology.save()
                     return (API.STATUS_FAIL, message)       
@@ -184,7 +181,6 @@ class API(object):
                 (success, message, node_vm) = self.__allocate_vms(deployer, new_nodes, resuming = False)
         
                 if not success:
-                    deployer.cleanup()
                     inst.topology.state = Topology.STATE_FAILED
                     inst.topology.save()
                     return (API.STATUS_FAIL, message)
@@ -210,7 +206,6 @@ class API(object):
             node_vm = deployer.get_node_vm(nodes)
             (success, message) = self.__configure_vms(deployer, node_vm)
             if not success:
-                deployer.cleanup()
                 inst.topology.state = Topology.STATE_FAILED
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)
@@ -253,7 +248,6 @@ class API(object):
             (success, message) = self.__stop_vms(deployer, nodes)
             
             if not success:
-                deployer.cleanup()
                 inst.topology.state = Topology.STATE_FAILED
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)            
@@ -297,7 +291,6 @@ class API(object):
             (success, message) = self.__terminate_vms(deployer, nodes)
             
             if not success:
-                deployer.cleanup()
                 inst.topology.state = Topology.STATE_FAILED
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)            

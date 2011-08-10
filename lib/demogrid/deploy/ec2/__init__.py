@@ -155,34 +155,7 @@ class Deployer(BaseDeployer):
             newstate = obj.update()
             if newstate == state:
                 return True
-        # TODO: Check errors    
-        
-
-    def cleanup(self):
-        if self.no_cleanup:
-            print "--no-cleanup has been specified, so DemoGrid will not release EC2 resources."
-            print "Remember to do this manually"
-        else:
-            print "DemoGrid is attempting to release all EC2 resources..."
-            try:
-                if self.conn != None:
-                    for v in self.vols:
-                        if v.attachment_state == "attached":
-                            v.detach()
-                    if self.instances != None:
-                        self.conn.terminate_instances([i.id for i in self.instances])
-                    for v in self.vols:
-                        self.wait_state(v, "available")        
-                        v.delete()
-                    print "DemoGrid has released all EC2 resources."
-            except:
-                traceback.print_exc()
-                print "DemoGrid was unable to release all EC2 resources."
-                if self.instances != None:
-                    print "Please make sure the following instances have been terminated: " % [i.id for i in self.instances]
-                if len(self.vols) > 0:
-                    print "Please make sure the following volumes have been deleted: " % [v.id for v in self.vols]
-        
+        # TODO: Check errors            
             
     class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, depends = None):

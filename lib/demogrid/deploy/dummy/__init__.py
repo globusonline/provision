@@ -38,10 +38,7 @@ class Deployer(BaseDeployer):
         log.info("Dummy nodes terminated.")         
 
     def terminate_vms(self, nodes):
-        log.info("Dummy nodes terminated.")         
-
-    def cleanup(self):
-        log.info("Dummy cleanup is done.")        
+        log.info("Dummy nodes terminated.")               
             
     class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, state, depends = None):

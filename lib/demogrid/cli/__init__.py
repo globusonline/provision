@@ -80,6 +80,6 @@ class Command(object):
         print "\033[1;37mReason\033[0m: %s" % reason
         
     def cleanup_after_kill(self):
-        print "DemoGrid has been unexpectedly killed and cannot release EC2 resources."
-        print "Please make sure you manually release all DemoGrid instances and volumes."        
+        print "DemoGrid has been unexpectedly killed and may have left resources in an"
+        print "unconfigured state. Use demogrid-terminate to release resources."
         
