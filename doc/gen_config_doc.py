@@ -1,15 +1,24 @@
-from demogrid.core.config import DemoGridConfig
+from demogrid.core.config import DemoGridConfig, SimpleTopologyConfig
 from demogrid.common.config import OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import textwrap
 import re
+import sys
+
+conf_cls = sys.argv[1]
+title = sys.argv[2]
+
+if conf_cls == "DemoGridConfig":
+    conf_cls = DemoGridConfig
+elif conf_cls == "SimpleTopologyConfig":
+    conf_cls = SimpleTopologyConfig
 
 def print_section(title, marker):
     print title
     print marker * len(title)
 
-print_section("Configuration File", "*")
+print_section(title, "*")
 
-for s in DemoGridConfig.sections:
+for s in conf_cls.sections:
     print_section("Section ``[%s]``" % s.name, "=")
     print
     print s.get_doc()
@@ -67,4 +76,3 @@ for s in DemoGridConfig.sections:
         optdoc = opt.get_doc()
         print optdoc
         print 
-        
