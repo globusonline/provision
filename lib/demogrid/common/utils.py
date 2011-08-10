@@ -93,10 +93,19 @@ class MultiThread(object):
                 log.debug("%s thread is being aborted." % thread.name)
                 thread.status = 2
             self.done_threads += 1
+            self.abort_dependents(thread)
             log.debug("%i threads are done. Remaining: %s" % (self.done_threads, ",".join([t.name for t in self.threads.values() if t.status == -1])))
             if self.done_threads == self.num_threads:
                 self.all_done.set()           
                 
+    def abort_dependents(self, thread):
+        dep = [th for th in self.threads.values() if th.depends == thread]
+        for th in dep:
+            log.debug("%s thread is being aborted because it depends on failed %s thread." % (th.name, thread.name))
+            th.status = 3
+            self.done_threads += 1
+            self.abort_dependents(th)
+        
     def all_success(self):
         return all([t.status == 0 for t in self.threads.values()])
         
