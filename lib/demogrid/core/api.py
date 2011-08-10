@@ -86,9 +86,9 @@ class API(object):
             deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
             deployer.set_instance(inst)    
             
-            domain_nodes = inst.topology.get_domain_nodes()
+            nodes = inst.topology.get_nodes()
     
-            (success, message, node_vm) = self.__allocate_vms(deployer, domain_nodes, resuming)
+            (success, message, node_vm) = self.__allocate_vms(deployer, nodes, resuming)
             
             if not success:
                 deployer.cleanup()
@@ -101,8 +101,8 @@ class API(object):
                           
             log.info("Instances are running.")
     
-            for (domain, node), vm in node_vm.items():
-                deployer.post_allocate(domain, node, vm)
+            for node, vm in node_vm.items():
+                deployer.post_allocate(node, vm)
 
             inst.topology.save()
     
@@ -161,13 +161,13 @@ class API(object):
             deployer = deployer_class(self.demogrid_dir, no_cleanup, extra_files, run_cmds)
             deployer.set_instance(inst)            
 
-            domain_nodes = inst.topology.get_domain_nodes()
+            nodes = inst.topology.get_nodes()
 
             if len(destroy_hosts) > 0:
-                old_domain_nodes = old_topology.get_domain_nodes()
+                old_nodes = old_topology.get_nodes()
                 log.info("Terminating hosts %s" % destroy_hosts)   
-                old_domain_nodes = [(d,n) for d, n in old_domain_nodes if n.id in destroy_hosts]
-                (success, message) = self.__terminate_vms(deployer, old_domain_nodes)
+                old_nodes = [n for n in old_nodes if n.id in destroy_hosts]
+                (success, message) = self.__terminate_vms(deployer, old_nodes)
                 
                 if not success:
                     deployer.cleanup()
@@ -178,10 +178,10 @@ class API(object):
                 inst.topology.save()         
                   
             if len(create_hosts) > 0:
-                domain_nodes = inst.topology.get_domain_nodes()
+                nodes = inst.topology.get_nodes()
                 log.info("Allocating VMs for hosts %s" % create_hosts)   
-                new_domain_nodes = [(d,n) for d, n in domain_nodes if n.id in create_hosts]
-                (success, message, node_vm) = self.__allocate_vms(deployer, new_domain_nodes, resuming = False)
+                new_nodes = [n for n in nodes if n.id in create_hosts]
+                (success, message, node_vm) = self.__allocate_vms(deployer, new_nodes, resuming = False)
         
                 if not success:
                     deployer.cleanup()
@@ -191,8 +191,8 @@ class API(object):
             
                 inst.topology.save()
                 
-                for (domain, node), vm in node_vm.items():
-                    deployer.post_allocate(domain, node, vm)
+                for node, vm in node_vm.items():
+                    deployer.post_allocate(node, vm)
 
                 inst.topology.save()
 
@@ -207,7 +207,7 @@ class API(object):
             # Right now we reconfigure all nodes. It shouldn't be hard to follow
             # the dependency tree to make sure only the new nodes and "ancestor"
             # nodes are updated
-            node_vm = deployer.get_node_vm(domain_nodes)
+            node_vm = deployer.get_node_vm(nodes)
             (success, message) = self.__configure_vms(deployer, node_vm)
             if not success:
                 deployer.cleanup()
@@ -248,9 +248,9 @@ class API(object):
             deployer = deployer_class(self.demogrid_dir)
             deployer.set_instance(inst)    
             
-            domain_nodes = inst.topology.get_domain_nodes()            
+            nodes = inst.topology.get_nodes()            
     
-            (success, message) = self.__stop_vms(deployer, domain_nodes)
+            (success, message) = self.__stop_vms(deployer, nodes)
             
             if not success:
                 deployer.cleanup()
@@ -292,9 +292,9 @@ class API(object):
             deployer = deployer_class(self.demogrid_dir)
             deployer.set_instance(inst)    
             
-            domain_nodes = inst.topology.get_domain_nodes()            
+            nodes = inst.topology.get_nodes()            
     
-            (success, message) = self.__terminate_vms(deployer, domain_nodes)
+            (success, message) = self.__terminate_vms(deployer, nodes)
             
             if not success:
                 deployer.cleanup()
@@ -355,17 +355,17 @@ class API(object):
             
         return deploy_module.Deployer        
         
-    def __allocate_vms(self, deployer, domain_nodes, resuming):
+    def __allocate_vms(self, deployer, nodes, resuming):
         # TODO: Make this an option
         sequential = False
         topology = deployer.instance.topology
         
         if not resuming:
-            log.info("Allocating %i VMs." % len(domain_nodes))
+            log.info("Allocating %i VMs." % len(nodes))
         else:
-            log.info("Resuming %i VMs" % len(domain_nodes))
+            log.info("Resuming %i VMs" % len(nodes))
         node_vm = {}
-        for (domain, n) in domain_nodes:
+        for n in nodes:
             try:
                 if not resuming:
                     n.set_property("state", Node.STATE_STARTING)
@@ -375,7 +375,7 @@ class API(object):
                     n.set_property("state", Node.STATE_RESUMING)
                     topology.save()
                     vm = deployer.resume_vm(n)
-                node_vm[(domain, n)] = vm
+                node_vm[n] = vm
             except Exception:
                 message = self.__unexpected_exception_to_text()
                 return (False, message, None)
@@ -388,7 +388,7 @@ class API(object):
         if not sequential:        
             log.debug("Waiting for instances to start.")
             mt_instancewait = MultiThread()
-            for (domain, node), vm in node_vm.items():
+            for node, vm in node_vm.items():
                 mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_RUNNING_UNCONFIGURED))
 
             mt_instancewait.run()
@@ -400,22 +400,21 @@ class API(object):
 
 
     def __configure_vms(self, deployer, node_vm, basic = True, chef = True):
-        domain_nodes = node_vm.keys()
+        nodes = node_vm.keys()
         mt_configure = MultiThread()
         topology = deployer.instance.topology
-        order = topology.get_launch_order(domain_nodes)
+        order = topology.get_launch_order(nodes)
         
         threads = {}
         for nodeset in order:
             rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
                             "configure-%s" % n.id, 
-                            d,
                             n, 
-                            node_vm[(d,n)], 
+                            node_vm[n], 
                             deployer, 
                             depends=threads.get(topology.get_depends(n)),
                             basic = basic,
-                            chef = chef)) for d, n in nodeset])
+                            chef = chef)) for n in nodeset])
             threads.update(rest)
         
         for thread in threads.values():
@@ -457,19 +456,19 @@ class API(object):
         return msg
 
 
-    def __stop_vms(self, deployer, domain_nodes):
+    def __stop_vms(self, deployer, nodes):
         topology = deployer.instance.topology
-        order = topology.get_launch_order(domain_nodes)
+        order = topology.get_launch_order(nodes)
         order.reverse()
         
         for nodeset in order:
             deployer.stop_vms(nodeset)
         
-        node_vm = deployer.get_node_vm(domain_nodes)
+        node_vm = deployer.get_node_vm(nodes)
         
         log.debug("Waiting for instances to stop.")
         mt_instancewait = MultiThread()
-        for (domain, node), vm in node_vm.items():
+        for node, vm in node_vm.items():
             mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_STOPPED))
         
         mt_instancewait.run()
@@ -479,16 +478,16 @@ class API(object):
             
         return (True, "Success")
         
-    def __terminate_vms(self, deployer, domain_nodes):
+    def __terminate_vms(self, deployer, nodes):
         topology = deployer.instance.topology
 
-        deployer.terminate_vms(domain_nodes)
+        deployer.terminate_vms(nodes)
         
-        node_vm = deployer.get_node_vm(domain_nodes)
+        node_vm = deployer.get_node_vm(nodes)
         
         log.debug("Waiting for instances to terminate.")
         mt_instancewait = MultiThread()
-        for (domain, node), vm in node_vm.items():
+        for node, vm in node_vm.items():
             mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_TERMINATED))
         
         mt_instancewait.run()

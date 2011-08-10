@@ -24,13 +24,13 @@ class Deployer(BaseDeployer):
         log.info("Resumed dummy VM.")     
         return DummyVM()
 
-    def post_allocate(self, domain, node, vm):
+    def post_allocate(self, node, vm):
         node.hostname = "%s.demogrid.example.org" % node.id
         node.ip = "1.2.3.4"
 
-    def get_node_vm(self, domain_nodes):
+    def get_node_vm(self, nodes):
         node_vm = {}
-        for d,n in domain_nodes:
+        for d,n in nodes:
             node_vm[d,n] = DummyVM()
         return node_vm
 
@@ -51,8 +51,8 @@ class Deployer(BaseDeployer):
             log.info("Waiting for state %s" % Node.state_str[self.state])
             
     class NodeConfigureThread(ConfigureThread):
-        def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
-            ConfigureThread.__init__(self, multi, name, domain, node, vm, deployer, depends, basic, chef)
+        def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+            ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
             
         def run2(self):
             topology = self.deployer.instance.topology

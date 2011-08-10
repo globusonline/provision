@@ -80,7 +80,7 @@ class demogrid_describe_instance(Command):
                 topology = Topology.from_json_string(topology_json)
                 print "%s: %s" % (inst_id, Topology.state_str[topology.state])
                 print
-                for domain in topology.domains:
+                for domain in topology.domains.values():
                     print "Domain '%s'" % domain.id
                     for node in domain.get_nodes():
                         if node.has_property("state"):
@@ -288,7 +288,7 @@ class demogrid_list_instances(Command):
             t = i.topology
             print "%s\t%s" % (i.id, Topology.state_str[t.state])
             if self.opt.verbose:
-                for domain, node in t.get_nodes():
+                for node in t.get_nodes():
                     print "\t%s\t%s\t%s" % (node.id, node.hostname, node.ip)
                     if self.opt.debug:
                         print "\t%s" % node.deploy_data
@@ -345,13 +345,11 @@ class demogrid_add_user(Command):
         else:
             t = Topology.from_json_string(topology_json)
             
-            d = [x for x in t.domains if x.id == self.opt.domain]
-            
-            if len(d) == 0:
+            if not t.domains.has_key(self.opt.domain):
                 self._print_error("Could not add user", "Domain '%s' does not exist" % self.opt.domain)
                 exit(1) 
             
-            domain = d[0]
+            domain = t.domains[self.opt.domain]
             
             user = User()
             user.set_property("id", self.opt.login)
@@ -418,13 +416,11 @@ class demogrid_add_host(Command):
         else:
             t = Topology.from_json_string(topology_json)
             
-            d = [x for x in t.domains if x.id == self.opt.domain]
-            
-            if len(d) == 0:
-                self._print_error("Could not add user", "Domain '%s' does not exist" % self.opt.domain)
+            if not t.domains.has_key(self.opt.domain):
+                self._print_error("Could not add host", "Domain '%s' does not exist" % self.opt.domain)
                 exit(1) 
             
-            domain = d[0]
+            domain = t.domains[self.opt.domain]
             
             node = Node()
             node.set_property("id", self.opt.id)

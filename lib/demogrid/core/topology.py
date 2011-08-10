@@ -27,19 +27,13 @@ class Topology(PersistentObject):
     
     def get_nodes(self):
         nodes = []
-        for domain in self.domains:
+        for domain in self.domains.values():
             nodes += [n for n in domain.get_nodes()]
-        return nodes    
-    
-    def get_domain_nodes(self):
-        nodes = []
-        for domain in self.domains:
-            nodes += [(domain, n) for n in domain.get_nodes()]
-        return nodes        
+        return nodes       
     
     def get_users(self):
         users = []
-        for domain in self.domains:
+        for domain in self.domains.values():
             users += domain.get_users()
         return users    
     
@@ -77,9 +71,9 @@ ff02::3 ip6-allhosts
             else:
                 return ""                              
         
-        topology = "default[:topology] = %s\n" % self.to_ruby_hash_string(indexable_array_as_dicts=True)
+        topology = "default[:topology] = %s\n" % self.to_ruby_hash_string()
 
-        for domain in self.domains:
+        for domain in self.domains.values():
             topology += gen_topology_line("nfs_server", domain.id, ["recipe[demogrid::nfs_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("nis_server", domain.id, ["recipe[demogrid::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
@@ -95,14 +89,12 @@ ff02::3 ip6-allhosts
         else:
             return self.get_node_by_id(node.depends[5:])
         
-    def get_launch_order(self, domain_nodes):
+    def get_launch_order(self, nodes):
         order = []
-        nodes = [n for d,n in domain_nodes]
-        parents = [(d,n) for d, n in domain_nodes if self.get_depends(n) == None or self.get_depends(n) not in nodes]
+        parents = [n for n in nodes if self.get_depends(n) == None or self.get_depends(n) not in nodes]
         while len(parents) > 0:
             order.append(parents)
-            parents_nodes = [n for d,n in parents]
-            parents = [(d,n) for d, n in domain_nodes if self.get_depends(n) in parents_nodes]   
+            parents = [n for n in nodes if self.get_depends(n) in parents]   
         return order        
     
     def get_node_by_id(self, node_id):
@@ -132,14 +124,14 @@ ff02::3 ip6-allhosts
 class Domain(PersistentObject):
 
     def get_nodes(self):
-        return self.nodes[:]
+        return self.nodes.values()
     
     def get_users(self):
-        return self.users        
+        return self.users.values()     
     
     def find_with_recipes(self, recipes):
         nodes = []
-        for node in self.nodes:
+        for node in self.nodes.values():
             for r in recipes:
                 if r in node.run_list:
                     nodes.append(node)
@@ -201,8 +193,8 @@ Topology.properties = {
                        Property(name = "domains",
                                 proptype = PropertyTypes.ARRAY,
                                 items = Domain,
+                                items_unique = True,
                                 editable = True,
-                                indexable = True,
                                 required = True,
                                 description = """TODO"""),
 
@@ -248,14 +240,13 @@ Domain.properties = {
                      Property(name="id",
                               proptype = PropertyTypes.STRING,
                               required = True,
-                              unique = True,
                               description = """TODO"""),               
                               
                      "nodes":
                      Property(name="nodes",
                               proptype = PropertyTypes.ARRAY,
                               items = Node,
-                              indexable = True,
+                              items_unique = True,
                               required = True,
                               editable = True,
                               description = """TODO"""),
@@ -272,7 +263,7 @@ Domain.properties = {
                      Property(name="users",
                               proptype = PropertyTypes.ARRAY,
                               items = User,
-                              indexable = True,
+                              items_unique = True,
                               required = True,
                               editable = True,
                               description = """TODO"""),
@@ -291,7 +282,6 @@ Node.properties = {
                    Property(name="id",
                             proptype = PropertyTypes.STRING,
                             required = True,
-                            unique = True,
                             description = """TODO"""),
                    "state":
                    Property(name="state",

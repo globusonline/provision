@@ -101,11 +101,11 @@ class Instance(object):
 
         if topology_changes.changes.has_key("domains"):
             for domain in topology_changes.changes["domains"].add:
-                d = [x for x in new_topology.domains if x.id == domain][0]
+                d = new_topology.domains[domain]
                 add_hosts += [n.id for n in d.nodes] 
 
             for domain in topology_changes.changes["domains"].remove:
-                d = [x for x in self.topology.domains if x.id == domain][0]
+                d = self.topology.domains[domain]
                 remove_hosts += [n.id for n in d.nodes] 
             
             for domain in topology_changes.changes["domains"].edit:

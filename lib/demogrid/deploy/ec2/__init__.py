@@ -92,7 +92,7 @@ class Deployer(BaseDeployer):
         
         return EC2VM(started[0])
 
-    def post_allocate(self, domain, node, vm):
+    def post_allocate(self, node, vm):
         ec2_instance = vm.ec2_instance
         
         if ec2_instance.private_ip_address != None:
@@ -126,24 +126,24 @@ class Deployer(BaseDeployer):
             self.supports_create_tags = False
 
 
-    def get_node_vm(self, domain_nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
+    def get_node_vm(self, nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for n in nodes]
         reservations = self.conn.get_all_instances(ec2_instance_ids)
         node_vm = {}
         for r in reservations:
             instance = r.instances[0]
-            node = [(d,n) for d,n in domain_nodes if n.deploy_data.ec2.instance_id==instance.id][0]
+            node = [n for n in nodes if n.deploy_data.ec2.instance_id==instance.id][0]
             node_vm[node] = EC2VM(instance)
         return node_vm
 
-    def stop_vms(self, domain_nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
+    def stop_vms(self, nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for n in nodes]
         log.info("Stopping EC2 instances %s." % ", ".join(ec2_instance_ids))
         stopped = self.conn.stop_instances(ec2_instance_ids)
         log.info("Stopped EC2 instances %s." % ", ".join([i.id for i in stopped]))
 
-    def terminate_vms(self, domain_nodes):
-        ec2_instance_ids = [n.deploy_data.ec2.instance_id for d, n in domain_nodes]
+    def terminate_vms(self, nodes):
+        ec2_instance_ids = [n.deploy_data.ec2.instance_id for n in nodes]
         log.info("Terminating EC2 instances %s." % ", ".join(ec2_instance_ids))
         terminated = self.conn.terminate_instances(ec2_instance_ids)
         log.info("Terminated EC2 instances %s." % ", ".join([i.id for i in terminated]))
@@ -201,8 +201,8 @@ class Deployer(BaseDeployer):
             
             
     class NodeConfigureThread(ConfigureThread):
-        def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
-            ConfigureThread.__init__(self, multi, name, domain, node, vm, deployer, depends, basic, chef)
+        def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+            ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
             self.ec2_instance = self.vm.ec2_instance
             
         def connect(self):

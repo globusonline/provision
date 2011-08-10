@@ -37,9 +37,9 @@ class WaitThread(DemoGridThread):
         topology.save()
     
 class ConfigureThread(DemoGridThread):
-    def __init__(self, multi, name, domain, node, vm, deployer, depends = None, basic = True, chef = True):
+    def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
         DemoGridThread.__init__(self, multi, name, depends)
-        self.domain = domain
+        self.domain = node.parent_Domain
         self.node = node
         self.vm = vm
         self.deployer = deployer
