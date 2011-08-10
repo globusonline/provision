@@ -14,13 +14,13 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: NFS client
-#
-# Set up node so it will have access to its domain's NFS server.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: NFS client
+##
+## Set up node so it will have access to its domain's NFS server.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 demogrid_domain = node[:topology][:domains][node[:domain_id]]
 demogrid_node   = demogrid_domain[:nodes][node[:node_id]]

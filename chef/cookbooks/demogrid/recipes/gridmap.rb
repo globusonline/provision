@@ -14,14 +14,14 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: Gridmap file
-#
-# This recipe creates a gridmap file where users with their :gridmap
-# attribute set to true are added.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Gridmap file
+##
+## This recipe creates a gridmap file where users with their :gridmap
+## attribute set to true are added.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 demogrid_domain = node[:topology][:domains][node[:domain_id]]
 demogrid_node   = demogrid_domain[:nodes][node[:node_id]]

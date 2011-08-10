@@ -14,14 +14,14 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: MyProxy server for a single organization
-#
-# Sets up a MyProxy server that will use the organization's NIS domain 
-# to authenticate users.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: MyProxy server for a single organization
+##
+## Sets up a MyProxy server that will use the organization's NIS domain 
+## to authenticate users.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 include_recipe "globus::repository"
 

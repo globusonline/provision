@@ -15,13 +15,13 @@
 # -------------------------------------------------------------------------- #
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: DemoGrid common actions
-#
-# This recipe performs actions that are common to all DemoGrid nodes.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: DemoGrid common actions
+##
+## This recipe performs actions that are common to all DemoGrid nodes.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 demogrid_domain = node[:topology][:domains][node[:domain_id]]
 demogrid_node   = demogrid_domain[:nodes][node[:node_id]]

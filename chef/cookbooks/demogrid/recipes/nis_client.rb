@@ -14,13 +14,13 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: NIS client
-#
-# Set up node so it will have access to its domain's NIS server, allowing
-# domain users to log into it.
-#
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: NIS client
+##
+## Set up node so it will have access to its domain's NIS server, allowing
+## domain users to log into it.
+##
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 demogrid_domain = node[:topology][:domains][node[:domain_id]]

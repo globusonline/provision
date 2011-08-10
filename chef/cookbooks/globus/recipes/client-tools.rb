@@ -14,15 +14,15 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: Globus Toolkit 5.0.3 basic install
-#
-# This recipe performs a barebones install of Globus. Users on a node where this
-# recipe has been run will have access to Globus command-line utilities,
-# but little else. GridFTP, GRAM, etc. are set up in separate recipes.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Globus Toolkit 5.0.3 basic install
+##
+## This recipe performs a barebones install of Globus. Users on a node where this
+## recipe has been run will have access to Globus command-line utilities,
+## but little else. GridFTP, GRAM, etc. are set up in separate recipes.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 include_recipe "globus::repository"
 

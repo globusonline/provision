@@ -14,16 +14,16 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: Domain users
-#
-# This recipe creates the users in a domain.
-#
-# If the nis_server attribute is specified in the domain's topology,
-# this recipe must be run on the same node as the nis_server recipe.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Domain users
+##
+## This recipe creates the users in a domain.
+##
+## If the nis_server attribute is specified in the domain's topology,
+## this recipe must be run on the same node as the nis_server recipe.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 demogrid_domain = node[:topology][:domains][node[:domain_id]]
 demogrid_node   = demogrid_domain[:nodes][node[:node_id]]

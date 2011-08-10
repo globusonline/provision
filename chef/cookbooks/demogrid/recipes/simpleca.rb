@@ -14,18 +14,18 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: SimpleCA
-#
-# This recipe install a CA certificate and key so the node can use SimpleCA
-# commands to sign certificate requests.
-#
-# Note that, instead of using GPT, we set up all the necessary files manually.
-# This is necessary since the CA certificate is created beforehand by
-# demogrid-prepare, instead of through the usual Globus installation procedure.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: SimpleCA
+##
+## This recipe install a CA certificate and key so the node can use SimpleCA
+## commands to sign certificate requests.
+##
+## Note that, instead of using GPT, we set up all the necessary files manually.
+## This is necessary since the CA certificate is created beforehand by
+## demogrid-prepare, instead of through the usual Globus installation procedure.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 if ! File.exists?(node[:globus][:simpleCA] )
 

@@ -14,15 +14,15 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#
-# RECIPE: Globus Toolkit 5.0.3 GridFTP
-#
-# This recipe performs a barebones install of GridFTP. It assumes that the
-# "globus" recipe has been run, so it just involves setting up GridFTP
-# as a xinetd service.
-#
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Globus Toolkit 5.0.3 GridFTP
+##
+## This recipe performs a barebones install of GridFTP. It assumes that the
+## "globus" recipe has been run, so it just involves setting up GridFTP
+## as a xinetd service.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 include_recipe "globus::repository"
 
