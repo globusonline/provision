@@ -30,8 +30,8 @@ class Deployer(BaseDeployer):
 
     def get_node_vm(self, nodes):
         node_vm = {}
-        for d,n in nodes:
-            node_vm[d,n] = DummyVM()
+        for n in nodes:
+            node_vm[n] = DummyVM()
         return node_vm
 
     def stop_vms(self, nodes):
