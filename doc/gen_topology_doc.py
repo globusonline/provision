@@ -1,4 +1,5 @@
 from demogrid.common.persistence import *
+from demogrid.core.topology import *
 import textwrap
 
 
