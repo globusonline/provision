@@ -1,5 +1,6 @@
 from demogrid.common.utils import enum
 
+import inspect
 import json
 
 class ObjectValidationException(Exception):
@@ -53,6 +54,10 @@ def validate_property_type(value, expected_type, items_type = None):
             valid = True
             for elem in value:
                 valid &= validate_property_type(elem, items_type)
+        elif isinstance(value, dict):
+            valid = True
+            for elem in value.values():
+                valid &= validate_property_type(elem, items_type)
         else:
             valid = False    
     elif expected_type == PropertyTypes.NULL:
@@ -69,13 +74,12 @@ def validate_property_type(value, expected_type, items_type = None):
     return valid
 
 class Property(object):    
-    def __init__(self, name, proptype, required, description, indexable = False, unique = False, editable = False, items = None):
+    def __init__(self, name, proptype, required, description, editable = False, items = None, items_unique = False):
         self.name = name
         self.type = proptype
         self.required = required
         self.editable = editable
-        self.indexable = indexable
-        self.unique = unique
+        self.items_unique = items_unique
         self.description = description
         self.items = items
         
@@ -186,10 +190,10 @@ class PersistentObject(object):
                                 changes[name] = ArrayPropertyChange(add, remove, {})
                             else:                        
                                 raise ObjectValidationException("Tried to add/remove items from non-editable array '%s' (Add: %s  Remove: %s)""" % (name, add, remove))
-                    elif issubclass(property.items, PersistentObject):
-                        if property.indexable:
-                            self_set = set([x.id for x in self_value])
-                            pobj_set = set([x.id for x in pobj_value])
+                    elif inspect.isclass(property.items) and issubclass(property.items, PersistentObject):
+                        if property.items_unique:
+                            self_set = set(self_value.keys())
+                            pobj_set = set(pobj_value.keys())
                             
                             add = list(pobj_set - self_set)
                             remove = list(self_set - pobj_set)
@@ -199,8 +203,8 @@ class PersistentObject(object):
                             
                             common = list(self_set & pobj_set)
                             
-                            self_items_value = dict([(n.id, n) for n in self_value if n.id in common])
-                            pobj_items_value = dict([(n.id, n) for n in pobj_value if n.id in common])
+                            self_items_value = dict([(k, v) for k, v in self_value if k in common])
+                            pobj_items_value = dict([(k, v) for k, v in pobj_value if k in common])
                             
                             edit = {}
                             for s in self_items_value.values():
@@ -243,7 +247,12 @@ class PersistentObject(object):
                     value = getattr(self, name)
                 elif property.type == PropertyTypes.ARRAY:
                     value = []
-                    l = getattr(self, name)
+                    
+                    if inspect.isclass(property.items) and issubclass(property.items, PersistentObject) and property.items_unique:
+                        l = getattr(self, name).values()
+                    else:
+                        l = getattr(self, name)
+                    
                     for elem in l:
                         if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
                             value.append(elem)
@@ -280,7 +289,7 @@ class PersistentObject(object):
         elif p_type == PropertyTypes.NULL:
             return "nil"        
 
-    def to_ruby_hash_string(self, indexable_array_as_dicts = False):
+    def to_ruby_hash_string(self):
         hash_str = "{"
         
         obj_items = {}
@@ -289,12 +298,12 @@ class PersistentObject(object):
                 value = getattr(self, name)
                 if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
                     value_str = self.__primitive_to_ruby(value, property.type)
-                elif property.type == PropertyTypes.ARRAY and property.indexable and issubclass(property.items, PersistentObject) and indexable_array_as_dicts:
+                elif property.type == PropertyTypes.ARRAY and inspect.isclass(property.items) and issubclass(property.items, PersistentObject) and property.items_unique:
                     value_str = "{"
                         
                     items = {}
-                    for elem in value:
-                        items[elem.id] = elem.to_ruby_hash_string(indexable_array_as_dicts)
+                    for k, elem in value.items():
+                        items[k] = elem.to_ruby_hash_string()
                         
                     value_str += ", ".join([" \"%s\" => %s" % (k,v) for k,v in items.items()])
                     value_str += "}"
@@ -306,7 +315,7 @@ class PersistentObject(object):
                         if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
                             items.append( self.__primitive_to_ruby(elem, property.items) )
                         elif issubclass(property.items, PersistentObject):
-                            items.append( elem.to_ruby_hash_string(indexable_array_as_dicts) )
+                            items.append( elem.to_ruby_hash_string() )
                         elif property.items in (PropertyTypes.ARRAY):
                             raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                         elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
@@ -314,8 +323,8 @@ class PersistentObject(object):
 
                     value_str += ", ".join(items)
                     value_str += "]"
-                elif issubclass(property.type, PersistentObject):
-                    value_str = value.to_ruby_hash_string(indexable_array_as_dicts) 
+                elif inspect.isclass(property.type) and issubclass(property.type, PersistentObject):
+                    value_str = value.to_ruby_hash_string() 
                 elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
                     raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 obj_items[name] = value_str        
@@ -360,23 +369,52 @@ class PersistentObject(object):
                 raise ObjectValidationException("'%s' is not a valid value for %s.%s. Expected a %s." % (p_value, cls.__name__, p_name, pt_to_str(property.type, property.items)))
             else:
                 if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
-                    setattr(obj, p_name, p_value)
-                elif property.type == PropertyTypes.ARRAY:
-                    l = []
-                    for elem in p_value:
-                        if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
-                            l.append(elem)
-                        elif issubclass(property.items, PersistentObject):
+                    obj.set_property(p_name, p_value)
+                    
+                elif property.type == PropertyTypes.ARRAY and property.items_unique:
+                    if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
+                        l = list(set(p_value))
+                        if len(l) < len(p_value):
+                            raise ObjectValidationException("%s.%s requires unique values, but '%s' contains duplicate values." % (cls.__name__, p_name, p_value))
+                        obj.set_property(p_name, l)
+                    if inspect.isclass(property.items) and issubclass(property.items, PersistentObject):
+                        d = {}
+                        for elem in p_value:
+                            if not elem.has_key("id"):
+                                raise ObjectValidationException("%s.%s requires unique objects, but '%s' does not have an 'id' property." % (cls.__name__, p_name, elem))
+                            key = elem["id"]
+                            if d.has_key(key):
+                                raise ObjectValidationException("%s.%s requires unique objects, but id=%s encountered twice." % (cls.__name__, p_name, key))
                             elem_obj = property.items.from_json_dict(elem)
-                            l.append(elem_obj)
+                            setattr(elem_obj, "parent_%s" % cls.__name__, obj)
+                            d[key] = elem_obj
+                        obj.set_property(p_name, d)
+                    elif property.items in (PropertyTypes.ARRAY):
+                        raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
+                    elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
+                        raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")     
+                                           
+                elif property.type == PropertyTypes.ARRAY and not property.items_unique:
+                        if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
+                            l = []
+                            for elem in p_value:
+                                l.append(elem)
+                            obj.set_property(p_name, l)
+                        elif inspect.isclass(property.items) and issubclass(property.items, PersistentObject):
+                            l = []
+                            for elem in p_value:
+                                elem_obj = property.items.from_json_dict(elem)
+                                l.append(elem_obj)
+                            obj.set_property(p_name, l)
                         elif property.items in (PropertyTypes.ARRAY):
                             raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                         elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
                             raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
-                    obj.set_property(p_name, l)
-                elif issubclass(property.type, PersistentObject):
+                        
+                elif inspect.isclass(property.type) and issubclass(property.type, PersistentObject):
                     p_value_obj = property.type.from_json_dict(p_value)
                     obj.set_property(p_name, p_value_obj)               
+                    
                 elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
                     raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")
                 
