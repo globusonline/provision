@@ -123,11 +123,8 @@ class ConfigureThread(DemoGridThread):
         
             # Run chef
             log.debug("Running chef", node)
-            ssh.scp("%s/lib/ec2/chef.conf" % self.deployer.demogrid_dir,
-                    "/tmp/chef.conf")        
-            
+            ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /home/borja/test.conf")        
             ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"domain_id\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), domain.id, node.id), expectnooutput=True)
-    
             ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
     
             self.check_continue()
