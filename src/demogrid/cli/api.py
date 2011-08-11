@@ -67,7 +67,7 @@ class demogrid_create(Command):
         config_txt = configf.read()
         configf.close()
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         (status_code, message, inst_id) = api.instance_create(topology_json, config_txt)
 
         if status_code != API.STATUS_SUCCESS:
@@ -92,7 +92,7 @@ class demogrid_describe_instance(Command):
         
         inst_id = self.args[1]
         
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         (status_code, message, topology_json) = api.instance(inst_id)
         
         if status_code != API.STATUS_SUCCESS:
@@ -154,7 +154,7 @@ class demogrid_start(Command):
 
         if self.opt.extra_files != None:
             self._check_exists_file(self.opt.topology)
-            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
+            extra_files = parse_extra_files_files(self.opt.extra_files)
         else:
             extra_files = []
 
@@ -164,7 +164,7 @@ class demogrid_start(Command):
         else:
             run_cmds = []
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         status_code, message = api.instance_start(inst_id, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
@@ -214,7 +214,7 @@ class demogrid_update_topology(Command):
 
         if self.opt.extra_files != None:
             self._check_exists_file(self.opt.topology)
-            extra_files = parse_extra_files_files(self.opt.extra_files, self.dg_location)
+            extra_files = parse_extra_files_files(self.opt.extra_files)
         else:
             extra_files = []
             
@@ -224,7 +224,7 @@ class demogrid_update_topology(Command):
         else:
             run_cmds = []            
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         status_code, message = api.instance_update(inst_id, topology_json, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
@@ -256,7 +256,7 @@ class demogrid_stop(Command):
         
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         status_code, message = api.instance_stop(inst_id)
         
         if status_code == API.STATUS_SUCCESS:
@@ -283,7 +283,7 @@ class demogrid_terminate(Command):
         
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         status_code, message = api.instance_terminate(inst_id)
         
         if status_code == API.STATUS_SUCCESS:
@@ -311,7 +311,7 @@ class demogrid_list_instances(Command):
         else:
             inst_ids = None
         
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         insts = api.list_instances(inst_ids)
         
         for i in insts:
@@ -369,7 +369,7 @@ class demogrid_add_user(Command):
                 
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         (status_code, message, topology_json) = api.instance(inst_id)
         
         if status_code != API.STATUS_SUCCESS:
@@ -444,7 +444,7 @@ class demogrid_add_host(Command):
                 
         inst_id = self.args[1]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         (status_code, message, topology_json) = api.instance(inst_id)
         
         if status_code != API.STATUS_SUCCESS:
@@ -499,7 +499,7 @@ class demogrid_remove_users(Command):
         inst_id = self.args[1]
         users = self.args[2:]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
         
         
 def demogrid_remove_hosts_func():
@@ -518,5 +518,5 @@ class demogrid_remove_hosts(Command):
         inst_id = self.args[1]
         hosts = self.args[2:]
 
-        api = API(self.dg_location, self.opt.dir)
+        api = API(self.opt.dir)
                 

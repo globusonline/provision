@@ -19,8 +19,7 @@ class API(object):
     STATUS_SUCCESS = 0
     STATUS_FAIL = 1
     
-    def __init__(self, demogrid_dir, instances_dir):
-        self.demogrid_dir = demogrid_dir
+    def __init__(self, instances_dir):
         self.instances_dir = instances_dir
         
     def instance_create(self, topology_json, config_txt):
@@ -77,7 +76,7 @@ class API(object):
             inst.topology.save()
             
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir, extra_files, run_cmds)
+            deployer = deployer_class(extra_files, run_cmds)
             deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()
@@ -150,7 +149,7 @@ class API(object):
                 return (API.STATUS_FAIL, message)   
 
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir, extra_files, run_cmds)
+            deployer = deployer_class(extra_files, run_cmds)
             deployer.set_instance(inst)            
 
             nodes = inst.topology.get_nodes()
@@ -234,7 +233,7 @@ class API(object):
             inst.topology.save()
             
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir)
+            deployer = deployer_class()
             deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            
@@ -277,7 +276,7 @@ class API(object):
             inst.topology.save()
             
             deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(self.demogrid_dir)
+            deployer = deployer_class()
             deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            

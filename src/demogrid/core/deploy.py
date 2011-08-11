@@ -10,8 +10,7 @@ import sys
 from demogrid.core.topology import Node
 
 class BaseDeployer(object):
-    def __init__(self, demogrid_dir, extra_files = [], run_cmds = []):
-        self.demogrid_dir = demogrid_dir
+    def __init__(self, extra_files = [], run_cmds = []):
         self.instance = None
         self.extra_files = extra_files
         self.run_cmds = run_cmds
@@ -124,7 +123,7 @@ class ConfigureThread(DemoGridThread):
         
             # Run chef
             log.debug("Running chef", node)
-            ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /home/borja/test.conf")        
+            ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
             ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"domain_id\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), domain.id, node.id), expectnooutput=True)
             ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
     

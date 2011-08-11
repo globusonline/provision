@@ -22,6 +22,10 @@ class demogrid_ec2_create_ami(Command):
     def __init__(self, argv):
         Command.__init__(self, argv)
         
+        self.optparser.add_option("-s", "--chef-directory", 
+                                  action="store", type="string", dest="chef_dir", 
+                                  help = "Location of Chef files.")        
+        
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
                                   default = defaults.CONFIG_FILE,
@@ -30,10 +34,6 @@ class demogrid_ec2_create_ami(Command):
         self.optparser.add_option("-a", "--ami", 
                                   action="store", type="string", dest="ami", 
                                   help = "AMI to use to create the volume.")
-
-        self.optparser.add_option("-s", "--snapshot", 
-                                  action="store", type="string", dest="snap", 
-                                  help = "Snapshot with Chef files")
 
         self.optparser.add_option("-n", "--name", 
                                   action="store", type="string", dest="aminame", 
@@ -45,7 +45,7 @@ class demogrid_ec2_create_ami(Command):
 
         config = DemoGridConfig(self.opt.conf)
 
-        c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, config)
+        c = EC2AMICreator(self.opt.chef_dir, self.opt.ami, self.opt.aminame, config)
         c.run()
         
         
@@ -58,6 +58,10 @@ class demogrid_ec2_update_ami(Command):
     
     def __init__(self, argv):
         Command.__init__(self, argv)
+
+        self.optparser.add_option("-s", "--chef-directory", 
+                                  action="store", type="string", dest="chef_dir", 
+                                  help = "Location of Chef files.")
         
         self.optparser.add_option("-a", "--ami", 
                                   action="store", type="string", dest="ami", 
@@ -72,16 +76,16 @@ class demogrid_ec2_update_ami(Command):
                                   default = defaults.CONFIG_FILE,
                                   help = "Configuration file.") 
         
-        self.optparser.add_option("-l", "--files", 
+        self.optparser.add_option("-f", "--files", 
                                   action="store", type="string", dest="files", 
                                   help = "Files to add to AMI")
                 
     def run(self):    
         self.parse_options()
         
-        files = parse_extra_files_files(self.opt.files, self.dg_location)
+        files = parse_extra_files_files(self.opt.files)
         config = DemoGridConfig(self.opt.conf)
         
-        c = EC2AMIUpdater(self.dg_location, self.opt.ami, self.opt.aminame, files, config)
+        c = EC2AMIUpdater(self.opt.chef_dir, self.opt.ami, self.opt.aminame, files, config)
         c.run()        
 

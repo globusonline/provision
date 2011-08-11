@@ -33,12 +33,11 @@ def create_ec2_connection(hostname = None, path = None, port = None):
                         path=path)            
 
 
-def parse_extra_files_files(f, generated_dir):
+def parse_extra_files_files(f):
     l = []
     extra_f = open(f)
     for line in extra_f:
         srcglob, dst = line.split()
-        srcglob = srcglob.replace("@", generated_dir)
         srcs = glob.glob(os.path.expanduser(srcglob))
         srcs = [s for s in srcs if os.path.isfile(s)]
         dst_isdir = (os.path.basename(dst) == "")

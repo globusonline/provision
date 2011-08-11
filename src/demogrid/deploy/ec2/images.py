@@ -9,11 +9,10 @@ from demogrid.common import log
 import time
 
 class EC2AMICreator(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, snapshot, config):
-        self.demogrid_dir = demogrid_dir
+    def __init__(self, chef_dir, base_ami, ami_name, config):
+        self.chef_dir = chef_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
-        self.snapshot = snapshot
         self.config = config
 
         self.keypair = config.get("ec2-keypair")
@@ -49,25 +48,10 @@ class EC2AMICreator(object):
             print e.message
             exit(1)
         
-        if self.snapshot != None:
-            print "Creating volume + attaching."
-            
-            vol = conn.create_volume(1, instance.placement, self.snapshot)
-            vol.attach(instance.id, '/dev/sdh')
-            while vol.update() != "in-use":
-                time.sleep(2)
-            
-            print "Volume created."        
-    
-            print "Mounting volume."  
-            ssh.run("sudo mkdir /chef")
-            ssh.run("sudo mount -t ext3 /dev/sdh /chef")
-            ssh.run("sudo chown -R %s /chef" % self.username)
-        else:
-            print "Copying Chef files"
-            ssh.run("sudo mkdir /chef")
-            ssh.run("sudo chown -R %s /chef" % self.username)
-            ssh.scp_dir("%s/chef" % self.demogrid_dir, "/chef")
+        print "Copying Chef files"
+        ssh.run("sudo mkdir /chef")
+        ssh.run("sudo chown -R %s /chef" % self.username)
+        ssh.scp_dir("%s" % self.chef_dir, "/chef")
         
         # Some VMs don't include their hostname
         ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
@@ -79,9 +63,7 @@ class EC2AMICreator(object):
         ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
         ssh.run("sudo apt-get -q=2 install chef")
         
-        ssh.scp("%s/lib/ec2/chef.conf" % self.demogrid_dir,
-                "/tmp/chef.conf")        
-        
+        ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
         ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
@@ -92,14 +74,7 @@ class EC2AMICreator(object):
         
         print "Removing private data and authorized keys"
         ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
-        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")        
-        
-        if self.snapshot != None:
-            ssh.run("sudo umount /chef")
-            print "Detaching volume"
-            vol.detach()
-            while vol.update() != "available":
-                time.sleep(1)        
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")            
             
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
@@ -122,14 +97,12 @@ class EC2AMICreator(object):
         #while instance.update() != "terminated":
         #    time.sleep(2)
         print "Instance terminated"   
-                
-        if self.snapshot != None:                
-            vol.delete()     
+
         
 
 class EC2AMIUpdater(object):
-    def __init__(self, demogrid_dir, base_ami, ami_name, files, config):
-        self.demogrid_dir = demogrid_dir
+    def __init__(self, chef_dir, base_ami, ami_name, files, config):
+        self.chef_dir = chef_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.files = files

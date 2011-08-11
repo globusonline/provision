@@ -13,15 +13,7 @@ class Command(object):
         if root:
             if getpass.getuser() != "root":
                 print "Must run as root"
-                exit(1)         
-                 
-        if not os.environ.has_key("DEMOGRID_LOCATION"):
-            print "DEMOGRID_LOCATION not set"
-            exit(1)
-        
-        self.dg_location = os.environ["DEMOGRID_LOCATION"]
-        
-        # TODO: Validate that this is a correct DEMOGRID_LOCATION
+                exit(1)
                 
         self.argv = argv
         self.optparser = OptionParser()
@@ -39,7 +31,7 @@ class Command(object):
         self.optparser.add_option("-i", "--instances-dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.INSTANCE_LOCATION,
-                                  help = "Location of instance directories.")              
+                                  help = "Location of the instance database.")              
 
     def parse_options(self):
         opt, args = self.optparser.parse_args(self.argv)
