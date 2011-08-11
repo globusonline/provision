@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.commands import demogrid_vagrant_generate
-import sys
-
-c = demogrid_vagrant_generate(sys.argv)
-c.run()
