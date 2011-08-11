@@ -1,1 +1,0 @@
-/etc/chef/validation.pem /etc/chef/validation.pem
