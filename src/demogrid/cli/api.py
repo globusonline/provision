@@ -6,18 +6,22 @@ Created on Nov 1, 2010
 
 #!/usr/bin/python
 
+import time
+import sys
+
 import demogrid.common.defaults as defaults
 
 from demogrid.cli import Command
 from demogrid.core.api import API
 from demogrid.common.utils import parse_extra_files_files
 from demogrid.common.threads import SIGINTWatcher
-import time
 from demogrid.core.topology import Topology, Node, User
 from demogrid.core.config import SimpleTopologyConfig
 from demogrid.common.config import ConfigException
 
 
+def demogrid_create_func():
+    return demogrid_create(sys.argv).run()
         
 class demogrid_create(Command):
     
@@ -71,6 +75,10 @@ class demogrid_create(Command):
             exit(1) 
         else:
             print inst_id
+            
+            
+def demogrid_describe_instance_func():
+    return demogrid_describe_instance(sys.argv).run()            
         
 class demogrid_describe_instance(Command):
     
@@ -118,6 +126,8 @@ class demogrid_describe_instance(Command):
                         print "  %s\t%s\t%s\t%s" % (node.id, state, hostname, ip) 
                     print
                     
+def demogrid_start_func():
+    return demogrid_start(sys.argv).run()  
 
 class demogrid_start(Command):
     
@@ -168,6 +178,8 @@ class demogrid_start(Command):
             self._print_error("Could not start instance.", message)
             exit(1) 
 
+def demogrid_update_topology_func():
+    return demogrid_update_topology(sys.argv).run()  
 
 class demogrid_update_topology(Command):
     
@@ -225,7 +237,10 @@ class demogrid_update_topology(Command):
         elif status_code == API.STATUS_FAIL:
             self._print_error("Could not update topology.", message)
             exit(1)
-        
+
+
+def demogrid_stop_func():
+    return demogrid_stop(sys.argv).run()         
         
 class demogrid_stop(Command):
     
@@ -251,6 +266,9 @@ class demogrid_stop(Command):
             exit(1)       
 
 
+def demogrid_terminate_func():
+    return demogrid_terminate(sys.argv).run()     
+
 class demogrid_terminate(Command):
     
     name = "demogrid-terminate"
@@ -274,6 +292,9 @@ class demogrid_terminate(Command):
             self._print_error("Could not start instance.", message)
             exit(1)  
 
+
+def demogrid_list_instances_func():
+    return demogrid_list_instances(sys.argv).run()     
 
 class demogrid_list_instances(Command):
     
@@ -302,6 +323,9 @@ class demogrid_list_instances(Command):
                     if self.opt.debug:
                         print "\t%s" % node.deploy_data
 
+
+def demogrid_add_user_func():
+    return demogrid_add_user(sys.argv).run()     
 
 class demogrid_add_user(Command):
     
@@ -384,6 +408,10 @@ class demogrid_add_user(Command):
                 self._print_error("Could not update topology.", message)
                 exit(1)
         
+        
+def demogrid_add_host_func():
+    return demogrid_add_host(sys.argv).run()     
+        
 class demogrid_add_host(Command):
     
     name = "demogrid-add-host"
@@ -454,6 +482,9 @@ class demogrid_add_host(Command):
                 self._print_error("Could not update topology.", message)
                 exit(1) 
         
+        
+def demogrid_remove_users_func():
+    return demogrid_remove_users(sys.argv).run()     
 
 class demogrid_remove_users(Command):
     
@@ -470,6 +501,9 @@ class demogrid_remove_users(Command):
 
         api = API(self.dg_location, self.opt.dir)
         
+        
+def demogrid_remove_hosts_func():
+    return demogrid_remove_hosts(sys.argv).run()             
         
 class demogrid_remove_hosts(Command):
     

@@ -3,6 +3,8 @@ Created on Jun 16, 2011
 
 @author: borja
 '''
+import sys
+
 from demogrid.cli import Command
 from demogrid.deploy.ec2.images import EC2AMICreator, EC2AMIUpdater
 from demogrid.common import defaults
@@ -10,6 +12,8 @@ from demogrid.core.config import DemoGridConfig
 from demogrid.common.utils import parse_extra_files_files
 
         
+def demogrid_ec2_create_ami_func():
+    return demogrid_ec2_create_ami(sys.argv).run()        
 
 class demogrid_ec2_create_ami(Command):
     
@@ -43,6 +47,10 @@ class demogrid_ec2_create_ami(Command):
 
         c = EC2AMICreator(self.dg_location, self.opt.ami, self.opt.aminame, self.opt.snap, config)
         c.run()
+        
+        
+def demogrid_ec2_update_ami_func():
+    return demogrid_ec2_update_ami(sys.argv).run()     
         
 class demogrid_ec2_update_ami(Command):
     

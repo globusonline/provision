@@ -1,13 +1,13 @@
-'''
-Created on Jun 16, 2011
+import sys
 
-@author: borja
-'''
 from demogrid.cli import Command
 from demogrid.common import defaults, constants
 from demogrid.core.config import DemoGridConfig
 from demogrid.globusonline.transfer_api import TransferAPIClient, ClientError
 from demogrid.core.instance import InstanceStore
+
+def demogrid_go_register_endpoint_func():
+    return demogrid_go_register_endpoint(sys.argv).run()     
 
 class demogrid_go_register_endpoint(Command):
     
