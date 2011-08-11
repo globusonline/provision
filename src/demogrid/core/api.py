@@ -7,8 +7,9 @@ import shutil
 from demogrid.core.topology import Topology, Domain, Node, User
 from demogrid.common.certs import CertificateGenerator
 from demogrid.core.instance import Instance, InstanceStore, InstanceException
-from demogrid.common.utils import parse_extra_files_files, MultiThread,\
-    SSHCommandFailureException, SIGINTWatcher
+from demogrid.common.utils import parse_extra_files_files
+from demogrid.common.threads import MultiThread
+from demogrid.common.ssh import SSHCommandFailureException
 from demogrid.common import log
 from boto.exception import EC2ResponseError
 import traceback

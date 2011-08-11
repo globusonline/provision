@@ -10,7 +10,8 @@ import demogrid.common.defaults as defaults
 
 from demogrid.cli import Command
 from demogrid.core.api import API
-from demogrid.common.utils import parse_extra_files_files, SIGINTWatcher
+from demogrid.common.utils import parse_extra_files_files
+from demogrid.common.threads import SIGINTWatcher
 import time
 from demogrid.core.topology import Topology, Node, User
 from demogrid.core.config import SimpleTopologyConfig

@@ -1,4 +1,4 @@
-from demogrid.common.utils import DemoGridThread
+from demogrid.common.threads import DemoGridThread
 import sys
 from demogrid.common import log
 from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread

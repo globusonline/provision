@@ -1,7 +1,8 @@
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
-from demogrid.common.utils import create_ec2_connection, SSH, MultiThread,\
-    DemoGridThread, SSHCommandFailureException, SIGINTWatcher
+from demogrid.common.utils import create_ec2_connection 
+from demogrid.common.ssh import SSH, SSHCommandFailureException
+from demogrid.common.threads import MultiThread, DemoGridThread, SIGINTWatcher
 import random
 import time
 import sys

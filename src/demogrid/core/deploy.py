@@ -3,7 +3,8 @@ Created on Jun 17, 2011
 
 @author: borja
 '''
-from demogrid.common.utils import DemoGridThread, SSH
+from demogrid.common.threads import DemoGridThread
+from demogrid.common.ssh import SSH
 from demogrid.common import log
 import sys
 from demogrid.core.topology import Node

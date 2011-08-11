@@ -3,7 +3,8 @@ Created on Dec 6, 2010
 
 @author: borja
 '''
-from demogrid.common.utils import create_ec2_connection, SSH
+from demogrid.common.utils import create_ec2_connection
+from demogrid.common.ssh import SSH
 from demogrid.common import log
 import time
 
