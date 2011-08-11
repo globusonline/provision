@@ -24,10 +24,6 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-class Chef::Resource
-  include FileHelper
-end
-
 case node.platform
 when "ubuntu"
 
@@ -46,7 +42,7 @@ file "/etc/apt/sources.list.d/condor.list" do
   mode "0644"
   action :create
   content "deb http://www.cs.wisc.edu/condor/debian/stable/ lenny contrib\n"  
-  notifies :run, "execute[apt-get update]"
+  notifies :run, "execute[apt-get update]", :immediately
 end
 
 execute "apt-get update" do

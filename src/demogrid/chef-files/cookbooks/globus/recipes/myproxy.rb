@@ -25,10 +25,6 @@
 
 include_recipe "globus::repository"
 
-class Chef::Resource
-  include FileHelper
-end
-
 package "xinetd"
 package "globus-simple-ca"
 package "myproxy-server"
