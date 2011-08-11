@@ -1,23 +1,16 @@
-import os
-import os.path
 import sys
-import shutil
-
-
-from demogrid.core.topology import Topology, Domain, Node, User
-from demogrid.common.certs import CertificateGenerator
-from demogrid.core.instance import Instance, InstanceStore, InstanceException
-from demogrid.common.utils import parse_extra_files_files
-from demogrid.common.threads import MultiThread
-from demogrid.common.ssh import SSHCommandFailureException
-from demogrid.common import log
-from boto.exception import EC2ResponseError
 import traceback
-from copy import deepcopy
-import json
+
+from boto.exception import EC2ResponseError
 
 import demogrid.deploy.ec2 as ec2_deploy
 import demogrid.deploy.dummy as dummy_deploy
+
+from demogrid.core.topology import Topology, Node
+from demogrid.core.instance import InstanceStore, InstanceException
+from demogrid.common.threads import MultiThread
+from demogrid.common.ssh import SSHCommandFailureException
+from demogrid.common import log
 from demogrid.common.config import ConfigException
 from demogrid.common.persistence import ObjectValidationException
 

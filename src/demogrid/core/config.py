@@ -1,6 +1,4 @@
-import ConfigParser
 from demogrid.core.topology import Domain, User, Node, Topology
-from demogrid.common import constants
 from demogrid.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import os.path
 

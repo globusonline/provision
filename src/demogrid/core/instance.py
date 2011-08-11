@@ -1,12 +1,8 @@
-import shutil
 import os.path
-from cPickle import load
 import random
-from demogrid.common import DemoGridException
 from demogrid.core.config import DemoGridConfig
 from demogrid.core.topology import Topology
 from demogrid.common.certs import CertificateGenerator
-from demogrid.common.config import ConfigException
 from demogrid.common.persistence import ObjectValidationException
 
 class InstanceException(Exception):

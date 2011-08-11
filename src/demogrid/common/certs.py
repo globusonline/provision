@@ -3,7 +3,7 @@ Created on Apr 6, 2011
 
 @author: borja
 '''
-from OpenSSL import crypto, SSL
+from OpenSSL import crypto
 import os.path
 
 class CertificateGenerator(object):
