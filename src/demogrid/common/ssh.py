@@ -1,9 +1,17 @@
 import sys
-import paramiko, dg_paraproxy
+import paramiko
 import time
 import select
 import os.path
 import traceback
+
+# Try to use our patched version of paraproxy only if
+# it is available. If it isn't, ProxyCommand support
+# will simply be unavailable
+try:
+    import dg_paraproxy
+except:
+    pass
 
 from Crypto.Random import atfork
 
