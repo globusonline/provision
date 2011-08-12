@@ -1,5 +1,7 @@
-from os import walk
+from distribute_setup import use_setuptools
+use_setuptools()
 from setuptools import setup, find_packages
+
 
 cmds = {"globus.provision.cli.api":
         ["gp-create", "gp-describe-instance", "gp-start", "gp-update-topology", "gp-stop",
