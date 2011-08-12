@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_list_instances
-import sys
-
-c = demogrid_list_instances(sys.argv)
-c.run()

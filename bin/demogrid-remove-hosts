@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_remove_hosts
-import sys
-
-c = demogrid_remove_hosts(sys.argv)
-c.run()

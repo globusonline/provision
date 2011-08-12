@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_update_topology
-import sys
-
-c = demogrid_update_topology(sys.argv)
-c.run()

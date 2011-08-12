@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_create
-import sys
-
-c = demogrid_create(sys.argv)
-c.run()

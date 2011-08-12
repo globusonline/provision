@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.globusonline import demogrid_go_register_endpoint
-import sys
-
-c = demogrid_go_register_endpoint(sys.argv)
-c.run()

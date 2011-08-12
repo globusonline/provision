@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli.api import demogrid_stop
-import sys
-
-c = demogrid_stop(sys.argv)
-c.run()
