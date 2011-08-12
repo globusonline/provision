@@ -1,23 +1,24 @@
 from os import walk
 from setuptools import setup, find_packages
 
-import inspect
+cmds = {"globus.provision.cli.api":
+        ["gp-create", "gp-describe-instance", "gp-start", "gp-update-topology", "gp-stop",
+         "gp-terminate", "gp-list-instances", "gp-add-user", "gp-add-host",
+         "gp-remove-users", "gp-remove-hosts"],
+         
+        "globus.provision.cli.ec2":
+        ["gp-ec2-create-ami", "gp-ec2-update-ami"],
+        
+        "globus.provision.cli.globusonline":
+        ["gp-go-register-endpoint"]
+        }
 
-import globus.provision.cli.api
-import globus.provision.cli.ec2
-import globus.provision.cli.globusonline
+eps = []
+for mod in cmds:
+    for name in cmds[mod]:
+        clsname = name.replace("-","_")
+        eps.append("%s = %s:%s_func" % (name, mod, clsname))
 
-def gen_entrypoints(module):
-    members = dict([(name,cmd) for name, cmd in inspect.getmembers(module)])
-    cmd_names = [name for name, cmd in members.items() 
-                 if inspect.isclass(cmd) and issubclass(cmd, globus.provision.cli.Command) and cmd != globus.provision.cli.Command]
-    eps = []
-    for name in cmd_names:
-        if "%s_func" % name in members:
-            cmd = members[name]
-            eps.append("%s = %s:%s_func" % (cmd.name, module.__name__, name))
-
-    return eps
 
 setup(name='globus-provision',
       version='0.3.0rc1',
@@ -28,14 +29,12 @@ setup(name='globus-provision',
       package_dir = {'': 'src'},      
       packages=find_packages("src", exclude=["dg_paraproxy"]),
       
-      install_requires = ['boto>=2.0', 'pycrypto>=2.3', 'paramiko>=1.7.7.1'],
+      install_requires = ['boto>=2.0', 'paramiko>=1.7.7.1'],
       setup_requires = [ "setuptools_git >= 0.4.2", ],
       include_package_data=True,
       
       entry_points = {
-        'console_scripts': gen_entrypoints(globus.provision.cli.api) + 
-                           gen_entrypoints(globus.provision.cli.ec2) +
-                           gen_entrypoints(globus.provision.cli.globusonline)
+        'console_scripts': eps
         },
 
       package_data = {"chef":["*"]},
