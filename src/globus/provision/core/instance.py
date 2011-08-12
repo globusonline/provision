@@ -15,7 +15,7 @@ class InstanceStore(object):
     def create_new_instance(self, topology_json, config_txt):
         created = False
         while not created:
-            inst_id = "xgi-" + hex(random.randint(1,2**31-1))[2:].rjust(8,"0")
+            inst_id = "gpi-" + hex(random.randint(1,2**31-1))[2:].rjust(8,"0")
             inst_dir = "%s/%s" % (self.instances_dir, inst_id)
             if not os.path.exists(inst_dir):
                 os.makedirs(inst_dir)
