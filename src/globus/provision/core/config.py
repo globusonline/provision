@@ -361,12 +361,8 @@ class SimpleTopologyConfig(Config):
                     user.set_property("id", username)
                     user.set_property("password_hash", "!")
                     user.set_property("ssh_pkey", user_ssh_pubkey)
-                    if type == "G":
-                        users_auth = self.get((domain_name,"grid-users-auth"))
-                        if users_auth == "certificate":
-                            user.set_property("certificate", "generated")
-                        else:
-                            user.set_property("certificate", "none")           
+                    if type == "C":
+                        user.set_property("certificate", "generated")
                     else:
                         user.set_property("certificate", "none")
                         
