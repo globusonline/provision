@@ -41,17 +41,26 @@ class demogrid_create(Command):
                 
     def run(self):    
         self.parse_options()
-        
-        self._check_exists_file(self.opt.topology)
+
+        if self.opt.conf is None:
+            print "You must specify a configuration file using the -c/--conf option."
+            exit(1)
+
         self._check_exists_file(self.opt.conf)
+
+        if self.opt.topology is None:
+            topology_file = self.opt.conf
+        else:
+            self._check_exists_file(self.opt.topology)
+            topology_file = self.opt.topology
         
-        if self.opt.topology.endswith(".json"):
-            jsonfile = open(self.opt.topology)
+        if topology_file.endswith(".json"):
+            jsonfile = open(topology_file)
             topology_json = jsonfile.read()
             jsonfile.close()
-        elif self.opt.topology.endswith(".conf"):
+        elif topology_file.endswith(".conf"):
             try:
-                conf = SimpleTopologyConfig(self.opt.topology)
+                conf = SimpleTopologyConfig(topology_file)
                 topology = conf.to_topology()
                 topology_json = topology.to_json_string()
                 print topology_json
@@ -62,7 +71,6 @@ class demogrid_create(Command):
             self._print_error("Unrecognized topology file format.", "File must be either a JSON (.json) or configuration (.conf) file.")
             exit(1)         
 
-        exit(0)
         configf = open(self.opt.conf)
         config_txt = configf.read()
         configf.close()
@@ -153,13 +161,13 @@ class demogrid_start(Command):
         inst_id = self.args[1]
 
         if self.opt.extra_files != None:
-            self._check_exists_file(self.opt.topology)
+            self._check_exists_file(self.opt.extra_files)
             extra_files = parse_extra_files_files(self.opt.extra_files)
         else:
             extra_files = []
 
         if self.opt.run != None:
-            self._check_exists_file(self.opt.topology)
+            self._check_exists_file(self.opt.run)
             run_cmds = [l.strip() for l in open(self.opt.run).readlines()]
         else:
             run_cmds = []
@@ -206,6 +214,8 @@ class demogrid_update_topology(Command):
         t_start = time.time()        
         self.parse_options()
 
+        self._check_exists_file(self.opt.topology)
+
         jsonfile = open(self.opt.topology)
         topology_json = jsonfile.read()
         jsonfile.close()
@@ -213,13 +223,13 @@ class demogrid_update_topology(Command):
         inst_id = self.args[1]
 
         if self.opt.extra_files != None:
-            self._check_exists_file(self.opt.topology)
+            self._check_exists_file(self.opt.extra_files)
             extra_files = parse_extra_files_files(self.opt.extra_files)
         else:
             extra_files = []
             
         if self.opt.run != None:
-            self._check_exists_file(self.opt.topology)
+            self._check_exists_file(self.opt.run)
             run_cmds = [l.strip() for l in open(self.opt.run).readlines()]
         else:
             run_cmds = []            
