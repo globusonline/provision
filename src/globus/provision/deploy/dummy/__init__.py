@@ -1,8 +1,8 @@
-from demogrid.common.threads import DemoGridThread
+from globus.provision.common.threads import GPThread
 import sys
-from demogrid.common import log
-from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
-from demogrid.core.topology import Node
+from globus.provision.common import log
+from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
+from globus.provision.core.topology import Node
 
 class DummyVM(VM):
     def __init__(self):
@@ -25,7 +25,7 @@ class Deployer(BaseDeployer):
         return DummyVM()
 
     def post_allocate(self, node, vm):
-        node.hostname = "%s.demogrid.example.org" % node.id
+        node.hostname = "%s.gp.example.org" % node.id
         node.ip = "1.2.3.4"
 
     def get_node_vm(self, nodes):

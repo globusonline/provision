@@ -3,16 +3,16 @@ import traceback
 
 from boto.exception import EC2ResponseError
 
-import demogrid.deploy.ec2 as ec2_deploy
-import demogrid.deploy.dummy as dummy_deploy
+import globus.provision.deploy.ec2 as ec2_deploy
+import globus.provision.deploy.dummy as dummy_deploy
 
-from demogrid.core.topology import Topology, Node
-from demogrid.core.instance import InstanceStore, InstanceException
-from demogrid.common.threads import MultiThread
-from demogrid.common.ssh import SSHCommandFailureException
-from demogrid.common import log
-from demogrid.common.config import ConfigException
-from demogrid.common.persistence import ObjectValidationException
+from globus.provision.core.topology import Topology, Node
+from globus.provision.core.instance import InstanceStore, InstanceException
+from globus.provision.common.threads import MultiThread
+from globus.provision.common.ssh import SSHCommandFailureException
+from globus.provision.common import log
+from globus.provision.common.config import ConfigException
+from globus.provision.common.persistence import ObjectValidationException
 
 class API(object):
     
@@ -107,7 +107,7 @@ class API(object):
             inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
             inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
     
-            log.info("Setting up DemoGrid on instances")        
+            log.info("Setting up Globus Provision on instances")        
             
             (success, message) = self.__configure_vms(deployer, node_vm)
             if not success:
@@ -191,7 +191,7 @@ class API(object):
             inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
             inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
 
-            log.info("Setting up DemoGrid on instances")        
+            log.info("Setting up Globus Provision on instances")        
             
             # Right now we reconfigure all nodes. It shouldn't be hard to follow
             # the dependency tree to make sure only the new nodes and "ancestor"
@@ -408,7 +408,7 @@ class API(object):
         
         mt_configure.run()
         if not mt_configure.all_success():
-            message = self.__mt_exceptions_to_text(mt_configure.get_exceptions(), "DemoGrid was unable to configure the instances.")
+            message = self.__mt_exceptions_to_text(mt_configure.get_exceptions(), "Globus Provision was unable to configure the instances.")
             return (False, message)
         
         return (True, "Success")

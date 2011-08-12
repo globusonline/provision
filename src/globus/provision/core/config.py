@@ -1,9 +1,9 @@
-from demogrid.core.topology import Domain, User, Node, Topology
-from demogrid.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
+from globus.provision.core.topology import Domain, User, Node, Topology
+from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import os.path
 import getpass
 
-class DemoGridConfig(Config):
+class GPConfig(Config):
 
     sections = []    
     
@@ -14,7 +14,7 @@ class DemoGridConfig(Config):
     # ============================= #    
     
     general = Section("general", required=True,
-                      doc = "This section is used for general options affecting DemoGrid as a whole.")
+                      doc = "This section is used for general options affecting Globus Provision as a whole.")
     general.options = \
     [
      Option(name        = "ca-cert",
@@ -23,7 +23,7 @@ class DemoGridConfig(Config):
             required    = False,
             doc         = """
             Location of CA certificate (PEM-encoded) used to generate user
-            and host certificates. If blank, DemoGrid will generate a self-signed
+            and host certificates. If blank, Globus Provision will generate a self-signed
             certificate from scratch.        
             """),    
      Option(name        = "ca-key",
@@ -192,7 +192,7 @@ class SimpleTopologyConfig(Config):
     # ============================= #    
     
     general = Section("general", required=True,
-                      doc = "This section is used for general options affecting DemoGrid as a whole.")
+                      doc = "This section is used for general options affecting Globus Provision as a whole.")
     general.options = \
     [    
      Option(name        = "domains",
@@ -223,7 +223,7 @@ class SimpleTopologyConfig(Config):
     sections.append(general)
     
     domain = Section("domain", required=False, multiple=("general", "domains"),
-                     doc = "This section is used for general options affecting DemoGrid as a whole.")
+                     doc = "This section is used for general options affecting Globus Provision as a whole.")
     domain.options = \
     [    
      Option(name        = "users-file",

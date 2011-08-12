@@ -9,23 +9,23 @@ Created on Nov 1, 2010
 import time
 import sys
 
-import demogrid.common.defaults as defaults
+import globus.provision.common.defaults as defaults
 
-from demogrid.cli import Command
-from demogrid.core.api import API
-from demogrid.common.utils import parse_extra_files_files
-from demogrid.common.threads import SIGINTWatcher
-from demogrid.core.topology import Topology, Node, User
-from demogrid.core.config import SimpleTopologyConfig
-from demogrid.common.config import ConfigException
+from globus.provision.cli import Command
+from globus.provision.core.api import API
+from globus.provision.common.utils import parse_extra_files_files
+from globus.provision.common.threads import SIGINTWatcher
+from globus.provision.core.topology import Topology, Node, User
+from globus.provision.core.config import SimpleTopologyConfig
+from globus.provision.common.config import ConfigException
 
 
-def demogrid_create_func():
-    return demogrid_create(sys.argv).run()
+def gp_create_func():
+    return gp_create(sys.argv).run()
         
-class demogrid_create(Command):
+class gp_create(Command):
     
-    name = "demogrid-create"
+    name = "gp-create"
 
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -85,12 +85,12 @@ class demogrid_create(Command):
             print inst_id
             
             
-def demogrid_describe_instance_func():
-    return demogrid_describe_instance(sys.argv).run()            
+def gp_describe_instance_func():
+    return gp_describe_instance(sys.argv).run()            
         
-class demogrid_describe_instance(Command):
+class gp_describe_instance(Command):
     
-    name = "demogrid-describe-instance"
+    name = "gp-describe-instance"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -134,12 +134,12 @@ class demogrid_describe_instance(Command):
                         print "  %s\t%s\t%s\t%s" % (node.id, state, hostname, ip) 
                     print
                     
-def demogrid_start_func():
-    return demogrid_start(sys.argv).run()  
+def gp_start_func():
+    return gp_start(sys.argv).run()  
 
-class demogrid_start(Command):
+class gp_start(Command):
     
-    name = "demogrid-start"
+    name = "gp-start"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -186,12 +186,12 @@ class demogrid_start(Command):
             self._print_error("Could not start instance.", message)
             exit(1) 
 
-def demogrid_update_topology_func():
-    return demogrid_update_topology(sys.argv).run()  
+def gp_update_topology_func():
+    return gp_update_topology(sys.argv).run()  
 
-class demogrid_update_topology(Command):
+class gp_update_topology(Command):
     
-    name = "demogrid-update-topology"
+    name = "gp-update-topology"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -249,12 +249,12 @@ class demogrid_update_topology(Command):
             exit(1)
 
 
-def demogrid_stop_func():
-    return demogrid_stop(sys.argv).run()         
+def gp_stop_func():
+    return gp_stop(sys.argv).run()         
         
-class demogrid_stop(Command):
+class gp_stop(Command):
     
-    name = "demogrid-stop"
+    name = "gp-stop"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -276,12 +276,12 @@ class demogrid_stop(Command):
             exit(1)       
 
 
-def demogrid_terminate_func():
-    return demogrid_terminate(sys.argv).run()     
+def gp_terminate_func():
+    return gp_terminate(sys.argv).run()     
 
-class demogrid_terminate(Command):
+class gp_terminate(Command):
     
-    name = "demogrid-terminate"
+    name = "gp-terminate"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -303,12 +303,12 @@ class demogrid_terminate(Command):
             exit(1)  
 
 
-def demogrid_list_instances_func():
-    return demogrid_list_instances(sys.argv).run()     
+def gp_list_instances_func():
+    return gp_list_instances(sys.argv).run()     
 
-class demogrid_list_instances(Command):
+class gp_list_instances(Command):
     
-    name = "demogrid-list-instances"
+    name = "gp-list-instances"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -334,12 +334,12 @@ class demogrid_list_instances(Command):
                         print "\t%s" % node.deploy_data
 
 
-def demogrid_add_user_func():
-    return demogrid_add_user(sys.argv).run()     
+def gp_add_user_func():
+    return gp_add_user(sys.argv).run()     
 
-class demogrid_add_user(Command):
+class gp_add_user(Command):
     
-    name = "demogrid-add-user"
+    name = "gp-add-user"
     
     def __init__(self, argv):
         Command.__init__(self, argv)    
@@ -419,12 +419,12 @@ class demogrid_add_user(Command):
                 exit(1)
         
         
-def demogrid_add_host_func():
-    return demogrid_add_host(sys.argv).run()     
+def gp_add_host_func():
+    return gp_add_host(sys.argv).run()     
         
-class demogrid_add_host(Command):
+class gp_add_host(Command):
     
-    name = "demogrid-add-host"
+    name = "gp-add-host"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -493,12 +493,12 @@ class demogrid_add_host(Command):
                 exit(1) 
         
         
-def demogrid_remove_users_func():
-    return demogrid_remove_users(sys.argv).run()     
+def gp_remove_users_func():
+    return gp_remove_users(sys.argv).run()     
 
-class demogrid_remove_users(Command):
+class gp_remove_users(Command):
     
-    name = "demogrid-remove-user"
+    name = "gp-remove-user"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
@@ -512,12 +512,12 @@ class demogrid_remove_users(Command):
         api = API(self.opt.dir)
         
         
-def demogrid_remove_hosts_func():
-    return demogrid_remove_hosts(sys.argv).run()             
+def gp_remove_hosts_func():
+    return gp_remove_hosts(sys.argv).run()             
         
-class demogrid_remove_hosts(Command):
+class gp_remove_hosts(Command):
     
-    name = "demogrid-remove-hosts"
+    name = "gp-remove-hosts"
     
     def __init__(self, argv):
         Command.__init__(self, argv)

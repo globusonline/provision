@@ -37,7 +37,7 @@ class CertificateGenerator(object):
 
         cert = crypto.X509()
         cert.get_subject().O = "Grid"
-        cert.get_subject().OU = "DemoGrid"
+        cert.get_subject().OU = "Globus Provision"
         cert.get_subject().CN = cn
         cert.set_serial_number(self.serial)
         self.serial += 1

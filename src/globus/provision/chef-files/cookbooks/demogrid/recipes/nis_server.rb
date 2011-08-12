@@ -23,8 +23,8 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-demogrid_domain = node[:topology][:domains][node[:domain_id]]
-demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
 
 subnet = nil
 
@@ -70,7 +70,7 @@ end
 file "/etc/yp.conf" do
   owner "root"
   mode "0644"
-  content "domain grid.example.org server #{demogrid_node[:hostname]}"
+  content "domain grid.example.org server #{gp_node[:hostname]}"
   notifies :run, "execute[ypinit]"
 end  
 

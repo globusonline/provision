@@ -1,5 +1,5 @@
-from demogrid.core.config import DemoGridConfig, SimpleTopologyConfig
-from demogrid.common.config import OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
+from globus.provision.core.config import GPConfig, SimpleTopologyConfig
+from globus.provision.common.config import OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import textwrap
 import re
 import sys
@@ -7,8 +7,8 @@ import sys
 conf_cls = sys.argv[1]
 title = sys.argv[2]
 
-if conf_cls == "DemoGridConfig":
-    conf_cls = DemoGridConfig
+if conf_cls == "GPConfig":
+    conf_cls = GPConfig
 elif conf_cls == "SimpleTopologyConfig":
     conf_cls = SimpleTopologyConfig
 

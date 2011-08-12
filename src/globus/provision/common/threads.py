@@ -3,12 +3,12 @@ import sys
 import signal
 import threading
 import traceback
-from demogrid.common import log
+from globus.provision.common import log
 
 class ThreadAbortException(Exception):
     pass
         
-class DemoGridThread (threading.Thread):
+class GPThread (threading.Thread):
     def __init__ (self, multi, name, depends = None):
         threading.Thread.__init__(self)
         self.multi = multi

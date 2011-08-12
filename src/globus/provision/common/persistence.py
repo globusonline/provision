@@ -1,4 +1,4 @@
-from demogrid.common.utils import enum
+from globus.provision.common.utils import enum
 
 import inspect
 import json

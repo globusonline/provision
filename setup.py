@@ -3,14 +3,14 @@ from setuptools import setup, find_packages
 
 import inspect
 
-import demogrid.cli.api
-import demogrid.cli.ec2
-import demogrid.cli.globusonline
+import globus.provision.cli.api
+import globus.provision.cli.ec2
+import globus.provision.cli.globusonline
 
 def gen_entrypoints(module):
     members = dict([(name,cmd) for name, cmd in inspect.getmembers(module)])
     cmd_names = [name for name, cmd in members.items() 
-                 if inspect.isclass(cmd) and issubclass(cmd, demogrid.cli.Command) and cmd != demogrid.cli.Command]
+                 if inspect.isclass(cmd) and issubclass(cmd, globus.provision.cli.Command) and cmd != globus.provision.cli.Command]
     eps = []
     for name in cmd_names:
         if "%s_func" % name in members:
@@ -33,9 +33,9 @@ setup(name='globus-provision',
       include_package_data=True,
       
       entry_points = {
-        'console_scripts': gen_entrypoints(demogrid.cli.api) + 
-                           gen_entrypoints(demogrid.cli.ec2) +
-                           gen_entrypoints(demogrid.cli.globusonline)
+        'console_scripts': gen_entrypoints(globus.provision.cli.api) + 
+                           gen_entrypoints(globus.provision.cli.ec2) +
+                           gen_entrypoints(globus.provision.cli.globusonline)
         },
 
       package_data = {"chef":["*"]},

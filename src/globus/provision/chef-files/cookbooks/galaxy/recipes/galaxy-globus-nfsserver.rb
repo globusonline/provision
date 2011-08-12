@@ -88,7 +88,7 @@ template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
   group "galaxy"
   variables(
     :db_connect => "foo",
-    :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:demogrid_domain]}"
+    :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:gp_domain]}"
   )
 end  
 

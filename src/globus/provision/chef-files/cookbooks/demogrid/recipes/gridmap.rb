@@ -23,8 +23,8 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-demogrid_domain = node[:topology][:domains][node[:domain_id]]
-demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
 
 # Create grid-security directory.
 directory "/etc/grid-security" do
@@ -46,7 +46,7 @@ end
 # Note: Will be regenerated from scratch on subsequent runs of Chef.
 # TODO: Read in existing gridmap, and merge it with provided one (shouldn't be hard
 # to do, but not necessary right now)
-gridmap = demogrid_domain[:gridmap].to_hash
+gridmap = gp_domain[:gridmap].to_hash
 template "/etc/grid-security/grid-mapfile" do
   source "gridmap.erb"
   mode 0644

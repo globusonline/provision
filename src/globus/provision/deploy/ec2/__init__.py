@@ -1,16 +1,16 @@
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
-from demogrid.common.utils import create_ec2_connection 
-from demogrid.common.ssh import SSH, SSHCommandFailureException
-from demogrid.common.threads import MultiThread, DemoGridThread, SIGINTWatcher
+from globus.provision.common.utils import create_ec2_connection 
+from globus.provision.common.ssh import SSH, SSHCommandFailureException
+from globus.provision.common.threads import MultiThread, GPThread, SIGINTWatcher
 import random
 import time
 import sys
 import traceback
-from demogrid.common import log
-from demogrid.common.certs import CertificateGenerator
-from demogrid.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
-from demogrid.core.topology import DeployData, EC2DeployData, Node
+from globus.provision.common import log
+from globus.provision.common.certs import CertificateGenerator
+from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
+from globus.provision.core.topology import DeployData, EC2DeployData, Node
 
 class EC2VM(VM):
     def __init__(self, ec2_instance):

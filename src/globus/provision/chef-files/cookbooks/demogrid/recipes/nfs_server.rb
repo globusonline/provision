@@ -23,8 +23,8 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-demogrid_domain = node[:topology][:domains][node[:domain_id]]
-demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
 
 subnet = nil
 

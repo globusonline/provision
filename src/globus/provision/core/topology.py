@@ -1,4 +1,4 @@
-from demogrid.common.persistence import PersistentObject, PropertyTypes,\
+from globus.provision.common.persistence import PersistentObject, PropertyTypes,\
     Property
     
 class Topology(PersistentObject):
@@ -74,8 +74,8 @@ ff02::3 ip6-allhosts
         topology = "default[:topology] = %s\n" % self.to_ruby_hash_string()
 
         for domain in self.domains.values():
-            topology += gen_topology_line("nfs_server", domain.id, ["recipe[demogrid::nfs_server]", "role[domain-nfsnis]"])
-            topology += gen_topology_line("nis_server", domain.id, ["recipe[demogrid::nis_server]", "role[domain-nfsnis]"])
+            topology += gen_topology_line("nfs_server", domain.id, ["recipe[provision::nfs_server]", "role[domain-nfsnis]"])
+            topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
             topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]"])
         

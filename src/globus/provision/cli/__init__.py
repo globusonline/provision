@@ -3,8 +3,8 @@ from optparse import OptionParser
 import os
 import os.path
 import getpass
-from demogrid.common import defaults
-from demogrid.common import log
+from globus.provision.common import defaults
+from globus.provision.common import log
 
 class Command(object):
     
@@ -72,6 +72,6 @@ class Command(object):
         print "\033[1;37mReason\033[0m: %s" % reason
         
     def cleanup_after_kill(self):
-        print "DemoGrid has been unexpectedly killed and may have left resources in an"
-        print "unconfigured state. Use demogrid-terminate to release resources."
+        print "Globus Provision has been unexpectedly killed and may have left resources"
+        print "in an unconfigured state. Use gp-terminate to release resources."
         

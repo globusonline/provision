@@ -3,11 +3,11 @@ Created on Jun 17, 2011
 
 @author: borja
 '''
-from demogrid.common.threads import DemoGridThread
-from demogrid.common.ssh import SSH
-from demogrid.common import log
+from globus.provision.common.threads import GPThread
+from globus.provision.common.ssh import SSH
+from globus.provision.common import log
 import sys
-from demogrid.core.topology import Node
+from globus.provision.core.topology import Node
 
 class BaseDeployer(object):
     def __init__(self, extra_files = [], run_cmds = []):
@@ -19,9 +19,9 @@ class VM(object):
     def __init__(self):
         pass
     
-class WaitThread(DemoGridThread):
+class WaitThread(GPThread):
     def __init__(self, multi, name, node, vm, deployer, state, depends):
-        DemoGridThread.__init__(self, multi, name, depends)
+        GPThread.__init__(self, multi, name, depends)
         self.node = node
         self.vm = vm
         self.deployer = deployer
@@ -35,9 +35,9 @@ class WaitThread(DemoGridThread):
         self.node.state = self.state
         topology.save()
     
-class ConfigureThread(DemoGridThread):
+class ConfigureThread(GPThread):
     def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
-        DemoGridThread.__init__(self, multi, name, depends)
+        GPThread.__init__(self, multi, name, depends)
         self.domain = node.parent_Domain
         self.node = node
         self.vm = vm
@@ -92,8 +92,8 @@ class ConfigureThread(DemoGridThread):
             # Upload host file and update hostname
             log.debug("Uploading host file and updating hostname", node)
             ssh.scp("%s/hosts" % instance_dir,
-                    "/chef/cookbooks/demogrid/files/default/hosts")             
-            ssh.run("sudo cp /chef/cookbooks/demogrid/files/default/hosts /etc/hosts", expectnooutput=True)
+                    "/chef/cookbooks/provision/files/default/hosts")             
+            ssh.run("sudo cp /chef/cookbooks/provision/files/default/hosts /etc/hosts", expectnooutput=True)
     
             ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
             ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
@@ -104,12 +104,12 @@ class ConfigureThread(DemoGridThread):
             # Upload topology file
             log.debug("Uploading topology file", node)
             ssh.scp("%s/topology.rb" % instance_dir,
-                    "/chef/cookbooks/demogrid/attributes/topology.rb")             
+                    "/chef/cookbooks/provision/attributes/topology.rb")             
             
             # Copy certificates
             log.debug("Copying certificates", node)
             ssh.scp_dir("%s/certs" % instance_dir, 
-                        "/chef/cookbooks/demogrid/files/default/")
+                        "/chef/cookbooks/provision/files/default/")
     
             # Upload extra files
             log.debug("Copying extra files", node)

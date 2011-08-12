@@ -1,5 +1,5 @@
-from demogrid.common.persistence import *
-from demogrid.core.topology import *
+from globus.provision.common.persistence import *
+from globus.provision.core.topology import *
 import textwrap
 
 

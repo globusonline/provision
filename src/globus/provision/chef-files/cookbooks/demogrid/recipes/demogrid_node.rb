@@ -17,14 +17,14 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: DemoGrid common actions
+## RECIPE: Globus Provision common actions
 ##
-## This recipe performs actions that are common to all DemoGrid nodes.
+## This recipe performs actions that are common to all Globus Provision nodes.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-demogrid_domain = node[:topology][:domains][node[:domain_id]]
-demogrid_node   = demogrid_domain[:nodes][node[:node_id]]
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
 
 # Copy the hosts file
 cookbook_file "/etc/hosts" do
@@ -34,10 +34,10 @@ cookbook_file "/etc/hosts" do
   group "root"
 end
 
-# Create a BASH profile file with DemoGrid variables
-file "/etc/profile.d/demogrid" do
+# Create a BASH profile file with Globus Provision variables
+file "/etc/profile.d/globusprovision" do
   mode 0644
   owner "root"
   group "root"
-  content "export MYPROXY_SERVER=#{demogrid_domain[:myproxy_server]}"
+  content "export MYPROXY_SERVER=#{gp_domain[:myproxy_server]}"
 end

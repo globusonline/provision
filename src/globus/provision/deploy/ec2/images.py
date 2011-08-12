@@ -3,9 +3,9 @@ Created on Dec 6, 2010
 
 @author: borja
 '''
-from demogrid.common.utils import create_ec2_connection
-from demogrid.common.ssh import SSH
-from demogrid.common import log
+from globus.provision.common.utils import create_ec2_connection
+from globus.provision.common.ssh import SSH
+from globus.provision.common import log
 import time
 
 class EC2AMICreator(object):
@@ -64,7 +64,7 @@ class EC2AMICreator(object):
         ssh.run("sudo apt-get -q=2 install chef")
         
         ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
-        ssh.run("echo '{ \"run_list\": \"recipe[demogrid::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
+        ssh.run("echo '{ \"run_list\": \"recipe[provision::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         

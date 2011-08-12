@@ -1,2 +1,2 @@
-class DemoGridException(Exception):
+class GPException(Exception):
     pass

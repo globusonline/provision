@@ -18,6 +18,6 @@
 #
 # RECIPE: Default recipe.
 #
-# DemoGrid has no default recipe.
+# Globus Provision has no default recipe.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

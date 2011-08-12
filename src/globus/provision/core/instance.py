@@ -1,9 +1,9 @@
 import os.path
 import random
-from demogrid.core.config import DemoGridConfig
-from demogrid.core.topology import Topology
-from demogrid.common.certs import CertificateGenerator
-from demogrid.common.persistence import ObjectValidationException
+from globus.provision.core.config import GPConfig
+from globus.provision.core.topology import Topology
+from globus.provision.common.certs import CertificateGenerator
+from globus.provision.common.persistence import ObjectValidationException
 
 class InstanceException(Exception):
     pass
@@ -21,13 +21,13 @@ class InstanceStore(object):
                 os.makedirs(inst_dir)
                 created = True
                 
-        configf = open("%s/demogrid.conf" % inst_dir, "w")
+        configf = open("%s/provision.conf" % inst_dir, "w")
         configf.write(config_txt)
         configf.close()
 
         # We don't do anything with it. Just use it to raise an exception
         # if there is anything wrong with the configuration file
-        DemoGridConfig("%s/demogrid.conf" % inst_dir)
+        GPConfig("%s/provision.conf" % inst_dir)
 
         topology = Topology.from_json_string(topology_json)
         topology.set_property("id", inst_id)
@@ -53,19 +53,16 @@ class InstanceStore(object):
         return inst_ids
 
 class Instance(object):
-
-    # Relative to $DEMOGRID_LOCATION
-    CHEF_DIR = "/chef/"  
     
     # Relative to generated dir
     CERTS_DIR = "/certs"
-    CHEF_FILES_DIR = "/chef/cookbooks/demogrid/files/default/"  
-    CHEF_ATTR_DIR = "/chef/cookbooks/demogrid/attributes/"
+    CHEF_FILES_DIR = "/chef/cookbooks/provision/files/default/"  
+    CHEF_ATTR_DIR = "/chef/cookbooks/provision/attributes/"
 
     def __init__(self, inst_id, instance_dir):
         self.instance_dir = instance_dir
         self.id = inst_id
-        self.config = DemoGridConfig("%s/demogrid.conf" % instance_dir)
+        self.config = GPConfig("%s/provision.conf" % instance_dir)
         self.topology = self.__load_topology()
         
     def __load_topology(self):
@@ -129,7 +126,7 @@ class Instance(object):
         if ca_cert_file != None:
             ca_cert, ca_key = certg.load_certificate(ca_cert_file, ca_cert_key)
         else:
-            ca_cert, ca_key = certg.gen_selfsigned_ca_cert("DemoGrid CA")
+            ca_cert, ca_key = certg.gen_selfsigned_ca_cert("Globus Provision CA")
         
         certg.set_ca(ca_cert, ca_key)
 

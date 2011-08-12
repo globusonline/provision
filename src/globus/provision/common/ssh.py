@@ -15,7 +15,7 @@ except:
 
 from Crypto.Random import atfork
 
-from demogrid.common import log
+from globus.provision.common import log
 from os import walk
 
 class SSHCommandFailureException(Exception):

@@ -1,17 +1,17 @@
 import sys
 
-from demogrid.cli import Command
-from demogrid.common import defaults, constants
-from demogrid.core.config import DemoGridConfig
-from demogrid.globusonline.transfer_api import TransferAPIClient, ClientError
-from demogrid.core.instance import InstanceStore
+from globus.provision.cli import Command
+from globus.provision.common import defaults, constants
+from globus.provision.core.config import GPConfig
+from globus.transfer.transfer_api import TransferAPIClient, ClientError
+from globus.provision.core.instance import InstanceStore
 
-def demogrid_go_register_endpoint_func():
-    return demogrid_go_register_endpoint(sys.argv).run()     
+def gp_go_register_endpoint_func():
+    return gp_go_register_endpoint(sys.argv).run()     
 
-class demogrid_go_register_endpoint(Command):
+class gp_go_register_endpoint(Command):
     
-    name = "demogrid-go-register-endpoint"
+    name = "gp-go-register-endpoint"
     
     def __init__(self, argv):
         Command.__init__(self, argv)    
@@ -81,8 +81,8 @@ class demogrid_go_register_endpoint(Command):
                 else:
                     (code, msg, data) = api.endpoint_delete(ep_name)
                 
-            (code, msg, data) = api.endpoint_create(ep_name, gridftp.hostname, description="DemoGrid endpoint",
-                                                    scheme="gsiftp", port=2811, subject="/O=Grid/OU=DemoGrid/CN=host/%s" % gridftp.hostname,
+            (code, msg, data) = api.endpoint_create(ep_name, gridftp.hostname, description="Globus Provision endpoint",
+                                                    scheme="gsiftp", port=2811, subject="/O=Grid/OU=Globus Provision/CN=host/%s" % gridftp.hostname,
                                                     myproxy_server=myproxy_server)
             if code >= 400:
                 print code, msg
