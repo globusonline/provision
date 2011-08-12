@@ -1,6 +1,7 @@
 from demogrid.core.topology import Domain, User, Node, Topology
 from demogrid.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import os.path
+import getpass
 
 class DemoGridConfig(Config):
 
@@ -212,7 +213,8 @@ class SimpleTopologyConfig(Config):
      Option(name        = "ssh-pubkey",
             getter      = "ssh-pubkey",
             type        = OPTTYPE_STRING,
-            required    = True,
+            required    = False,
+            default     = "~/.ssh/id_rsa.pub",
             doc         = """
             TODO
             """)                                   
@@ -231,23 +233,18 @@ class SimpleTopologyConfig(Config):
             doc         = """
             TODO        
             """),    
-     Option(name        = "grid-users",
-            getter      = "grid-users",
+     Option(name        = "users",
+            getter      = "users",
             type        = OPTTYPE_INT,
             required    = False,
+            default     = 0,
             doc         = """
             TODO        
-            """),             
-     Option(name        = "grid-users-auth",
-            getter      = "grid-users-auth",
-            type        = OPTTYPE_STRING,
-            required    = False,
-            doc         = """
-            TODO        
-            """),                   
-     Option(name        = "nongrid-users",
-            getter      = "nongrid-users",
+            """),                             
+     Option(name        = "users-no-cert",
+            getter      = "users-no-cert",
             type        = OPTTYPE_INT,
+            default     = 0,
             required    = False,
             doc         = """
             TODO        
@@ -258,7 +255,14 @@ class SimpleTopologyConfig(Config):
             required    = False,
             doc         = """
             TODO        
-            """),                   
+            """),
+     Option(name        = "myproxy",
+            getter      = "myproxy",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            doc         = """
+            TODO        
+            """),                           
      Option(name        = "gram",
             getter      = "gram",
             type        = OPTTYPE_BOOLEAN,
@@ -326,15 +330,14 @@ class SimpleTopologyConfig(Config):
         topology = Topology()
         domains = self.get("domains").split()
         for domain_name in domains:
-            print domain_name
             domain = Domain()
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
 
             user = User()
-            user.set_property("id", "gp-admin")
+            user.set_property("id", getpass.getuser())
             user.set_property("password_hash", "!")
-            user.set_property("certificate", "none")
+            user.set_property("certificate", "generated")
             user.set_property("admin", True)
             user.set_property("ssh_pkey", ssh_pubkey)
             domain.add_user(user)            
@@ -372,21 +375,17 @@ class SimpleTopologyConfig(Config):
                 usersfile.close()
             else:
                 usernum = 1
-                for i in range(self.get((domain_name, "grid-users"))):
+                for i in range(self.get((domain_name, "users"))):
                     username = "%s-user%i" % (domain_name, usernum)
                     user = User()
                     user.set_property("id", username)
                     user.set_property("password_hash", "!")
                     user.set_property("ssh_pkey", ssh_pubkey)
-                    users_auth = self.get((domain_name,"grid-users-auth"))
-                    if users_auth == "certificate":
-                        user.set_property("certificate", "generated")
-                    else:
-                        user.set_property("certificate", "none")           
+                    user.set_property("certificate", "generated")
                     domain.add_user(user)
                     usernum += 1
     
-                for i in range(self.get((domain_name, "nongrid-users"))):
+                for i in range(self.get((domain_name, "users-no-cert"))):
                     username = "%s-user%i" % (domain_name, usernum)
                     user = User()
                     user.set_property("id", username)
@@ -411,7 +410,7 @@ class SimpleTopologyConfig(Config):
             else:
                 server_node.add_to_array("run_list", "role[globus]")
 
-            if self.get((domain_name,"grid-users-auth")) == "myproxy":
+            if self.get((domain_name,"myproxy")):
                 myproxy_node = Node()
                 myproxy_node.set_property("id", "%s-myproxy" % domain_name)
                 myproxy_node.set_property("depends", "node:%s" % server_name)
