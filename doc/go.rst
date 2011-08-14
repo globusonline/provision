@@ -1,4 +1,10 @@
+.. _chap_go:
+
 Using Globus Online with your VO
 ********************************
 
-TODO
+
+.. _sec_go_auth:
+
+Authentication methods
+======================
