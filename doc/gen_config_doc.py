@@ -26,6 +26,7 @@ for s in conf_cls.sections:
     else:
         if s.required_if:
             print "This section is required when:"
+            print
             for r in s.required_if:
                 sec,opt = r[0]
                 val = r[1]
@@ -37,11 +38,15 @@ for s in conf_cls.sections:
     print
     
     for opt in s.options:
+        print ".. _%s_%s:" % (conf_cls.__name__, opt.getter)
+        print
         print_section("Option ``%s``" % opt.name, "-")
-        print "**Type:**",
+        
         if opt.valid:
+            print "**Valid values:**",
             print "  " + ", ".join(["``%s``" % v for v in opt.valid])
         else:
+            print "**Type:**",
             if opt.type == OPTTYPE_INT:
                 print "Integer number"
             elif opt.type == OPTTYPE_FLOAT:
@@ -49,7 +54,7 @@ for s in conf_cls.sections:
             elif opt.type == OPTTYPE_STRING:
                 print "String"
             elif opt.type == OPTTYPE_BOOLEAN:
-                print "``True`` or ``False``"
+                print "Boolean (``True`` or ``False``)"
         print
         print "**Required:**",
         if opt.required:
