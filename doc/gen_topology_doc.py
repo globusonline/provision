@@ -7,8 +7,6 @@ def print_section(title, marker):
     print title
     print marker * len(title)
 
-print_section("Topology", "*")
-
 def gen_cls_doc(cls):
     print_section("``%s``" % cls.__name__, "=")
     

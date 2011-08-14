@@ -13,11 +13,11 @@ Contents:
    first.rst
    topology.rst
    go.rst
-   config_ref.rst
-   stopology_ref.rst
-   cli_ref.rst
-   recipe_ref.rst
-   topology_ref.rst
+   config_ref_top.rst
+   stopology_ref_top.rst
+   cli_ref_top.rst
+   recipe_ref_top.rst
+   topology_ref_top.rst
 
 Indices and tables
 ==================

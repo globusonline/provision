@@ -9,9 +9,6 @@ def print_section(title, marker):
     print title
     print marker * len(title)
 
-print_section("Chef recipe reference", "*")
-print
-
 for cookbook in cookbooks:
     print_section("``%s`` cookbook" % cookbook, "=")
     print

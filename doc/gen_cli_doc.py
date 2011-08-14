@@ -23,7 +23,6 @@ def print_section(title, marker):
     print title
     print marker * len(title)
 
-print_section("Command-line Interface", "*")
 commands.sort(key=operator.attrgetter("name"))
 for command in commands:
     c = command([])

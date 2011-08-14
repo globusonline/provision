@@ -16,8 +16,6 @@ def print_section(title, marker):
     print title
     print marker * len(title)
 
-print_section(title, "*")
-
 for s in conf_cls.sections:
     print_section("Section ``[%s]``" % s.name, "=")
     print
