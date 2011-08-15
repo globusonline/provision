@@ -69,21 +69,24 @@ class Deployer(BaseDeployer):
             sgs = []
         
         if len(sgs) == 0 and not self.has_gp_sg:
-            gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
-            
-            # SSH
-            gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
-            
-            # GridFTP
-            gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
-            gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
-            
-            # MyProxy
-            gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
-
-            sgs = ['globus-provision'] 
+            gp_sg = self.conn.get_all_security_groups(groupnames = ["globus-provision"])
+            if len(gp_sg) == 0:
+                gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
+                
+                # SSH
+                gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+                
+                # GridFTP
+                gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
+                gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
+                
+                # MyProxy
+                gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
+    
+                sgs = ['globus-provision'] 
+                self.has_gp_sg = True
         else:
-            self.conn.get_all_security_groups()
+            all_sgs = self.conn.get_all_security_groups()
             # TODO: Validate that the security groups are valid
         
         return sgs
