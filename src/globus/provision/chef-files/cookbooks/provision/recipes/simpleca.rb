@@ -29,6 +29,21 @@
 
 if ! File.exists?(node[:globus][:simpleCA] )
 
+  require "openssl"
+  
+  r = cookbook_file "#{node[:scratch_dir]}/gp-ca-cert.pem" do
+    source "ca_cert.pem"
+    mode 0644
+    owner "root"
+    group "root"
+    action :nothing
+  end
+  
+  r.run_action(:create)
+  
+  node.default[:ca_cert] = OpenSSL::X509::Certificate.new(File.read("#{node[:scratch_dir]}/gp-ca-cert.pem"))
+  node.default[:ca_cert_hash] = "%08x" % node.default[:ca_cert].subject.hash  
+  
 	# Create the basic directory structure
 
 	directory node[:globus][:simpleCA] do
@@ -70,7 +85,7 @@ if ! File.exists?(node[:globus][:simpleCA] )
 
 	# Copy the CA certificate and key.
 	cookbook_file "#{node[:globus][:simpleCA]}/cacert.pem" do
-	  source "7d4be459.0"
+	  source "ca_cert.pem"
 	  mode 0644
 	  owner "root"
 	  group "root"
@@ -83,14 +98,18 @@ if ! File.exists?(node[:globus][:simpleCA] )
 	  group "root"
 	end
 
+  # Various configuration files needed in the CA directory
 
-	# Various configuration files needed in the CA directory
-	cookbook_file "#{node[:globus][:simpleCA]}/grid-ca-ssl.conf" do
-	  source "grid-ca-ssl.conf"
-	  mode 0644
-	  owner "root"
-	  group "root"
-	end
+	template "#{node[:globus][:simpleCA]}/grid-ca-ssl.conf" do
+    source "globus-ssl.conf.erb"
+    mode 0644
+    owner "root"
+    group "root"
+    variables(
+      :certificate => node.default[:ca_cert],
+      :type => :ca
+    )  
+  end
 
 	file "#{node[:globus][:simpleCA]}/index.txt" do
 	  owner "root"

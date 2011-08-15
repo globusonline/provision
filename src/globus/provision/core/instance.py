@@ -136,7 +136,7 @@ class Instance(object):
         hash_file.write(h)
         hash_file.close()   
 
-        ca_cert_file = "%s/%s.0" % (certs_dir, h)
+        ca_cert_file = "%s/ca_cert.pem" % certs_dir
         ca_key_file = certs_dir + "/ca_key.pem"
         cert_files.append(ca_cert_file)
         cert_files.append(ca_key_file)

@@ -12,7 +12,7 @@ default_ca	= CA_default		# The default ca section
 ####################################################################
 [ CA_default ]
 
-dir		= ./demoCA		# Where everything is kept
+dir		= /var/lib/globus/simple_ca		# Where everything is kept
 certs		= $dir/certs		# Where the issued certs are kept
 crl_dir		= $dir/crl		# Where the issued crl are kept
 database	= $dir/index.txt	# database index file.
@@ -61,19 +61,49 @@ emailAddress		= optional
 default_bits		= 1024
 default_keyfile 	= privkey.pem
 distinguished_name	= req_distinguished_name
+x509_extensions         = v3_ca
 req_extensions          = v3_req
-default_md	        = sha1		# which md to use.
 
 [ req_distinguished_name ]
 # BEGIN CONFIG
-0.organizationName               = Level 0 Organization
-0.organizationName_default       = Grid
-0.organizationalUnitName          = Level 0 Organizational Unit
-0.organizationalUnitName_default = DemoGrid
-commonName                      = Name (e.g., John M. Smith)
-commonName_max                  = 64
+<% 
+oucount = 0
+ocount = 0
+@certificate.subject.to_a.each do |name, value, n| 
+	case 
+		when name.match(/^[Cc]$/) %>
+countryName = Country Name (2 letter code)	
+countryName_default = <%= value %> 	
+countryName_min = 2
+countryName_max = 2
+<%		when name.match(/^[Oo]$/) %>
+<%= ocount %>.organizationName = Level <%= ocount %> Organization
+<%= ocount %>.organizationName_default = <%= value %>
+<% ocount += 1 %>
+<%		when name.match(/^[Oo][Uu]$/) %>
+<%= oucount %>.organizationalUnitName = Level <%= oucount %> Organizational Unit
+<%= oucount %>.organizationalUnitName_default = <%= value %>
+<% oucount += 1 %>
+<%		when name.match(/^[Cc][Nn]$/) 
+			if @type == :user %>
+<%= oucount %>.organizationalUnitName = Level <%= oucount %> Organizational Unit
+<%= oucount %>.organizationalUnitName_default = local
+<%			end %>
+commonName = Name (E.g., John M. Smith)
+commonName_max = 64
+<%		else 
+			raise "Unknown subject name component"
+	end 
+end%>
 # END CONFIG
 
+[ v3_ca ]
+basicConstraints                = critical,CA:true
+subjectKeyIdentifier            = hash
+nsCertType                      = sslCA,emailCA,objCA
+
 [ v3_req ]
-nsCertType                      = objsign,email,server,client
-basicConstraints                = critical,CA:false
+nsCertType                      = sslCA,emailCA,objCA
+
+[ x509v3_extensions ]
+nsCertType			= objsign,email,server,client
