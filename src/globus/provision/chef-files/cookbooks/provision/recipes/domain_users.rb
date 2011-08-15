@@ -117,7 +117,7 @@ end
 # If we specified that this domain's users will use certificates
 # for authentication, then we need to copy the certificate and key
 # into their .globus directory.
-users.values.select{|u| u[:certificate] == :generated}.each do |u|
+users.values.select{|u| u[:certificate] == "generated"}.each do |u|
 	directory "#{homedirs}/#{u[:id]}/.globus" do
 	  owner u[:id]
 	  group "users"
@@ -142,6 +142,7 @@ end
 
 # We need to run this for changes to take effect in the NIS server.
 execute "rebuild_yp" do
+ only_if do gp_domain[:nis_server] end
  user "root"
  group "root"
  command "make -C /var/yp"

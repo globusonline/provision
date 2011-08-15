@@ -46,7 +46,7 @@ end
 # Note: Will be regenerated from scratch on subsequent runs of Chef.
 # TODO: Read in existing gridmap, and merge it with provided one (shouldn't be hard
 # to do, but not necessary right now)
-gridmap = gp_domain[:gridmap].to_hash
+gridmap = gp_domain[:gridmap].to_a
 template "/etc/grid-security/grid-mapfile" do
   source "gridmap.erb"
   mode 0644
