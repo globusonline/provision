@@ -538,6 +538,8 @@ class SimpleTopologyConfig(Config):
                 if self.get((domain_name,"nfs-nis")):  
                     login_node.set_property("depends", "node:%s" % server_name)
                     login_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    login_node.add_to_array("run_list", "recipe[provision::domain_users]")
                 login_node.add_to_array("run_list", "role[globus]")
                 domain.add_node(login_node)                
 
@@ -547,6 +549,8 @@ class SimpleTopologyConfig(Config):
                 if self.get((domain_name,"nfs-nis")):  
                     myproxy_node.set_property("depends", "node:%s" % server_name)
                     myproxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    myproxy_node.add_to_array("run_list", "recipe[provision::domain_users]")
                 myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
                 domain.add_node(myproxy_node)
 
@@ -556,6 +560,8 @@ class SimpleTopologyConfig(Config):
                 if self.get((domain_name,"nfs-nis")):  
                     gridftp_node.set_property("depends", "node:%s" % server_name)
                     gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
                 gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
                 domain.add_node(gridftp_node)                
             
@@ -576,6 +582,8 @@ class SimpleTopologyConfig(Config):
                 if self.get((domain_name,"nfs-nis")):  
                     lrm_node.set_property("depends", "node:%s" % server_name)
                     lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    lrm_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
                 lrm_node.add_to_array("run_list", role)
                 domain.add_node(lrm_node)
 
@@ -587,7 +595,9 @@ class SimpleTopologyConfig(Config):
                     wn_node.set_property("id", wn_name)
                     wn_node.set_property("depends", "node:%s" % node_name)
                     if self.get((domain_name,"nfs-nis")):
-                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")                    
+                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
+                    else:
+                        wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
                     wn_node.add_to_array("run_list", workernode_role)
                     domain.add_node(wn_node)
 
