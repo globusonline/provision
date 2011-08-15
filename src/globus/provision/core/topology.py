@@ -240,7 +240,15 @@ EC2DeployData.properties = {
                                          proptype = PropertyTypes.STRING,
                                          required = False,
                                          editable = True,
-                                         description = """TODO""")
+                                         description = """TODO"""),
+                            "security_groups":
+                                Property(name = "security_groups",
+                                         proptype = PropertyTypes.ARRAY,
+                                         items = PropertyTypes.STRING,
+                                         items_unique = True,                                         
+                                         required = False,
+                                         editable = True,
+                                         description = """TODO""")                                
                        }
 
 

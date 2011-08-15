@@ -7,6 +7,7 @@ import random
 import time
 import sys
 import traceback
+import os.path
 from globus.provision.common import log
 from globus.provision.common.certs import CertificateGenerator
 from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
@@ -27,6 +28,7 @@ class Deployer(BaseDeployer):
         self.instances = None
         self.vols = []
         self.supports_create_tags = True
+        self.has_gp_sg = False
 
     def set_instance(self, inst):
         self.instance = inst
@@ -61,11 +63,37 @@ class Deployer(BaseDeployer):
         except Exception, exc:
             self.handle_unexpected_exception(exc)    
         
+    def __get_security_groups(self, topology, node):
+        sgs = topology.get_deploy_data(node, "ec2", "security_groups")
+        if sgs is None:
+            sgs = []
+        
+        if len(sgs) == 0 and not self.has_gp_sg:
+            gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
+            
+            # SSH
+            gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+            
+            # GridFTP
+            gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
+            gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
+            
+            # MyProxy
+            gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
+
+            sgs = ['globus-provision'] 
+        else:
+            self.conn.get_all_security_groups()
+            # TODO: Validate that the security groups are valid
+        
+        return sgs
+    
     def allocate_vm(self, node):
         topology = self.instance.topology
         
         instance_type = topology.get_deploy_data(node, "ec2", "instance_type")
         ami = topology.get_deploy_data(node, "ec2", "ami")
+        security_groups = self.__get_security_groups(topology, node)
 
         image = self.conn.get_image(ami)
         if image == None:
@@ -77,7 +105,7 @@ class Deployer(BaseDeployer):
         reservation = image.run(min_count=1, 
                                 max_count=1,
                                 instance_type=instance_type,
-                                security_groups= ["default"],
+                                security_groups= security_groups,
                                 key_name=self.instance.config.get("ec2-keypair"),
                                 placement = None)
         instance = reservation.instances[0]
@@ -159,10 +187,9 @@ class Deployer(BaseDeployer):
         # TODO: Check errors            
             
     class NodeWaitThread(WaitThread):
-        def __init__(self, multi, name, node, vm, deployer, depends = None):
-            WaitThread.__init__(self, multi, name, node, vm, deployer, depends)
+        def __init__(self, multi, name, node, vm, deployer, state, depends = None):
+            WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
             self.ec2_instance = vm.ec2_instance
-            self.deployer = deployer
                         
         def wait(self):
             if self.state == Node.STATE_RUNNING_UNCONFIGURED:
@@ -180,7 +207,9 @@ class Deployer(BaseDeployer):
             self.ec2_instance = self.vm.ec2_instance
             
         def connect(self):
-            return self.ssh_connect(self.config.get("ec2-username"), self.ec2_instance.public_dns_name, self.config.get("ec2-keyfile"))
+            keyfile = os.path.expanduser(self.config.get("ec2-keyfile"))
+            ssh = self.ssh_connect(self.config.get("ec2-username"), self.ec2_instance.public_dns_name, keyfile)
+            return ssh
         
         def pre_configure(self, ssh):
             node = self.node
