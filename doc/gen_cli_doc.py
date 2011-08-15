@@ -1,6 +1,8 @@
 import globus.provision.cli.api as api
 import globus.provision.cli.ec2 as ec2
 import globus.provision.cli.globusonline as globusonline
+from globus.provision.cli import Command
+
 from docutils.core import publish_string
 import re
 import textwrap
@@ -24,10 +26,17 @@ def print_section(title, marker):
     print marker * len(title)
 
 commands.sort(key=operator.attrgetter("name"))
+commands.insert(0, Command)
+common_options = Command([]).optparser.option_list
+common_options = [str(opt) for opt in common_options]
+
 for command in commands:
     c = command([])
     print 
-    print_section("``%s``" % command.name, "=")
+    if command == Command:
+        print_section("Common options", "=")
+    else:
+        print_section("``%s``" % command.name, "=")
     print
     doc = command.__doc__
     if doc != None:
@@ -38,25 +47,30 @@ for command in commands:
     print
 
     opts = c.optparser.option_list
+    if command != Command:
+        opts = [opt for opt in opts if str(opt) not in common_options]
     c.optparser.formatter.store_option_strings(c.optparser)
     
-    print "+-" + ("-"*OPTION_LEN)            + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
-    print "| " + "Option".ljust(OPTION_LEN)  + " | " + "Description".ljust(DESCRIPTION_LEN) + " |"
-    print "+=" + ("="*OPTION_LEN)            + "=+=" + ("="*DESCRIPTION_LEN)                + "=+"
-    for opt in opts:
-        if opt.action != "help":
-            opt_string = "``%s``" % c.optparser.formatter.option_strings[opt]            
-            opt_help = textwrap.dedent(opt.help).strip()
-            
-            opt_help_lines = opt_help.split("\n")
-            
-            # First line
-            print "| " + opt_string.ljust(OPTION_LEN)  + " | " + opt_help_lines[0].ljust(DESCRIPTION_LEN) + " |"
-            
-            for l in opt_help_lines[1:]:
-                print "| " + (" "*OPTION_LEN)  + " | " + l.ljust(DESCRIPTION_LEN) + " |"
-            
-            print "+-" + ("-"*OPTION_LEN)  + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
+    if len(opts) > 0:
+        print "+-" + ("-"*OPTION_LEN)            + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
+        print "| " + "Option".ljust(OPTION_LEN)  + " | " + "Description".ljust(DESCRIPTION_LEN) + " |"
+        print "+=" + ("="*OPTION_LEN)            + "=+=" + ("="*DESCRIPTION_LEN)                + "=+"
+        for opt in opts:
+            if opt.action != "help":
+                opt_string = "``%s``" % c.optparser.formatter.option_strings[opt]            
+                opt_help = textwrap.dedent(opt.help).strip()
+                
+                opt_help_lines = opt_help.split("\n")
+                
+                # First line
+                print "| " + opt_string.ljust(OPTION_LEN)  + " | " + opt_help_lines[0].ljust(DESCRIPTION_LEN) + " |"
+                
+                for l in opt_help_lines[1:]:
+                    print "| " + (" "*OPTION_LEN)  + " | " + l.ljust(DESCRIPTION_LEN) + " |"
+                
+                print "+-" + ("-"*OPTION_LEN)  + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
+    else:
+        print "No options"
 
     print
         
