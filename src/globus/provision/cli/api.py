@@ -214,13 +214,17 @@ class gp_update_topology(Command):
         t_start = time.time()        
         self.parse_options()
 
-        self._check_exists_file(self.opt.topology)
-
-        jsonfile = open(self.opt.topology)
-        topology_json = jsonfile.read()
-        jsonfile.close()
-                
         inst_id = self.args[1]
+
+        if self.opt.topology != None:
+            self._check_exists_file(self.opt.topology)
+    
+            jsonfile = open(self.opt.topology)
+            topology_json = jsonfile.read()
+            jsonfile.close()
+        else:
+            topology_json = None
+                
 
         if self.opt.extra_files != None:
             self._check_exists_file(self.opt.extra_files)

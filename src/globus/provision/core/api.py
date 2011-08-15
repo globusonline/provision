@@ -141,61 +141,63 @@ class API(object):
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
     
-            old_topology = inst.topology
-            try:
-                (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
-            except ObjectValidationException, ove:
-                message = "Error in topology file: %s" % ove
-                return (API.STATUS_FAIL, message)   
-
             deployer_class = self.__get_deployer_class(inst)
             deployer = deployer_class(extra_files, run_cmds)
             deployer.set_instance(inst)            
-
-            nodes = inst.topology.get_nodes()
-
-            if len(destroy_hosts) > 0:
-                old_nodes = old_topology.get_nodes()
-                log.info("Terminating hosts %s" % destroy_hosts)   
-                old_nodes = [n for n in old_nodes if n.id in destroy_hosts]
-                (success, message) = self.__terminate_vms(deployer, old_nodes)
-                
-                if not success:
-                    inst.topology.state = Topology.STATE_FAILED
-                    inst.topology.save()
-                    return (API.STATUS_FAIL, message)       
-                
-                inst.topology.save()         
-                  
-            if len(create_hosts) > 0:
+    
+            if topology_json != None:
+                old_topology = inst.topology
+                try:
+                    (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
+                except ObjectValidationException, ove:
+                    message = "Error in topology file: %s" % ove
+                    return (API.STATUS_FAIL, message)   
+    
                 nodes = inst.topology.get_nodes()
-                log.info("Allocating VMs for hosts %s" % create_hosts)   
-                new_nodes = [n for n in nodes if n.id in create_hosts]
-                (success, message, node_vm) = self.__allocate_vms(deployer, new_nodes, resuming = False)
-        
-                if not success:
-                    inst.topology.state = Topology.STATE_FAILED
-                    inst.topology.save()
-                    return (API.STATUS_FAIL, message)
+    
+                if len(destroy_hosts) > 0:
+                    old_nodes = old_topology.get_nodes()
+                    log.info("Terminating hosts %s" % destroy_hosts)   
+                    old_nodes = [n for n in old_nodes if n.id in destroy_hosts]
+                    (success, message) = self.__terminate_vms(deployer, old_nodes)
+                    
+                    if not success:
+                        inst.topology.state = Topology.STATE_FAILED
+                        inst.topology.save()
+                        return (API.STATUS_FAIL, message)       
+                    
+                    inst.topology.save()         
+                      
+                if len(create_hosts) > 0:
+                    nodes = inst.topology.get_nodes()
+                    log.info("Allocating VMs for hosts %s" % create_hosts)   
+                    new_nodes = [n for n in nodes if n.id in create_hosts]
+                    (success, message, node_vm) = self.__allocate_vms(deployer, new_nodes, resuming = False)
             
-                inst.topology.save()
+                    if not success:
+                        inst.topology.state = Topology.STATE_FAILED
+                        inst.topology.save()
+                        return (API.STATUS_FAIL, message)
                 
-                for node, vm in node_vm.items():
-                    deployer.post_allocate(node, vm)
-
-                inst.topology.save()
-
-            # Generate certificates
-            inst.gen_certificates()
-
-            inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
-            inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
+                    inst.topology.save()
+                    
+                    for node, vm in node_vm.items():
+                        deployer.post_allocate(node, vm)
+    
+                    inst.topology.save()
+    
+                # Generate certificates
+                inst.gen_certificates()
+    
+                inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
+                inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
 
             log.info("Setting up Globus Provision on instances")        
             
             # Right now we reconfigure all nodes. It shouldn't be hard to follow
             # the dependency tree to make sure only the new nodes and "ancestor"
             # nodes are updated
+            nodes = inst.topology.get_nodes()
             node_vm = deployer.get_node_vm(nodes)
             (success, message) = self.__configure_vms(deployer, node_vm)
             if not success:
