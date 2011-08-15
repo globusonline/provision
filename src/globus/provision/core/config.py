@@ -1,4 +1,5 @@
-from globus.provision.core.topology import Domain, User, Node, Topology
+from globus.provision.core.topology import Domain, User, Node, Topology,\
+    DeployData, EC2DeployData, GridMapEntry
 from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import os.path
 import getpass
@@ -332,6 +333,7 @@ class SimpleTopologyConfig(Config):
             getter      = "nfs-nis",
             type        = OPTTYPE_BOOLEAN,
             required    = False,
+            default     = False,
             doc         = """
             Specifies whether an NFS/NIS server should be setup in this domain. When ``True``, there will be a global
             filesystem and global user account space in the domain. Most notably, the users' home directories will be on an
@@ -345,6 +347,7 @@ class SimpleTopologyConfig(Config):
             getter      = "login",
             type        = OPTTYPE_BOOLEAN,
             required    = False,
+            default     = False,
             doc         = """
             Specifies whether a separate "login node" should be created in the topology. This option can be useful if you
             want a distinct node that users can log into but that does not host one of the topology's servers (like the NFS
@@ -354,6 +357,7 @@ class SimpleTopologyConfig(Config):
             getter      = "myproxy",
             type        = OPTTYPE_BOOLEAN,
             required    = False,
+            default     = False,
             doc         = """
             Specifies whether to set up a MyProxy server on this domain.        
             """),                           
@@ -361,6 +365,7 @@ class SimpleTopologyConfig(Config):
             getter      = "gram",
             type        = OPTTYPE_BOOLEAN,
             required    = False,
+            default     = False,
             doc         = """
             Specifies whether to set up a GRAM5 server on this domain.             
             """),                   
@@ -368,6 +373,7 @@ class SimpleTopologyConfig(Config):
             getter      = "gridftp",
             type        = OPTTYPE_BOOLEAN,
             required    = False,
+            default     = False,
             doc         = """
             Specifies whether to set up a GridFTP server on this domain.             
             """),                   
@@ -432,6 +438,20 @@ class SimpleTopologyConfig(Config):
         ssh_pubkeyf.close()        
         
         topology = Topology()
+        
+        if self.get("deploy") == "dummy":
+            # No default deploy data
+            pass
+        elif self.get("deploy") == "ec2":
+            deploy_data = DeployData()
+            ec2_deploy_data = EC2DeployData()
+            
+            ec2_deploy_data.set_property("ami", self.get("ec2-ami"))
+            ec2_deploy_data.set_property("instance_type", self.get("ec2-instance-type"))
+            
+            deploy_data.set_property("ec2", ec2_deploy_data)
+            topology.set_property("default_deploy_data", deploy_data)
+        
         domains = self.get("domains").split()
         for domain_name in domains:
             domain = Domain()
@@ -495,33 +515,47 @@ class SimpleTopologyConfig(Config):
                     domain.add_user(user)
                     usernum += 1
             
+            for user in domain.users.values():
+                gme = GridMapEntry()
+                gme.set_property("dn", "/O=Grid/OU=Globus Provision/CN=%s" % user.id)
+                gme.set_property("login", user.id)
+                domain.add_to_array("gridmap", gme)                
+            
             if self.get((domain_name,"nfs-nis")):  
                 server_node = Node()
                 server_name = "%s-server" % domain_name
                 server_node.set_property("id", server_name)
                 server_node.add_to_array("run_list", "role[domain-nfsnis]")
+                if not self.get((domain_name,"login")):
+                    # If there is no login node, the NFS/NIS server will
+                    # effectively act as one. 
+                    server_node.add_to_array("run_list", "role[globus]")
                 domain.add_node(server_node)
 
             if self.get((domain_name,"login")):            
                 login_node = Node()
                 login_node.set_property("id", "%s-login" % domain_name)
-                login_node.set_property("depends", "node:%s" % server_name)
-                login_node.add_to_array("run_list", "role[domain-login]")
-                domain.add_node(login_node)
-            else:
-                server_node.add_to_array("run_list", "role[globus]")
+                if self.get((domain_name,"nfs-nis")):  
+                    login_node.set_property("depends", "node:%s" % server_name)
+                    login_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                login_node.add_to_array("run_list", "role[globus]")
+                domain.add_node(login_node)                
 
             if self.get((domain_name,"myproxy")):
                 myproxy_node = Node()
                 myproxy_node.set_property("id", "%s-myproxy" % domain_name)
-                myproxy_node.set_property("depends", "node:%s" % server_name)
+                if self.get((domain_name,"nfs-nis")):  
+                    myproxy_node.set_property("depends", "node:%s" % server_name)
+                    myproxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
                 domain.add_node(myproxy_node)
 
             if self.get((domain_name,"gridftp")):
                 gridftp_node = Node()
                 gridftp_node.set_property("id", "%s-gridftp" % domain_name)
-                gridftp_node.set_property("depends", "node:%s" % server_name)
+                if self.get((domain_name,"nfs-nis")):  
+                    gridftp_node.set_property("depends", "node:%s" % server_name)
+                    gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
                 domain.add_node(gridftp_node)                
             
@@ -539,7 +573,9 @@ class SimpleTopologyConfig(Config):
 
                 lrm_node = Node()
                 lrm_node.set_property("id", node_name)
-                lrm_node.set_property("depends", "node:%s" % server_name)
+                if self.get((domain_name,"nfs-nis")):  
+                    lrm_node.set_property("depends", "node:%s" % server_name)
+                    lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 lrm_node.add_to_array("run_list", role)
                 domain.add_node(lrm_node)
 
@@ -550,6 +586,8 @@ class SimpleTopologyConfig(Config):
                     wn_node = Node()
                     wn_node.set_property("id", wn_name)
                     wn_node.set_property("depends", "node:%s" % node_name)
+                    if self.get((domain_name,"nfs-nis")):
+                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")                    
                     wn_node.add_to_array("run_list", workernode_role)
                     domain.add_node(wn_node)
 
