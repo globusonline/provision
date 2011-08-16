@@ -3,6 +3,7 @@ from optparse import OptionParser
 import os
 import os.path
 import getpass
+import colorama
 from globus.provision.common import defaults
 from globus.provision.common import log
 
@@ -31,7 +32,10 @@ class Command(object):
         self.optparser.add_option("-i", "--instances-dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.INSTANCE_LOCATION,
-                                  help = "Location of the instance database.")              
+                                  help = "Location of the instance database.")      
+        
+        colorama.init(autoreset = True)
+                
 
     def parse_options(self):
         opt, args = self.optparser.parse_args(self.argv)
@@ -68,8 +72,10 @@ class Command(object):
             exit(1)
             
     def _print_error(self, what, reason):
-        print " \033[1;31mERROR\033[0m: %s" % what
-        print "\033[1;37mReason\033[0m: %s" % reason
+        print colorama.Fore.RED + colorama.Style.BRIGHT + " \033[1;31mERROR\033[0m",
+        print ": %s" % what
+        print colorama.Fore.WHITE + colorama.Style.BRIGHT + "\033[1;37mReason\033[0m",
+        print ": %s" % reason
         
     def cleanup_after_kill(self):
         print "Globus Provision has been unexpectedly killed and may have left resources"

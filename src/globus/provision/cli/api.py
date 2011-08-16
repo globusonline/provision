@@ -9,6 +9,8 @@ Created on Nov 1, 2010
 import time
 import sys
 
+from colorama import Fore, Style
+
 import globus.provision.common.defaults as defaults
 
 from globus.provision.cli import Command
@@ -63,7 +65,6 @@ class gp_create(Command):
                 conf = SimpleTopologyConfig(topology_file)
                 topology = conf.to_topology()
                 topology_json = topology.to_json_string()
-                print topology_json
             except ConfigException, cfge:
                 self._print_error("Error in topology configuration file.", cfge)
                 exit(1)         
@@ -82,7 +83,8 @@ class gp_create(Command):
             self._print_error("Could not create instance.", message)
             exit(1) 
         else:
-            print inst_id
+            print "Created new instance:",
+            print Fore.WHITE + Style.BRIGHT + inst_id
             
             
 def gp_describe_instance_func():
@@ -94,10 +96,53 @@ class gp_describe_instance(Command):
     
     def __init__(self, argv):
         Command.__init__(self, argv)
+        
+    def __colorize_topology_state(self, state):
+        state_str = Topology.state_str[state]
+        reset = Fore.RESET + Style.RESET_ALL
+        if state == Topology.STATE_NEW:
+            return Fore.BLUE + Style.BRIGHT + state_str + reset
+        elif state == Topology.STATE_RUNNING:
+            return Fore.GREEN + Style.BRIGHT + state_str + reset
+        elif state in (Topology.STATE_STARTING, Topology.STATE_CONFIGURING, Topology.STATE_STOPPING, Topology.STATE_RESUMING, Topology.STATE_TERMINATING):
+            return Fore.YELLOW + Style.BRIGHT + state_str + reset
+        elif state in (Topology.STATE_TERMINATED, Topology.STATE_FAILED):
+            return Fore.RED + Style.BRIGHT + state_str + reset
+        elif state == Topology.STATE_STOPPED:
+            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
+        else:
+            return state_str
+
+    def __colorize_node_state(self, state):
+        state_str = Node.state_str[state]
+        reset = Fore.RESET + Style.RESET_ALL
+        if state == Node.STATE_NEW:
+            return Fore.BLUE + Style.BRIGHT + state_str + reset
+        elif state == Node.STATE_RUNNING:
+            return Fore.GREEN + Style.BRIGHT + state_str + reset
+        elif state in (Node.STATE_STARTING, Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_CONFIGURING, Node.STATE_STOPPING, Node.STATE_RESUMING, Node.STATE_TERMINATING):
+            return Fore.YELLOW + Style.BRIGHT + state_str + reset
+        elif state in (Node.STATE_TERMINATED, Node.STATE_FAILED):
+            return Fore.RED + Style.BRIGHT + state_str + reset
+        elif state == Node.STATE_STOPPED:
+            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
+        else:
+            return state_str
+        
+    def __pad(self, str, colorstr, width):
+        if colorstr == "":
+            return str.ljust(width)
+        else:
+            return colorstr + " " * (width - len(str))
                 
     def run(self):    
         self.parse_options()
         
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)
+         
         inst_id = self.args[1]
         
         api = API(self.opt.dir)
@@ -107,31 +152,56 @@ class gp_describe_instance(Command):
             self._print_error("Could not access instance.", message)
             exit(1) 
         else:
-            if self.opt.verbose:
+            if self.opt.verbose or self.opt.debug:
                 print topology_json
             else:
                 topology = Topology.from_json_string(topology_json)
-                print "%s: %s" % (inst_id, Topology.state_str[topology.state])
+                reset = Fore.RESET + Style.RESET_ALL
+                print Fore.WHITE + Style.BRIGHT + inst_id + reset + ": " + self.__colorize_topology_state(topology.state)
                 print
                 for domain in topology.domains.values():
-                    print "Domain '%s'" % domain.id
+                    print "Domain " + Fore.CYAN + "'%s'" % domain.id
+                    
+                    # Find "column" widths and get values while we're at it
+                    node_width = state_width = hostname_width = ip_width = 0
+                    rows = []
                     for node in domain.get_nodes():
+                        if len(node.id) > node_width:
+                            node_width = len(node.id)                        
+                        
                         if node.has_property("state"):
-                            state = Node.state_str[node.state]
+                            state = node.state
                         else:
-                            state = "New"
+                            state = Node.STATE_NEW                            
+                        state_str = Node.state_str[state]
+
+                        if len(state_str) > state_width:
+                            state_width = len(state_str)
 
                         if node.has_property("hostname"):
                             hostname = node.hostname
                         else:
                             hostname = ""                            
 
+                        if len(hostname) > hostname_width:
+                            hostname_width = len(hostname)
+
                         if node.has_property("ip"):
                             ip = node.ip
                         else:
-                            ip = ""                            
+                            ip = "" 
+
+                        if len(ip) > ip_width:
+                            ip_width = len(ip)    
                             
-                        print "  %s\t%s\t%s\t%s" % (node.id, state, hostname, ip) 
+                        rows.append((node.id, state, state_str, hostname, ip))                          
+                                                
+                    for (node_id, state, state_str, hostname, ip) in rows:
+                        node_id_pad = self.__pad(node_id, Fore.WHITE + Style.BRIGHT + node_id + Fore.RESET + Style.RESET_ALL, node_width + 2) 
+                        state_pad = self.__pad(state_str, self.__colorize_node_state(state), state_width + 2) 
+                        hostname_pad   = self.__pad(hostname, "", hostname_width + 2)
+                        ip_pad = self.__pad(ip, "", ip_width)
+                        print "    " + node_id_pad + state_pad + hostname_pad + ip_pad
                     print
                     
 def gp_start_func():
@@ -158,8 +228,12 @@ class gp_start(Command):
         t_start = time.time()        
         self.parse_options()
         
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)
         inst_id = self.args[1]
-
+            
         if self.opt.extra_files != None:
             self._check_exists_file(self.opt.extra_files)
             extra_files = parse_extra_files_files(self.opt.extra_files)
@@ -172,17 +246,21 @@ class gp_start(Command):
         else:
             run_cmds = []
 
+        print "Starting instance",
+        print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
         api = API(self.opt.dir)
         status_code, message = api.instance_start(inst_id, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
+            print Fore.GREEN + Style.BRIGHT + "done!"
             t_end = time.time()
             
             delta = t_end - t_start
             minutes = int(delta / 60)
             seconds = int(delta - (minutes * 60))
-            print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+            print "Started instance in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
         elif status_code == API.STATUS_FAIL:
+            print
             self._print_error("Could not start instance.", message)
             exit(1) 
 
@@ -214,6 +292,10 @@ class gp_update_topology(Command):
         t_start = time.time()        
         self.parse_options()
 
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)
         inst_id = self.args[1]
 
         if self.opt.topology != None:
@@ -238,16 +320,20 @@ class gp_update_topology(Command):
         else:
             run_cmds = []            
 
+        print "Updating topology of",
+        print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
+
         api = API(self.opt.dir)
         status_code, message = api.instance_update(inst_id, topology_json, extra_files, run_cmds)
         
         if status_code == API.STATUS_SUCCESS:
+            print Fore.GREEN + Style.BRIGHT + "done!"
             t_end = time.time()
             
             delta = t_end - t_start
             minutes = int(delta / 60)
             seconds = int(delta - (minutes * 60))
-            print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+            print "Updated topology in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
         elif status_code == API.STATUS_FAIL:
             self._print_error("Could not update topology.", message)
             exit(1)
@@ -268,7 +354,11 @@ class gp_stop(Command):
         
         self.parse_options()
         
-        inst_id = self.args[1]
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)
+        inst_id = self.args[1]            
 
         api = API(self.opt.dir)
         status_code, message = api.instance_stop(inst_id)
@@ -294,16 +384,23 @@ class gp_terminate(Command):
         SIGINTWatcher(self.cleanup_after_kill)        
         
         self.parse_options()
-        
+
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)        
         inst_id = self.args[1]
 
+        print "Terminating instance",
+        print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
         api = API(self.opt.dir)
         status_code, message = api.instance_terminate(inst_id)
         
         if status_code == API.STATUS_SUCCESS:
-            print "Instance %s terminated" % inst_id
+            print Fore.GREEN + Style.BRIGHT + "done!"
         elif status_code == API.STATUS_FAIL:
-            self._print_error("Could not start instance.", message)
+            print
+            self._print_error("Could not terminate instance.", message)
             exit(1)  
 
 
@@ -326,7 +423,7 @@ class gp_list_instances(Command):
             inst_ids = None
         
         api = API(self.opt.dir)
-        insts = api.list_instances(inst_ids)
+        insts = api.instance_list(inst_ids)
         
         for i in insts:
             t = i.topology
@@ -381,6 +478,10 @@ class gp_add_user(Command):
         t_start = time.time()        
         self.parse_options()
                 
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)        
         inst_id = self.args[1]
 
         api = API(self.opt.dir)
@@ -402,22 +503,28 @@ class gp_add_user(Command):
             user.set_property("id", self.opt.login)
             user.set_property("password_hash", self.opt.passwd)
             user.set_property("ssh_pkey", self.opt.ssh)
-            user.set_property("admin", self.opt.admin)
+            if self.opt.admin != None:
+                user.set_property("admin", self.opt.admin)
+            else:
+                user.set_property("admin", False)
             user.set_property("certificate", self.opt.certificate)
 
-            domain.users.append(user)
+            domain.add_to_array("users", user)
             
             topology_json = t.to_json_string()
 
-            status_code, message = api.instance_update(inst_id, topology_json, False, [], [])
+            print "Adding new user to",
+            print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
+            status_code, message = api.instance_update(inst_id, topology_json, [], [])
             
             if status_code == API.STATUS_SUCCESS:
+                print Fore.GREEN + Style.BRIGHT + "done!"
                 t_end = time.time()
                 
                 delta = t_end - t_start
                 minutes = int(delta / 60)
                 seconds = int(delta - (minutes * 60))
-                print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+                print "Added user in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
             elif status_code == API.STATUS_FAIL:
                 self._print_error("Could not update topology.", message)
                 exit(1)
@@ -456,6 +563,10 @@ class gp_add_host(Command):
         t_start = time.time()        
         self.parse_options()
                 
+        if len(self.args) != 2:
+            print "You must specify an instance id."
+            print "For example: %s [options] gpi-37a8bf17" % self.name
+            exit(1)        
         inst_id = self.args[1]
 
         api = API(self.opt.dir)
@@ -479,19 +590,22 @@ class gp_add_host(Command):
             if self.opt.depends != None:
                 node.set_property("depends", "node:%s" % self.opt.depends)
 
-            domain.nodes.append(node)
+            domain.add_to_array("nodes", (node))
             
             topology_json = t.to_json_string()
 
-            status_code, message = api.instance_update(inst_id, topology_json, False, [], [])
+            print "Adding new host to",
+            print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
+            status_code, message = api.instance_update(inst_id, topology_json, [], [])
             
             if status_code == API.STATUS_SUCCESS:
+                print Fore.GREEN + Style.BRIGHT + "done!"
                 t_end = time.time()
                 
                 delta = t_end - t_start
                 minutes = int(delta / 60)
                 seconds = int(delta - (minutes * 60))
-                print "\033[1;37m%i minutes and %s seconds\033[0m" % (minutes, seconds)
+                print "Added host in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
             elif status_code == API.STATUS_FAIL:
                 self._print_error("Could not update topology.", message)
                 exit(1) 
