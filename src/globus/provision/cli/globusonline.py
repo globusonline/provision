@@ -1,8 +1,7 @@
 import sys
+import os.path
 
 from globus.provision.cli import Command
-from globus.provision.common import defaults, constants
-from globus.provision.core.config import GPConfig
 from globus.transfer.transfer_api import TransferAPIClient, ClientError
 from globus.provision.core.instance import InstanceStore
 
@@ -18,11 +17,7 @@ class gp_go_register_endpoint(Command):
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain", 
-                                  help = "Only this domain")   
-
-        self.optparser.add_option("-n", "--name", 
-                                  action="store", type="string", dest="name", 
-                                  help = "Endpoint name")   
+                                  help = "Only this domain")
         
         self.optparser.add_option("-p", "--public", 
                                   action="store_true", dest="public", 
@@ -39,64 +34,70 @@ class gp_go_register_endpoint(Command):
         istore = InstanceStore(self.opt.dir)
         inst = istore.get_instance(inst_id)        
 
-        go_username = inst.config.get("go_username")
-        go_cert_file = inst.config.get("go-cert-file")
-        go_key_file = inst.config.get("go-cert-key")
-        go_server_ca = inst.config.get("go-server-ca")
+        go_cert_file = os.path.expanduser(inst.config.get("go-cert-file"))
+        go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
+        go_server_ca = os.path.expanduser(inst.config.get("go-server-ca-file"))
 
-        api = TransferAPIClient(go_username, go_server_ca, go_cert_file, go_key_file)
-                
         for domain_name, domain in inst.topology.domains.items():
-            ep_name = "%s_%s" % (inst_id, domain_name)
+            for ep in domain.go_endpoints:
 
-            if self.opt.domain != None:
-                if self.opt.domain != domain_name:
-                    continue
-                else:
-                    if self.opt.name != None:
-                        ep_name = self.opt.name
-                
-            # Find the GridFTP server
-            gridftp = domain.servers[constants.DOMAIN_GRIFTP_SERVER]
+                api = TransferAPIClient(ep.user, go_server_ca, go_cert_file, go_key_file)
 
-            try:
-                (code, msg, ep) = api.endpoint(ep_name)
-                ep_exists = True
-            except ClientError as ce:
-                if ce.status_code == 404:
-                    ep_exists = False
+                if ep.gridftp.startswith("node:"):
+                    gridftp = inst.topology.get_node_by_id(ep.gridftp[5:]).hostname
                 else:
-                    print ce
-                    exit(1)
-            
-            if inst.config.get("go-auth") == "go": 
-                myproxy_server = "myproxy.globusonline.org"
-            else:
-                myproxy_server = domain.servers[constants.DOMAIN_MYPROXY_SERVER].hostname
-            
-            if ep_exists:
-                if not self.opt.replace:
-                    print "An endpoint called '%s' already exists. Please choose a different name." % ep_name
-                    exit(1)
-                else:
-                    (code, msg, data) = api.endpoint_delete(ep_name)
-                
-            (code, msg, data) = api.endpoint_create(ep_name, gridftp.hostname, description="Globus Provision endpoint",
-                                                    scheme="gsiftp", port=2811, subject="/O=Grid/OU=Globus Provision/CN=host/%s" % gridftp.hostname,
-                                                    myproxy_server=myproxy_server)
-            if code >= 400:
-                print code, msg
-                exit(1)        
+                    gridftp = ep.gridftp
     
-            if self.opt.public:
-                (code, msg, ep) = api.endpoint(ep_name)
-                if code >= 400:
-                    print code, msg
-                    exit(1)
-                ep["public"] = True
-                (code, msg, data) = api.endpoint_update(ep_name, ep)
-                if code >= 400:
-                    print code, msg
-                    exit(1)
+                ca_dn = inst.config.get("ca-dn")
+                if ca_dn == None:
+                    ca_dn = "/O=Grid/OU=Globus Provision (generated)" % inst_id
+                else:
+                    ca_dn = [x.split("=") for x in ca_dn.split(",")]
+                    ca_dn = "".join(["/%s=%s" % (n.upper().strip(), v.strip()) for n,v in ca_dn])
+
+                gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp)
+    
+                try:
+                    (code, msg, data) = api.endpoint(ep.name)
+                    ep_exists = True
+                except ClientError as ce:
+                    if ce.status_code == 404:
+                        ep_exists = False
+                    else:
+                        print ce
+                        exit(1)
+                
+                if inst.config.get("go-auth") == "go": 
+                    myproxy = "myproxy.globusonline.org"
+                else:
+                    if ep.myproxy.startswith("node:"):
+                        myproxy = inst.topology.get_node_by_id(ep.myproxy[5:])
+                    else:
+                        myproxy = ep.myproxy
+                
+                if ep_exists:
+                    if not self.opt.replace:
+                        print "An endpoint called '%s' already exists. Please choose a different name." % ep.name
+                        exit(1)
+                    else:
+                        (code, msg, data) = api.endpoint_delete(ep.name)
                     
-            print "Created endpoint '%s#%s' for domain '%s'" % (go_username, ep_name, domain_name)
+                (code, msg, data) = api.endpoint_create(ep.name, gridftp, description="Globus Provision endpoint",
+                                                        scheme="gsiftp", port=2811, subject=gridftp_subject,
+                                                        myproxy_server=myproxy)
+                if code >= 400:
+                    print code, msg
+                    exit(1)        
+        
+                if self.opt.public:
+                    (code, msg, data) = api.endpoint(ep.name)
+                    if code >= 400:
+                        print code, msg
+                        exit(1)
+                    data["public"] = True
+                    (code, msg, data) = api.endpoint_update(ep.name, data)
+                    if code >= 400:
+                        print code, msg
+                        exit(1)
+                        
+                print "Created endpoint '%s#%s' for domain '%s'" % (ep.user, ep.name, domain_name)
