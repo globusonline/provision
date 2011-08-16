@@ -117,7 +117,11 @@ class Instance(object):
         if not os.path.exists(certs_dir):
             os.makedirs(certs_dir)  
 
-        certg = CertificateGenerator()
+        dn = self.config.get("ca-dn")
+        if dn == None:
+            dn = "O=Grid, OU=Globus Provision (generated)" % self.id
+
+        certg = CertificateGenerator(dn)
 
         cert_files = []
         ca_cert_file = self.config.get("ca-cert")

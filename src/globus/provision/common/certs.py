@@ -7,10 +7,13 @@ from OpenSSL import crypto
 import os.path
 
 class CertificateGenerator(object):
-    def __init__(self, ca_cert = None, ca_key = None):
+    def __init__(self, dn, ca_cert = None, ca_key = None):
         self.ca_cert = ca_cert
         self.ca_key = ca_key
         self.serial = 1
+
+        self.dn = [x.split("=") for x in dn.split(",")]
+        self.dn = dict([(n.upper().strip(), v.strip()) for n,v in self.dn])
         
     def set_ca(self, ca_cert, ca_key):
         self.ca_cert = ca_cert
@@ -36,8 +39,16 @@ class CertificateGenerator(object):
         k.generate_key(crypto.TYPE_RSA, 1024)
 
         cert = crypto.X509()
-        cert.get_subject().O = "Grid"
-        cert.get_subject().OU = "Globus Provision"
+        if self.dn.has_key("C"):
+            cert.get_subject().C = self.dn["C"]
+        if self.dn.has_key("ST"):
+            cert.get_subject().ST = self.dn["ST"]
+        if self.dn.has_key("L"):
+            cert.get_subject().L = self.dn["L"]
+        if self.dn.has_key("O"):
+            cert.get_subject().O = self.dn["O"]
+        if self.dn.has_key("OU"):
+            cert.get_subject().OU = self.dn["OU"]
         cert.get_subject().CN = cn
         cert.set_serial_number(self.serial)
         self.serial += 1
