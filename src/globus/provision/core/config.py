@@ -1,5 +1,5 @@
 from globus.provision.core.topology import Domain, User, Node, Topology,\
-    DeployData, EC2DeployData, GridMapEntry
+    DeployData, EC2DeployData, GridMapEntry, GOEndpoint
 from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
 import os.path
 import getpass
@@ -33,8 +33,19 @@ class GPConfig(Config):
             required    = False,
             doc         = """
             Location of the private key (PEM-encoded) for the certificate
-            specified in "ca-cert".
+            specified in ``ca-cert``.
             """),
+     Option(name        = "ca-dn",
+            getter      = "ca-dn",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            Distinguished Name of the certificates that will be signed with 
+            the CA certificate specified in ``ca-cert``. 
+            
+            For example, if you set this value to ``O=Foo, OU=Bar``, the certificates
+            will have subjects like ``/O=Foo/OU=Bar/CN=borja``, ``/O=Foo/OU=Bar/CN=host/foo.example.org``, etc.
+            """),            
      Option(name        = "scratch-dir",
             getter      = "scratch-dir",
             type        = OPTTYPE_STRING,
@@ -286,26 +297,31 @@ class SimpleTopologyConfig(Config):
     [    
      Option(name        = "users",
             getter      = "users",
-            type        = OPTTYPE_INT,
+            type        = OPTTYPE_STRING,
             required    = False,
-            default     = 0,
+            default     = "0",
             doc         = """
-            The number of users to create in this domain. The users will be named ``D-userN``, where ``D`` is the
+            This option can be either a number, or a list of usernames separated by spaces.
+            
+            If a number is specified, the users will be named ``D-userN``, where ``D`` is the
             domain name and ``N`` is a number between 1 and the number specified in this option.
+            
+            If a list of usernames is specified, users with those login names will be created.
             
             These users will be created with corresponding user certificates. To create users without user certificates
             use option ``users-no-cert``.        
             """),                             
      Option(name        = "users-no-cert",
             getter      = "users-no-cert",
-            type        = OPTTYPE_INT,
-            default     = 0,
+            type        = OPTTYPE_STRING,
+            default     = "0",
             required    = False,
             doc         = """
             Same as ``users`` but creating users without certificates.
             
-            Note that if you specify *both* the ``users`` and ``users-no-cert`` option (with values N and M, respectively),
-            the first N users will have certificates, and the remaining M will not.        
+            Note that if you specify a number for *both* the ``users`` and ``users-no-cert`` option 
+            (with values N and M, respectively), the first N users will have certificates, and the 
+            remaining M will not.        
             """),                   
      Option(name        = "users-file",
             getter      = "users-file",
@@ -393,7 +409,36 @@ class SimpleTopologyConfig(Config):
             required    = False,
             doc         = """
             The number of worker nodes to create for the LRM.        
-            """),                        
+            """),          
+     Option(name        = "go-endpoint",
+            getter      = "go-endpoint",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            doc         = """
+            If this domain has a GridFTP server, it can be configured as a GO endpoint.
+            The format for this option is <username>#<name> (e.g., johnsmith#test-ep).
+            Take into account that you must be authorized to use the GO account for <username>,
+            and that you must specify the appropriate credentials in the 
+            :ref:`[globusonline] section<GPConfig_section_globusonline>` of the configuration file.
+            
+            See :ref:`chap_go` for more details.    
+            """)
+,          
+     Option(name        = "go-auth",
+            getter      = "go-auth",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            valid       = ["myproxy", "go"],            
+            doc         = """
+            This is similar to the :ref:`go-auth option<GPConfig_go-auth>` of the configuration file.
+            When ``myproxy`` is selected, the endpoint will be configured to authenticate users
+            with this domain's MyProxy server (note that the :ref:`myproxy option<SimpleTopologyConfig_myproxy>`
+            must be set to ``true`` for this to work). If the ``go`` option is selected, Globus
+            Online will use its internal authentication (Globus Provision will set up the domain
+            so the GO identities will be authorized to access the endpoint).
+            
+            See :ref:`chap_go` for more details.    
+            """)                            
     ]     
     sections.append(domain)
     
@@ -434,7 +479,7 @@ class SimpleTopologyConfig(Config):
     def to_topology(self):
         ssh_pubkeyf = os.path.expanduser(self.get("ssh-pubkey"))
         ssh_pubkeyf = open(ssh_pubkeyf)
-        ssh_pubkey = ssh_pubkeyf.read()
+        ssh_pubkey = ssh_pubkeyf.read().strip()
         ssh_pubkeyf.close()        
         
         topology = Topology()
@@ -468,8 +513,7 @@ class SimpleTopologyConfig(Config):
 
             usersfile = self.get((domain_name, "users-file"))
             
-            if usersfile != None:                
-                print domain_name, usersfile
+            if usersfile != None:
                 usersfile = open(usersfile, "r")
                 
                 for line in usersfile:
@@ -494,32 +538,43 @@ class SimpleTopologyConfig(Config):
                     
                 usersfile.close()
             else:
-                usernum = 1
-                for i in range(self.get((domain_name, "users"))):
-                    username = "%s-user%i" % (domain_name, usernum)
+                users = self.get((domain_name, "users"))
+                users_nocert = self.get((domain_name, "users-no-cert"))
+                
+                if users.isdigit():
+                    num_users = int(users)
+                    usernames = [("%s-user%i" % (domain_name, i), True) for i in range(1,num_users + 1)]
+                else:
+                    num_users = 0
+                    usernames = [(u, True) for u in users.split() if u != getpass.getuser()]
+                    
+                if users_nocert.isdigit():
+                    usernames += [("%s-user%i" % (domain_name, i), False) for i in range(num_users + 1,num_users + int(users_nocert) + 1)]
+                else:
+                    usernames += [(u, False) for u in users_nocert.split() if u != getpass.getuser()]                
+
+                for username, cert in usernames:
                     user = User()
                     user.set_property("id", username)
                     user.set_property("password_hash", "!")
                     user.set_property("ssh_pkey", ssh_pubkey)
-                    user.set_property("certificate", "generated")
+                    if cert:
+                        user.set_property("certificate", "generated")
+                    else:
+                        user.set_property("certificate", "none")
                     domain.add_user(user)
-                    usernum += 1
-    
-                for i in range(self.get((domain_name, "users-no-cert"))):
-                    username = "%s-user%i" % (domain_name, usernum)
-                    user = User()
-                    user.set_property("id", username)
-                    user.set_property("password_hash", "!")
-                    user.set_property("ssh_pkey", ssh_pubkey)
-                    user.set_property("certificate", "none")           
-                    domain.add_user(user)
-                    usernum += 1
-            
+                
             for user in domain.users.values():
                 gme = GridMapEntry()
                 gme.set_property("dn", "/O=Grid/OU=Globus Provision/CN=%s" % user.id)
                 gme.set_property("login", user.id)
-                domain.add_to_array("gridmap", gme)                
+                domain.add_to_array("gridmap", gme)  
+                if self.get((domain_name,"go-auth")) == "go":
+                    gme = GridMapEntry()
+                    gme.set_property("dn", "/C=US/O=Globus Consortium/OU=Globus Connect User/CN=%s" % user.id)
+                    gme.set_property("login", user.id)
+                    domain.add_to_array("gridmap", gme)  
+                                  
             
             if self.get((domain_name,"nfs-nis")):  
                 server_node = Node()
@@ -561,7 +616,9 @@ class SimpleTopologyConfig(Config):
                     gridftp_node.set_property("depends", "node:%s" % server_name)
                     gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
-                    gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
+                    gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")     
+                if self.get((domain_name,"go-endpoint")) != None:
+                    gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
                 gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
                 domain.add_node(gridftp_node)                
             
@@ -603,6 +660,20 @@ class SimpleTopologyConfig(Config):
 
                     clusternode_host += 1
             
+            if self.get((domain_name,"go-endpoint")) != None:
+                goep = GOEndpoint()
+                gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
+                goep.set_property("user", gouser)
+                goep.set_property("name", goname)
+                goep.set_property("gridftp", "node:%s-gridftp" % domain_name)
+                
+                if self.get((domain_name,"go-auth")) == "myproxy":
+                    goep.set_property("myproxy", "node:%s-myproxy" % domain_name)
+                else:
+                    goep.set_property("myproxy", "myproxy.globusonline.org")
+                    
+                domain.add_to_array("go_endpoints", goep)
+                
         return topology
 
 
