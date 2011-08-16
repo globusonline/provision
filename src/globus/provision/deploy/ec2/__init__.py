@@ -10,7 +10,8 @@ import traceback
 import os.path
 from globus.provision.common import log
 from globus.provision.common.certs import CertificateGenerator
-from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread
+from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread,\
+    DeploymentException
 from globus.provision.core.topology import DeployData, EC2DeployData, Node
 
 class EC2VM(VM):
@@ -57,11 +58,7 @@ class Deployer(BaseDeployer):
                 exit(1)
             log.debug("Connected to EC2.")
         except BotoClientError, exc:
-            print "\033[1;31mERROR\033[0m - Could not connect to EC2."
-            print "        Reason: %s" % exc.reason
-            exit(1)
-        except Exception, exc:
-            self.handle_unexpected_exception(exc)    
+            raise DeploymentException, "Could not connect to EC2. %s" % exc.reason
         
     def __get_security_groups(self, topology, node):
         sgs = topology.get_deploy_data(node, "ec2", "security_groups")
