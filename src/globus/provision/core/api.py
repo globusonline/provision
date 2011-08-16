@@ -43,6 +43,8 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message)
+
+        log.set_logging_instance(inst_id)
                 
         try:
             json_string = inst.topology.to_json_string()
@@ -58,6 +60,8 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message)
+
+        log.set_logging_instance(inst_id)
             
         try:
             if inst.topology.state == Topology.STATE_NEW:
@@ -136,7 +140,9 @@ class API(object):
             
             if not success:
                 return (API.STATUS_FAIL, message)
-                
+    
+            log.set_logging_instance(inst_id)
+                            
             if inst.topology.state != Topology.STATE_RUNNING:
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
@@ -225,6 +231,8 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message)
+
+        log.set_logging_instance(inst_id)
         
         try:
             if inst.topology.state != Topology.STATE_RUNNING:
@@ -268,6 +276,8 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message)
+
+        log.set_logging_instance(inst_id)
         
         try:
             if inst.topology.state in [Topology.STATE_NEW]:
