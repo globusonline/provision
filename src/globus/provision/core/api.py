@@ -42,7 +42,7 @@ class API(object):
         (success, message, inst) = self.__get_instance(inst_id)
         
         if not success:
-            return (API.STATUS_FAIL, message)
+            return (API.STATUS_FAIL, message, None)
 
         log.set_logging_instance(inst_id)
                 

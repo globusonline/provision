@@ -28,7 +28,7 @@ gp_node   = gp_domain[:nodes][node[:node_id]]
 
 # The nis_server attribute is part of the generated topology.rb file,
 # and contains the IP of the domain's NFS/NIS server.
-server = gp_domain[:nis_server]
+server = gp_domain[:nis_server_ip]
 
 
 # Packages we need

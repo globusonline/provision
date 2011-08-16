@@ -72,9 +72,6 @@ class ConfigureThread(GPThread):
     def ssh_connect(self, username, hostname, keyfile):
         node = self.node
 
-        ssh_out = sys.stdout
-        ssh_err = sys.stderr
-
         log.debug("Establishing SSH connection", node)
         ssh = SSH(username, hostname, keyfile, default_outf = None, default_errf = None)
         ssh.open()
@@ -117,9 +114,6 @@ class ConfigureThread(GPThread):
             
             self.check_continue()
 
-        #if self.deployer.loglevel == 0:
-        #    print "   \033[1;37m%s\033[0m: Basic setup is done. Installing Grid software now." % node.hostname.split(".")[0]
-        
             # Run chef
             log.debug("Running chef", node)
             ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
@@ -135,6 +129,3 @@ class ConfigureThread(GPThread):
             ssh.run(cmd)
 
         log.info("Configuration done.", node)
-        
-        #if self.deployer.loglevel == 0:
-        #    print "   \033[1;37m%s\033[0m is ready." % node.hostname.split(".")[0]    

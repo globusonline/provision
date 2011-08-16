@@ -236,7 +236,7 @@ class PersistentObject(object):
                                 raise ObjectValidationException("Tried to add/remove items from non-editable array '%s' (Add: %s  Remove: %s)""" % (name, add, remove))                            
                             
                             common = list(self_set & pobj_set)
-                            print self_value
+
                             self_items_value = dict([(k, v) for k, v in self_value.items() if k in common])
                             pobj_items_value = dict([(k, v) for k, v in pobj_value.items() if k in common])
                             

@@ -67,7 +67,10 @@ ff02::3 ip6-allhosts
                 if len(server) > 1:
                     # TODO: Print a warning saying more than one NFS server has been found
                     pass
-                return "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
+                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.hostname)
+                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
+                
+                return hostname_line + ip_line
             else:
                 return ""                              
         
@@ -77,7 +80,7 @@ ff02::3 ip6-allhosts
             topology += gen_topology_line("nfs_server", domain.id, ["recipe[provision::nfs_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
-            topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]"])
+            topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
         
         topologyfile = open(filename, "w")
         topologyfile.write(topology)
@@ -154,6 +157,7 @@ class EC2DeployData(PersistentObject):
     pass
 
 class Node(PersistentObject):
+    STATE_NEW = 0
     STATE_STARTING = 1
     STATE_RUNNING_UNCONFIGURED = 2
     STATE_CONFIGURING = 3
@@ -166,7 +170,8 @@ class Node(PersistentObject):
     STATE_FAILED = 10
     
     # String representation of states
-    state_str = {STATE_STARTING : "Starting",
+    state_str = {STATE_NEW : "New",
+                 STATE_STARTING : "Starting",
                  STATE_RUNNING_UNCONFIGURED : "Running (unconfigured)",
                  STATE_CONFIGURING : "Configuring",
                  STATE_RUNNING : "Running",

@@ -46,13 +46,11 @@ end
 
 
 # We start by creating the domain's users.
-usernum = 1
 users.values.each do |u|
 	# Create the user
 	user u[:id] do
 	  not_if "id #{u[:id]}"
 	  comment u[:description]
-	  uid 2000 + usernum
 	  gid 100
 	  home "#{homedirs}/#{u[:id]}"
 	  password u[:password_hash]
@@ -110,8 +108,7 @@ users.values.each do |u|
         action :modify
       end
   end 
-    
-	usernum += 1
+
 end
 
 # If we specified that this domain's users will use certificates

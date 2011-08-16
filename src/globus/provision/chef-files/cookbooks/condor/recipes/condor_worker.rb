@@ -22,6 +22,7 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+gp_domain = node[:topology][:domains][node[:domain_id]]
 
 # The "condor" recipe handles actions that are common to
 # both head and worker nodes.
@@ -30,7 +31,7 @@ include_recipe "condor::condor"
 
 # The lrm_head attribute is part of the generated topology.rb file,
 # and contains the FQDN of the head node.
-server = node[:lrm_head]
+server = gp_domain[:lrm_head]
 
 
 # Domain (used by Condor for authorization). 

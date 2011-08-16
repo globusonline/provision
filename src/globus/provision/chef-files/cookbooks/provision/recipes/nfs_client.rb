@@ -27,7 +27,7 @@ gp_node   = gp_domain[:nodes][node[:node_id]]
 
 # The nfs_server attribute is part of the generated topology.rb file,
 # and contains the IP of the domain's NFS server.
-server = gp_domain[:nfs_server]
+server = gp_domain[:nfs_server_ip]
 
 
 # Packages we need
