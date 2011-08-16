@@ -17,6 +17,8 @@ def print_section(title, marker):
     print marker * len(title)
 
 for s in conf_cls.sections:
+    print ".. _%s_section_%s:" % (conf_cls.__name__, s.name)
+    print
     print_section("Section ``[%s]``" % s.name, "=")
     print
     print s.get_doc()
