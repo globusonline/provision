@@ -9,7 +9,6 @@ import sys
 import traceback
 import os.path
 from globus.provision.common import log
-from globus.provision.common.certs import CertificateGenerator
 from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, WaitThread,\
     DeploymentException
 from globus.provision.core.topology import DeployData, EC2DeployData, Node
