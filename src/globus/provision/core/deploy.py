@@ -9,6 +9,10 @@ from globus.provision.common import log
 import sys
 from globus.provision.core.topology import Node
 
+class DeploymentException(Exception):
+    """A simple exception class used for deployment exceptions"""
+    pass
+
 class BaseDeployer(object):
     def __init__(self, extra_files = [], run_cmds = []):
         self.instance = None
@@ -67,17 +71,12 @@ class ConfigureThread(GPThread):
         
     def ssh_connect(self, username, hostname, keyfile):
         node = self.node
-        #if self.deployer.loglevel in (0,1):
-        #    ssh_out = None
-        #    ssh_err = None
-        #elif self.deployer.loglevel == 2:
-        #   ssh_out = sys.stdout
-        #    ssh_err = sys.stderr
+
         ssh_out = sys.stdout
         ssh_err = sys.stderr
 
         log.debug("Establishing SSH connection", node)
-        ssh = SSH(username, hostname, keyfile, ssh_out, ssh_err)
+        ssh = SSH(username, hostname, keyfile, default_outf = None, default_errf = None)
         ssh.open()
         log.debug("SSH connection established", node)
         

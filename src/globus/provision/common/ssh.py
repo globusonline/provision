@@ -81,16 +81,21 @@ class SSH(object):
         try:
             channel.exec_command(command)
     
-            if outf != None or errf != None:
-                while True:
-                    rl, wl, xl = select.select([channel],[],[])
-                    if len(rl) > 0:
-                        # Must be stdout
-                        x = channel.recv(1)
-                        if not x: break
-                        outf.write(x)
-                        outf.flush()
-                
+            log_msg = ""
+            while True:
+                rl, wl, xl = select.select([channel],[],[])
+                if len(rl) > 0:
+                    # Must be stdout
+                    x = channel.recv(1)
+                    if not x: break
+                    if outf is not None: outf.write(x)
+                    log_msg += x
+                    if x == "\n":
+                        log.debug("SSH_OUT: %s" % log_msg.rstrip())
+                        log_msg = ""
+                    if outf is not None: outf.flush()
+            
+            if outf is not None: 
                 if outf != sys.stdout:
                     outf.close()
                     
