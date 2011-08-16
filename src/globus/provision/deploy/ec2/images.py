@@ -41,7 +41,7 @@ class EC2AMICreator(object):
         
         print "Instance running"
         print self.username, instance.public_dns_name, self.keyfile
-        ssh = SSH(self.username, instance.public_dns_name, self.keyfile)
+        ssh = SSH(self.username, instance.public_dns_name, self.keyfile, None, None)
         try:
             ssh.open()
         except Exception, e:
