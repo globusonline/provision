@@ -31,7 +31,7 @@ setup(name='globus-provision',
       package_dir = {'': 'src'},      
       packages=find_packages("src", exclude=["dg_paraproxy"]),
       
-      install_requires = ['boto>=2.0', 'paramiko>=1.7.7.1'],
+      install_requires = ['boto>=2.0', 'paramiko>=1.7.7.1', 'colorama>=0.2.4'],
       setup_requires = [ "setuptools_git >= 0.4.2", ],
       include_package_data=True,
       
