@@ -1,3 +1,5 @@
+.. _chap_instances:
+
 Provisioning and managing a GP instance
 ***************************************
 

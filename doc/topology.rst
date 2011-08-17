@@ -1,6 +1,6 @@
 .. _chap_topology:
 
-The topology file
-*****************
+The JSON topology format
+************************
 
 TODO

@@ -1,3 +1,5 @@
+.. _chap_install:
+
 Installing Globus Provision
 ***************************
 
