@@ -24,7 +24,7 @@ for mod in cmds:
 
 setup(name='globus-provision',
       version='0.3.0rc1',
-      description='Globus Provision',
+      description='A tool for deploying fully-configured Globus systems on an IaaS cloud, such as Amazon EC2',
       author='University of Chicago',
       author_email='borja@cs.uchicago.edu',
       url='http://globus.org/provision',
@@ -41,7 +41,7 @@ setup(name='globus-provision',
 
       package_data = {"chef":["*"]},
       zip_safe = False,
-      #eager_resources=["chef/"],
+
       license="Apache Software License",
       classifiers=[
           'Development Status :: 4 - Beta',
