@@ -1,6 +1,9 @@
+.. _whatis:
+
 What is Globus Provision?
 ==============================
 
-.. include:: intro_small.rst
+.. include:: intro_common.rst
 
-For more details, take a look at the :ref:`Globus Provision Documentation <docs>`.
+To learn more about Globus Provision, take a look at the :ref:`Globus Provision Documentation <docs>`,
+or get started right away with our :ref:`Quickstart Guide <chap_quickstart>`.
