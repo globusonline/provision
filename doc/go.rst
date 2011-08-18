@@ -3,13 +3,12 @@
 Adding Globus Online endpoints to your topology
 ***********************************************
 
-
+.. todo::
+	Not done yet. Will be ready in RC2.
 
 Globus Online 101
 =================	
 
-.. todo::
-	Include
 
 Setting up Globus Online
 ========================

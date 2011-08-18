@@ -1,3 +1,5 @@
+.. _chap_support:
+
 Getting help
 ==============================
 

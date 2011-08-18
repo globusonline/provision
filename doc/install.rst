@@ -10,7 +10,7 @@ You can install Globus Provision using one of the following procedures.
 * :ref:`Using the "easy_install" tool <easy_install>`. This is the simplest option, as ``easy_install``
   will take care of downloading and installing not just Globus Provision but also all its dependencies.
   You must already have `Python <http://www.python.org/>`_ (version 2.6 or higher) and 
-  `Python Distribute <http://packages.python.org/distribute/>` (version 0.6.15 or higher)
+  `Python Distribute <http://packages.python.org/distribute/>`_ (version 0.6.15 or higher)
   installed on your machine (or you must be able to install them). To check if both are installed,
   try running ``easy_install --version`` from the command line. If the command is available, and it
   prints out a version number equal or higher than 0.6.15, you will be able to install Globus Provision 
@@ -32,8 +32,8 @@ This option has the following prerequisites:
 * `Python <http://www.python.org/>`_ 2.6 or higher. If Python is not available on your machine, 
   you can find installation instructions here: http://www.python.org/getit/. Take into account that,
   if you are using a Linux distribution, you should be able to install it using your distribution's
-  package manager (e.g., ``apt-get install python`` on Debian and Ubuntu``). If you are using a Mac,
-  Python is included by default; however, if your version is to old, take a look at the following
+  package manager (e.g., ``apt-get install python`` on Debian and Ubuntu). If you are using a Mac,
+  Python is included by default; however, if your version is too old, take a look at the following
   instructions: http://www.python.org/getit/mac/
 * `Python Distribute <http://packages.python.org/distribute/>` 0.6.15 or higher. As noted above,
   you can verify if this package is installed by running ``easy_install --version``. If it is not
@@ -139,7 +139,7 @@ branch. To switch to the ``dev`` branch, run the following::
 
 	git checkout dev
 	
-To pull the latest changes from our GitHub repository, run the following:
+To pull the latest changes from our GitHub repository, run the following::
 
 	git pull origin
 	

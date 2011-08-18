@@ -3,17 +3,21 @@
 Quickstart Guide
 ****************
 
-This guide is meant to get you up and running right away. To do so, we make a few assumptions:
+This guide is meant to get you up and running right away. It is written as a standalone document,
+so we do not assume that you've read the :ref:`chap_intro` (if you have, you'll only see a few
+bits of repeated content).
 
-* You must already have an `Amazon AWS <http://aws.amazon.com/>`_ account, and you should be familiar 
-  with `Amazon EC2 <http://aws.amazon.com/ec2/>`_. More specifically, you should have (or know how to get) 
-  a secret access key and an SSH keypair for your EC2 account.
+To get you started right away, we do make a few assumptions:
+
 * You are using a fairly recent Linux distribution or Mac OS X.
 * You must have `Python <http://www.python.org/>`_ (version 2.6 or higher) and 
-  `Python Distribute <http://packages.python.org/distribute/>`
+  `Python Distribute <http://packages.python.org/distribute/>`_
   installed on your machine (or you must be able to install them). Most Linux distributions already
   include Python, often with the Distribute package included. Ultimately, you must be able to run the
   ``easy_install`` command.
+* You must already have an `Amazon AWS <http://aws.amazon.com/>`_ account, and you should be familiar 
+  with `Amazon EC2 <http://aws.amazon.com/ec2/>`_. More specifically, you should have (or know how to get) 
+  a secret access key and an SSH keypair for your EC2 account.
   
 If you do not meet these requirements, you may want to skip to the next chapters, which provide
 much more detailed instructions on how to get started with Globus Provision (including instructions on
@@ -94,23 +98,23 @@ We suggest that you create an keypair called ``gp-key``, and save the keypair fi
 
 You will need to add the following to the topology file:
 
-::
+.. parsed-literal::
 
 	[ec2]
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
 	username: ubuntu
-	ami: ami-894889e0
+	ami: |ami|
 	instance-type: t1.micro
 
 Notice how we are telling Globus Provision to use your ``gp-key`` keypair, to use ``t1.micro`` instances
-(which only cost $0.02 per hour), and to use Globus Provision's AMI (``ami-894889e0``). This is an Ubuntu
+(which only cost $0.02 per hour), and to use Globus Provision's AMI (|ami|). This is an Ubuntu
 11.04 AMI that we provide with many software packages preinstalled, which considerably speeds up
 the deployment of topologies. The latest AMI is always listed on the Globus Provision website.
 
 Finally, save the entire topology file (with the ``[general]`` and ``[domain-simple]`` sections shown
 earlier *and* the ``[ec2]`` section shown above) as ``single-gridftp-ec2.conf``. You will also need
-to export your you will need to export your Access Key ID and Secret Key as environment variables 
+to export your Access Key ID and Secret Key as environment variables 
 ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``, respectively. For example:
 
 ::
@@ -181,8 +185,8 @@ After a while, the output of ``gp-describe-instance`` will look like this:
 	Domain 'simple'
 	    simple-gridftp  Configuring  ec2-N-N-N-N.compute-1.amazonaws.com  10.X.X.X
 
-At this point, the ``simple-gridftp`` has started, and Globus Provision is in the process of
-configuring it. Since the host has started, we now know what it's actual hostname is. We will
+At this point, the ``simple-gridftp`` host has started, and Globus Provision is in the process of
+configuring it. Since the host has started, we now know what its actual hostname is. We will
 use this later to connect to that host.
 
 When ``gp-start`` finishes deploying the instance, it will show the following:

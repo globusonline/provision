@@ -27,7 +27,7 @@ Globus Provision Documentation
    quickstart.rst
    install.rst
    ec2.rst
-   first.rst
+   instance_operations.rst
    go.rst
    topology.rst
    config_ref_top.rst
@@ -36,10 +36,10 @@ Globus Provision Documentation
    cli_ref_top.rst
    recipe_ref_top.rst
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. Indices and tables
+   ==================
+	
+   * :ref:`genindex`
+   * :ref:`modindex`
+   * :ref:`search`
 
