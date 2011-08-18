@@ -1,7 +1,24 @@
+.. _docs:
+
 Globus Provision Documentation
 ==============================
 
-Contents:
+.. ifconfig:: website == "yes"
+
+   .. note::
+   	  The documentation is also available as:
+   	  
+   	  .. hlist::
+   	     :columns: 2
+   	     
+   	     * `Single HTML <singlehtml/docs.html>`_
+   	     * :docs-zip:`Single HTML (downloadable .zip) <singlehtml>`
+   	     * :docs-tar:`Single HTML (downloadable .tar.gz) <singlehtml>`
+   	     * :docs-zip:`Multiple HTML (downloadable .zip) <html>`
+   	     * :docs-tar:`Multiple HTML (downloadable .tar.gz) <html>`
+   	     * PDF
+   	  
+
 
 .. toctree::
    :maxdepth: 2
@@ -11,13 +28,13 @@ Contents:
    install.rst
    ec2.rst
    first.rst
-   topology.rst
    go.rst
+   topology.rst
    config_ref_top.rst
    stopology_ref_top.rst
+   topology_ref_top.rst
    cli_ref_top.rst
    recipe_ref_top.rst
-   topology_ref_top.rst
 
 Indices and tables
 ==================
