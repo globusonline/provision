@@ -36,6 +36,8 @@ for command in commands:
     if command == Command:
         print_section("Common options", "=")
     else:
+        print ".. _cli_%s:" % command.name
+        print
         print_section("``%s``" % command.name, "=")
     print
     doc = command.__doc__
