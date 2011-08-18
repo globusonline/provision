@@ -18,11 +18,13 @@
 
 import ConfigParser
 import textwrap
+import os.path
         
 OPTTYPE_INT = 0
 OPTTYPE_FLOAT = 1
 OPTTYPE_STRING = 2
 OPTTYPE_BOOLEAN = 3
+OPTTYPE_FILE = 4
 
 class ConfigException(Exception):
     """A simple exception class used for configuration exceptions"""
@@ -123,6 +125,10 @@ class Config(object):
                         raise ConfigException, "Option '%s.%s' is required when %s.%s==%s" % (secname, optname, condsec, condopt, condvalue)
             
             value = opt.default
+            if opt.type == OPTTYPE_FILE and value != None:
+                value = os.path.expanduser(value)
+                if not os.path.exists(value):
+                    raise ConfigException, "File '%s' does not exist (default for '%s.%s')" % (value, secname, optname)            
         else:
             if opt.type == OPTTYPE_INT:
                 value = self.config.getint(secname, optname)
@@ -132,6 +138,10 @@ class Config(object):
                 value = self.config.get(secname, optname)
             elif opt.type == OPTTYPE_BOOLEAN:
                 value = self.config.getboolean(secname, optname)
+            elif opt.type == OPTTYPE_FILE:
+                value = os.path.expanduser(self.config.get(secname, optname))
+                if not os.path.exists(value):
+                    raise ConfigException, "File '%s' does not exist (specified for '%s.%s')" % (value, secname, optname)
                 
             if opt.valid != None:
                 if not value in opt.valid:

@@ -1,6 +1,6 @@
 from globus.provision.core.topology import Domain, User, Node, Topology,\
     DeployData, EC2DeployData, GridMapEntry, GOEndpoint
-from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN
+from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN, OPTTYPE_FILE
 import os.path
 import getpass
 
@@ -20,7 +20,7 @@ class GPConfig(Config):
     [
      Option(name        = "ca-cert",
             getter      = "ca-cert",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = False,
             doc         = """
             Location of CA certificate (PEM-encoded) used to generate user
@@ -29,7 +29,7 @@ class GPConfig(Config):
             """),    
      Option(name        = "ca-key",
             getter      = "ca-key",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = False,
             doc         = """
             Location of the private key (PEM-encoded) for the certificate
@@ -101,7 +101,7 @@ class GPConfig(Config):
             """),
      Option(name        = "keyfile",
             getter      = "ec2-keyfile",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = True,
             doc         = """
             The actual location of the keypair on your local filesystem.
@@ -175,7 +175,7 @@ class GPConfig(Config):
     [       
      Option(name        = "cert-file",
             getter      = "go-cert-file",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = True,
             doc         = """
             Location of the user certificate (PEM-encoded) that Globus Provision should
@@ -185,7 +185,7 @@ class GPConfig(Config):
             """),         
      Option(name        = "key-file",
             getter      = "go-key-file",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = True,
             doc         = """
             Location of the private key (PEM-encoded) for the certificate
@@ -255,7 +255,7 @@ class SimpleTopologyConfig(Config):
             """),
      Option(name        = "ssh-pubkey",
             getter      = "ssh-pubkey",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = False,
             default     = "~/.ssh/id_rsa.pub",
             doc         = """
@@ -325,7 +325,7 @@ class SimpleTopologyConfig(Config):
             """),                   
      Option(name        = "users-file",
             getter      = "users-file",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_FILE,
             required    = False,
             doc         = """
             The path to a file with a specification of the users to create in this domain. This file will have one line
@@ -566,7 +566,7 @@ class SimpleTopologyConfig(Config):
                 
             for user in domain.users.values():
                 gme = GridMapEntry()
-                gme.set_property("dn", "/O=Grid/OU=Globus Provision/CN=%s" % user.id)
+                gme.set_property("dn", "/O=Grid/OU=Globus Provision (generated)/CN=%s" % user.id)
                 gme.set_property("login", user.id)
                 domain.add_to_array("gridmap", gme)  
                 if self.get((domain_name,"go-auth")) == "go":
