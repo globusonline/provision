@@ -119,7 +119,7 @@ class Instance(object):
 
         dn = self.config.get("ca-dn")
         if dn == None:
-            dn = "O=Grid, OU=Globus Provision (generated)" % self.id
+            dn = "O=Grid, OU=Globus Provision (generated)"
 
         certg = CertificateGenerator(dn)
 
