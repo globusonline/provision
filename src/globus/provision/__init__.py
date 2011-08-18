@@ -1,0 +1,3 @@
+VERSION="0.3"
+RELEASE="0.3.0rc1"
+AMI="ami-894889e0"
