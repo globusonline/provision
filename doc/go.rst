@@ -5,31 +5,11 @@ Adding Globus Online endpoints to your topology
 
 
 
-::
-
-	[globusonline]
-	username = go-user
-	cert-file = ~/.globus/usercert.pem
-	key-file = ~/.globus/userkey.pem
-	server-ca-file = ~/.globus/certificates/gd-bundle_ca.cert
-	auth = go
-	
-	
-::
-
-	[domain-simple]
-	users: user1 user2
-	gridftp: yes
-	go-endpoint: go-user#gp-test
-	go-auth: go
-	
-
-
-
 Globus Online 101
 =================	
 
-
+.. todo::
+	Include
 
 Setting up Globus Online
 ========================

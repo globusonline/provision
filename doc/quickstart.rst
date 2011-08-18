@@ -1,3 +1,5 @@
+.. _chap_quickstart:
+
 Quickstart Guide
 ****************
 
@@ -7,9 +9,10 @@ This guide is meant to get you up and running right away. To do so, we make a fe
   with `Amazon EC2 <http://aws.amazon.com/ec2/>`_. More specifically, you should have (or know how to get) 
   a secret access key and an SSH keypair for your EC2 account.
 * You are using a fairly recent Linux distribution or Mac OS X.
-* You must have Python (version 2.6 or higher) and Python Setuptools installed on your machine
-  (or you must be able to install them). Most Linux distributions already include Python,
-  often with the Setuptools package included. Ultimately, you must be able to run the
+* You must have `Python <http://www.python.org/>`_ (version 2.6 or higher) and 
+  `Python Distribute <http://packages.python.org/distribute/>`
+  installed on your machine (or you must be able to install them). Most Linux distributions already
+  include Python, often with the Distribute package included. Ultimately, you must be able to run the
   ``easy_install`` command.
   
 If you do not meet these requirements, you may want to skip to the next chapters, which provide
@@ -258,7 +261,7 @@ you may want to read the following parts of the documentation:
   do, and introduces much of the terminology used in the documentation.
 * If you want to get your hands dirty, you can also skip directly to the :ref:`chap_instances` chapter
   (since you've already installed Globus Provision and set up Amazon EC2 in this guide, you can safely
-  skip those chapters). That chapter will provide a more in-depth look at the simple topology file,
+  skip chapters :ref:`chap_install` and :ref:`chap_ec2`). That chapter will provide a more in-depth look at the simple topology file,
   and uses a more complex example, where you will deploy a topology with four hosts, including a
   Condor pool and a shared filesystem. You will also see how you can add and remove worker nodes
   from the Condor pool.
