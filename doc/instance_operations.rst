@@ -5,15 +5,15 @@ Provisioning and managing a GP instance
 
 At this point in the documentation, you should have :ref:`installed Globus Provision <chap_install>`
 and :ref:`gotten an Amazon AWS account <chap_ec2>`. If you didn't work through the 
-:ref:`quickstart guide <chap_quickstart>`, this might be a good moment to revisit it, and work
-through a simple example. If you've already read the quickstart guide, this chapter will
+:ref:`Quickstart Guide <chap_quickstart>`, this might be a good moment to revisit it, and work
+through a simple example. If you've already read the Quickstart Guide, this chapter will
 show you a more complex example, so it should still be worthwhile to read the whole thing. 
 
 
 Defining a topology
 ===================
 
-As we saw in the :ref:`chap_intro` chapter, Globus Provision allows us to deploy 
+As we saw in the :ref:`chap_intro` chapter, Globus Provision allows you to deploy 
 fully-configured Globus systems, which we refer to as *topologies*. More specifically, 
 the topology is the specification of what we want to deploy (a GridFTP server, a specific
 set of users, a Condor cluster, etc.). When we deploy it, and it is running on actual
@@ -24,21 +24,21 @@ provides two ways of doing this:
 
 * *The simple topology format*. This is a simple configuration file-like format where
   we define a topology by selecting some high-level options. For example, it includes options
-  to declare a topology with two domains, each with a separate set of users,
-  both with a GridFTP server, but only one with a Condor cluster. Something like this can
-  be specified in just a few lines using the simple topology format.
+  to declare that a topology has two domains, that each has a separate set of users,
+  and that both have a GridFTP server each, but only one has a Condor cluster. Something like this 
+  can be specified in just a few lines using the simple topology format.
   
   However, because this format is simple, it is also fairly constrained. You would be unable
   to specify topologies where there are two GridFTP servers in the same domain, or where
   the same machine hosts multiple servers (by default, the simple topology format
   creates a separate machine for each service, such as GridFTP, GRAM, Condor, etc.). For more
-  complex topologies, you will want to use the JSON topology format.  
+  complex topologies, you will want to use our other topology format.  
   
   You can find the full specification of the simple topology format in :ref:`chap_stopology_ref`.
 * *The JSON topology format*. This is a more versatile and flexible
   format where the topology is specified using the `JSON <http://www.json.org/>`_ format.
-  In fact, Globus Provision translates topologies specified using the simple topology format
-  into the JSON format. This format is described in detail in :ref:`chap_topology`, and the full
+  In fact, Globus Provision internally translates topologies specified using the simple topology format
+  into this JSON format. This format is described in detail in :ref:`chap_topology`, and the full
   specification can be found in :ref:`chap_topology_ref`
 
 In this chapter, we will use the simple topology format, although we will take a peek at the JSON
@@ -305,7 +305,7 @@ could look like this while the instance is still being deployed::
 	    simple-condor-wn2  Running (unconfigured)  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
 	    simple-condor-wn1  Running (unconfigured)  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 		
 	
-When ``gp-start`` completes, the outpit of ``gp-describe-instance`` should look something like this::
+When ``gp-start`` completes, the output of ``gp-describe-instance`` should look something like this::
 
 	gpi-02156188: Running
 	
@@ -400,7 +400,7 @@ After running ``gp-add-host``, you should see the following:
 
 ::
 
-	Adding new host to gpi-24e1d0b0...done!
+	Adding new host to gpi-02156188...done!
 	Added host in 1 minutes and 17 seconds
 	
 You can use ``gp-describe-instance`` to verify that the new host was added:	
