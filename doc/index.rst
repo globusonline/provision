@@ -8,6 +8,7 @@ Welcome to Globus Provision!
    download
    support
    docs
+   intro_small
 
 TODO
 

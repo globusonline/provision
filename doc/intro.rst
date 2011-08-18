@@ -2,3 +2,5 @@
 
 Introduction
 ************
+
+.. include:: intro_small.rst
