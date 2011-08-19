@@ -9,11 +9,29 @@ def print_section(title, marker):
     print title
     print marker * len(title)
 
+roles_files = glob.glob("../src/globus/provision/chef-files/roles/*.rb")
+roles_files.sort()
+
+print_section("Roles", "=")
+for role_file in roles_files:
+    f = open(role_file)
+    role = {}
+    for line in f:
+        if len(line.strip()) > 0:
+            k,v = line.split(" ", 1)
+            role[k.strip()] = v.strip().replace("\"","")
+        
+    print "**%s**" % role["name"]
+    print "  %s" % role["description"]
+    print
+    print "  Runs: ``%s``" % role["run_list"]
+    print
+
 for cookbook in cookbooks:
     print_section("``%s`` cookbook" % cookbook, "=")
     print
     
-    files = glob.glob("../chef/cookbooks/%s/recipes/*.rb" % cookbook)
+    files = glob.glob("../src/globus/provision/chef-files/cookbooks/%s/recipes/*.rb" % cookbook)
     files.sort()
 
     for file in files:
