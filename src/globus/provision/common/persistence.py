@@ -33,7 +33,7 @@ def pt_to_str(pt, items_type = None):
         return "null"
     elif pt == PropertyTypes.ANY:
         return "any"
-    elif issubclass(pt, PersistentObject):
+    elif inspect.isclass(pt) and issubclass(pt, PersistentObject):
         return pt.__name__
     else:
         return "unknown"
