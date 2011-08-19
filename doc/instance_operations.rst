@@ -463,9 +463,37 @@ You should now be able to log into any of the instance's hosts as the ``newuser`
 Removing hosts and users
 ------------------------
 
-.. todo::
+::
 
-	Not implemented yet. Will be ready in RC2.
+	gp-remove-hosts --domain simple
+	                gpi-02156188 
+	                simple-condor-wn3 simple-foo simple-bar 
+	
+::
+
+	Warning: Host simple-foo does not exist.
+	Warning: Host simple-bar does not exist.
+	Removing hosts ['simple-condor-wn3'] from gpi-02156188...done!
+	Removed hosts in 0 minutes and 0 seconds
+
+
+::
+
+	gp-remove-users --domain simple
+	                gpi-02156188 
+	                newuser user3 user4 
+	
+	
+::
+
+	Warning: User user4 does not exist.
+	Warning: User user3 does not exist.
+	Removing users ['newuser'] from gpi-02156188... done!
+	Removed users in 0 minutes and 0 seconds
+	
+.. note::
+
+	Only prevents the user from being created again.
 
 Updating the topology
 ---------------------
@@ -562,9 +590,47 @@ Next, you can try doing a simple GridFTP transfer:
 Stopping and resuming an instance
 =================================
 
-.. todo::
+::
 
-	Implemented but not tested yet. Will be ready in RC2.
+	gp-stop gpi-02156188
+	
+
+::
+
+	Stopping instance gpi-02156188... done!
+	
+::
+
+	gpi-02156188: Stopped
+	
+	Domain 'simple'
+	    simple-server      Stopped  ec2-N-N-N-N.compute-1.amazonaws.com  10.N.N.N
+	    simple-condor      Stopped  ec2-M-M-M-M.compute-1.amazonaws.com  10.M.M.M 
+	    simple-condor-wn3  Stopped  ec2-T-T-T-T.compute-1.amazonaws.com  10.T.T.T  
+	    simple-condor-wn2  Stopped  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
+	    simple-condor-wn1  Stopped  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 
+
+	
+::
+
+	gp-start gpi-02156188
+	
+
+::
+
+	Starting instance gpi-02156188... done!	
+	Started instance in 0 minutes and 0 seconds
+
+::
+
+	gpi-02156188: Running
+	
+	Domain 'simple'
+	    simple-server      Running  ec2-A-A-A-A.compute-1.amazonaws.com  10.A.A.A
+	    simple-condor      Running  ec2-B-B-B-B.compute-1.amazonaws.com  10.B.B.B 
+	    simple-condor-wn3  Running  ec2-C-C-C-C.compute-1.amazonaws.com  10.C.C.C  
+	    simple-condor-wn2  Running  ec2-D-D-D-D.compute-1.amazonaws.com  10.D.D.D  
+	    simple-condor-wn1  Running  ec2-E-E-E-E.compute-1.amazonaws.com  10.E.E.E 	
 
 Terminating an instance
 =======================
@@ -586,9 +652,9 @@ And you can verify that the instance was terminated by running ``gp-describe-ins
 	gpi-02156188: Terminated
 	
 	Domain 'simple'
-	    simple-server      Terminated  ec2-N-N-N-N.compute-1.amazonaws.com  10.N.N.N
-	    simple-condor      Terminated  ec2-M-M-M-M.compute-1.amazonaws.com  10.M.M.M 
-	    simple-condor-wn3  Terminated  ec2-T-T-T-T.compute-1.amazonaws.com  10.T.T.T  
-	    simple-condor-wn2  Terminated  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
-	    simple-condor-wn1  Terminated  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 
+	    simple-server      Terminated  ec2-A-A-A-A.compute-1.amazonaws.com  10.A.A.A
+	    simple-condor      Terminated  ec2-B-B-B-B.compute-1.amazonaws.com  10.B.B.B 
+	    simple-condor-wn3  Terminated  ec2-C-C-C-C.compute-1.amazonaws.com  10.C.C.C  
+	    simple-condor-wn2  Terminated  ec2-D-D-D-D.compute-1.amazonaws.com  10.D.D.D  
+	    simple-condor-wn1  Terminated  ec2-E-E-E-E.compute-1.amazonaws.com  10.E.E.E 	
 
