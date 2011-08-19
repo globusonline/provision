@@ -48,6 +48,56 @@ def parse_extra_files_files(f):
             l.append( (src, full_dst) )
     return l
 
+def rest_table(col_names, rows):
+    def gen_line(lens, char):
+        return "+" + char + (char + "+" + char).join([char * l for l in lens]) + char + "+\n"
+    
+    num_cols = len(col_names)
+    len_cols = [0] * num_cols
+    height_row = [0] * len(rows)
+    
+    table = ""
+    
+    for i, name in enumerate(col_names):
+        len_cols[i] = max(len(name), len_cols[i])
+        
+    for i, row in enumerate(rows):
+        for j in range(num_cols):
+            lines = row[j].split("\n")
+            row_len = max([len(l) for l in lines])
+            len_cols[j] = max(row_len, len_cols[j])
+            height_row[i] = max(len(lines), height_row[i])
+            
+    table += gen_line(len_cols, "-")
+
+    table += "|"
+    for i, name in enumerate(col_names): 
+        table += " "
+        table += col_names[i].ljust(len_cols[i])
+        table += " |"
+    table += "\n"
+
+    table += gen_line(len_cols, "=")
+    
+    for i, row in enumerate(rows):
+        for j in range(height_row[i]):
+            table += "|"
+            for k, col in enumerate(row): 
+                lines = col.split("\n")
+                
+                if len(lines) < j + 1:
+                    col_txt = " " * len_cols[k]
+                else:
+                    col_txt = lines[j].ljust(len_cols[k])
+                
+                table += " "
+                table += col_txt
+                table += " |"
+            table += "\n"            
+
+        table += gen_line(len_cols, "-")
+    
+    return table
 
 # From http://stackoverflow.com/questions/36932/whats-the-best-way-to-implement-an-enum-in-python
 def enum(*sequential, **named):
