@@ -360,13 +360,16 @@ class gp_stop(Command):
             exit(1)
         inst_id = self.args[1]            
 
+        print "Stopping instance",
+        print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
         api = API(self.opt.dir)
         status_code, message = api.instance_stop(inst_id)
         
         if status_code == API.STATUS_SUCCESS:
-            print "Instance %s stopped" % inst_id
+            print Fore.GREEN + Style.BRIGHT + "done!"
         elif status_code == API.STATUS_FAIL:
-            self._print_error("Could not start instance.", message)
+            self._print_error("Could not stop instance.", message)
+            print
             exit(1)       
 
 
@@ -616,18 +619,73 @@ def gp_remove_users_func():
 
 class gp_remove_users(Command):
     
-    name = "gp-remove-user"
+    name = "gp-remove-users"
     
     def __init__(self, argv):
         Command.__init__(self, argv)
                 
+        self.optparser.add_option("-m", "--domain", 
+                                  action="store", type="string", dest="domain",
+                                  help = "Remove hosts from this domain")  
+                
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill) 
+                
+        t_start = time.time()        
         self.parse_options()
-        
+                
+        if len(self.args) <= 2:
+            print "You must specify an instance id and at least one host."
+            print "For example: %s [options] gpi-37a8bf17 simple-wn3" % self.name
+            exit(1)        
         inst_id = self.args[1]
         users = self.args[2:]
-
+        
         api = API(self.opt.dir)
+        (status_code, message, topology_json) = api.instance(inst_id)
+        
+        if status_code != API.STATUS_SUCCESS:
+            self._print_error("Could not access instance.", message)
+            exit(1) 
+        else:
+            t = Topology.from_json_string(topology_json)
+            
+            if not t.domains.has_key(self.opt.domain):
+                self._print_error("Could not remove users", "Domain '%s' does not exist" % self.opt.domain)
+                exit(1) 
+                            
+            removed = []
+            domain_users = t.domains[self.opt.domain].users
+            
+            for user in users:
+                if user in domain_users:
+                    domain_users.pop(user)
+                    removed.append(user)
+                        
+            remaining = set(removed) ^ set(users)
+            for r in remaining:
+                print Fore.YELLOW + Style.BRIGHT + "Warning" + Fore.RESET + Style.RESET_ALL + ":",
+                print "User %s does not exist." % r
+
+            topology_json = t.to_json_string()
+
+            if len(removed) > 0:
+                print "Removing users %s from" % list(removed),
+                print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
+                status_code, message = api.instance_update(inst_id, topology_json, [], [])
+    
+                if status_code == API.STATUS_SUCCESS:
+                    print Fore.GREEN + Style.BRIGHT + "done!"
+                    t_end = time.time()
+                    
+                    delta = t_end - t_start
+                    minutes = int(delta / 60)
+                    seconds = int(delta - (minutes * 60))
+                    print "Removed users in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+                elif status_code == API.STATUS_FAIL:
+                    self._print_error("Could not update topology.", message)
+                    exit(1) 
+
         
         
 def gp_remove_hosts_func():
@@ -639,12 +697,66 @@ class gp_remove_hosts(Command):
     
     def __init__(self, argv):
         Command.__init__(self, argv)
+
+        self.optparser.add_option("-m", "--domain", 
+                                  action="store", type="string", dest="domain",
+                                  help = "Remove hosts from this domain")  
                 
     def run(self):    
+        SIGINTWatcher(self.cleanup_after_kill) 
+                
+        t_start = time.time()        
         self.parse_options()
-        
+                
+        if len(self.args) <= 2:
+            print "You must specify an instance id and at least one host."
+            print "For example: %s [options] gpi-37a8bf17 simple-wn3" % self.name
+            exit(1)        
         inst_id = self.args[1]
         hosts = self.args[2:]
-
+        
         api = API(self.opt.dir)
+        (status_code, message, topology_json) = api.instance(inst_id)
+        
+        if status_code != API.STATUS_SUCCESS:
+            self._print_error("Could not access instance.", message)
+            exit(1) 
+        else:
+            t = Topology.from_json_string(topology_json)
+            
+            if not t.domains.has_key(self.opt.domain):
+                self._print_error("Could not remove hosts", "Domain '%s' does not exist" % self.opt.domain)
+                exit(1) 
+                            
+            removed = []
+            nodes = t.domains[self.opt.domain].nodes
+            
+            for host in hosts:
+                if host in nodes:
+                    nodes.pop(host)
+                    removed.append(host)
+                        
+            remaining = set(removed) ^ set(hosts)
+            for r in remaining:
+                print Fore.YELLOW + Style.BRIGHT + "Warning" + Fore.RESET + Style.RESET_ALL + ":",
+                print "Host %s does not exist." % r
+
+            topology_json = t.to_json_string()
+
+            if len(removed) > 0:
+                print "Removing hosts %s from" % list(removed),
+                print Fore.WHITE + Style.BRIGHT + inst_id + Fore.RESET + Style.RESET_ALL + "...",
+                status_code, message = api.instance_update(inst_id, topology_json, [], [])
+    
+                if status_code == API.STATUS_SUCCESS:
+                    print Fore.GREEN + Style.BRIGHT + "done!"
+                    t_end = time.time()
+                    
+                    delta = t_end - t_start
+                    minutes = int(delta / 60)
+                    seconds = int(delta - (minutes * 60))
+                    print "Removed hosts in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+                elif status_code == API.STATUS_FAIL:
+                    self._print_error("Could not update topology.", message)
+                    exit(1) 
                 
