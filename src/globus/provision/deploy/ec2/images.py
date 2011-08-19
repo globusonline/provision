@@ -101,8 +101,7 @@ class EC2AMICreator(object):
         
 
 class EC2AMIUpdater(object):
-    def __init__(self, chef_dir, base_ami, ami_name, files, config):
-        self.chef_dir = chef_dir
+    def __init__(self, base_ami, ami_name, files, config):
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.files = files

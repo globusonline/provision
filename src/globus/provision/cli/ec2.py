@@ -58,10 +58,6 @@ class gp_ec2_update_ami(Command):
     
     def __init__(self, argv):
         Command.__init__(self, argv)
-
-        self.optparser.add_option("-s", "--chef-directory", 
-                                  action="store", type="string", dest="chef_dir", 
-                                  help = "Location of Chef files.")
         
         self.optparser.add_option("-a", "--ami", 
                                   action="store", type="string", dest="ami", 
@@ -86,6 +82,6 @@ class gp_ec2_update_ami(Command):
         files = parse_extra_files_files(self.opt.files)
         config = GPConfig(self.opt.conf)
         
-        c = EC2AMIUpdater(self.opt.chef_dir, self.opt.ami, self.opt.aminame, files, config)
+        c = EC2AMIUpdater(self.opt.ami, self.opt.aminame, files, config)
         c.run()        
 
