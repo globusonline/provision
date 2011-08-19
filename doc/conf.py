@@ -56,7 +56,7 @@ master_doc = 'docs'
 
 # General information about the project.
 project = u'Globus Provision'
-copyright = u'2011, Borja Sotomayor'
+copyright = u'2011, University of Chicago'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -194,18 +194,18 @@ htmlhelp_basename = 'GlobusProvisiondoc'
 #latex_paper_size = 'letter'
 
 # The font size ('10pt', '11pt' or '12pt').
-#latex_font_size = '10pt'
+latex_font_size = '11pt'
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'GlobusProvision.tex', u'Globus Provision Documentation',
+  ('docs', 'GlobusProvision.tex', u'Globus Provision Documentation',
    u'Borja Sotomayor', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
 # the title page.
-#latex_logo = None
+latex_logo = "_static/logo.png"
 
 # For "manual" documents, if this is true, then toplevel headings are parts,
 # not chapters.

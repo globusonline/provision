@@ -16,7 +16,7 @@ Globus Provision Documentation
    	     * :docs-tar:`Single HTML (downloadable .tar.gz) <singlehtml>`
    	     * :docs-zip:`Multiple HTML (downloadable .zip) <html>`
    	     * :docs-tar:`Multiple HTML (downloadable .tar.gz) <html>`
-   	     * PDF
+   	     * :docs-pdf:`PDF <pdf>`
    	  
 
 
@@ -30,6 +30,7 @@ Globus Provision Documentation
    instance_operations.rst
    go.rst
    topology.rst
+   developer.rst
    config_ref_top.rst
    stopology_ref_top.rst
    topology_ref_top.rst
