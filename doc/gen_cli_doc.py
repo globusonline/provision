@@ -2,6 +2,7 @@ import globus.provision.cli.api as api
 import globus.provision.cli.ec2 as ec2
 import globus.provision.cli.globusonline as globusonline
 from globus.provision.cli import Command
+from globus.provision.common.utils import rest_table
 
 from docutils.core import publish_string
 import re
@@ -54,25 +55,22 @@ for command in commands:
     c.optparser.formatter.store_option_strings(c.optparser)
     
     if len(opts) > 0:
-        print "+-" + ("-"*OPTION_LEN)            + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
-        print "| " + "Option".ljust(OPTION_LEN)  + " | " + "Description".ljust(DESCRIPTION_LEN) + " |"
-        print "+=" + ("="*OPTION_LEN)            + "=+=" + ("="*DESCRIPTION_LEN)                + "=+"
+        col_names = ["Option", "Description"]
+        rows = []
+        
         for opt in opts:
             if opt.action != "help":
                 opt_string = "``%s``" % c.optparser.formatter.option_strings[opt]            
-                opt_help = textwrap.dedent(opt.help).strip()
+                opt_help = textwrap.dedent(opt.help).strip()                
                 
-                opt_help_lines = opt_help.split("\n")
+                rows.append([opt_string, opt_help])
                 
-                # First line
-                print "| " + opt_string.ljust(OPTION_LEN)  + " | " + opt_help_lines[0].ljust(DESCRIPTION_LEN) + " |"
-                
-                for l in opt_help_lines[1:]:
-                    print "| " + (" "*OPTION_LEN)  + " | " + l.ljust(DESCRIPTION_LEN) + " |"
-                
-                print "+-" + ("-"*OPTION_LEN)  + "-+-" + ("-"*DESCRIPTION_LEN)                + "-+"
+        print rest_table(col_names, rows)
+    
     else:
-        print "No options"
+        print "No options"    
+
+
 
     print
         
