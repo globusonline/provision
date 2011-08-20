@@ -51,6 +51,8 @@ for cookbook in cookbooks:
         description = "\n".join(lines).strip()
         
         if title != None:
+            print ".. _chef_%s_%s:" % (cookbook, recipe_name)
+            print
             print_section("``%s`` (%s)" % (recipe_name, title), "-")
             print description
             print

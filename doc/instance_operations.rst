@@ -159,6 +159,7 @@ Finally, we specify that the LRM must have two worker nodes.
 	The above is just a sampling of the options available in the simple topology format.
 	Make sure to check out the :ref:`chap_stopology_ref` for a complete list of options.
 
+.. _sec_create_instance:
 
 Creating an instance
 ====================
