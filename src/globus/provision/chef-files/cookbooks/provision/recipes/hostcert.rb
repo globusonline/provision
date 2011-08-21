@@ -18,7 +18,7 @@
 ##
 ## RECIPE: Host certificate
 ##
-## Add a host certificate to the node.
+## Adds a host certificate to the node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

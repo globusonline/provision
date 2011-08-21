@@ -18,7 +18,7 @@
 ##
 ## RECIPE: Condor common actions
 ##
-## This recipe is a dependency of condor_head and condor_worker, which will set
+## This recipe is a dependency of ``condor_head`` and ``condor_worker``, which will set
 ## up a Condor head node or worker node. This recipe handles all the actions
 ## that are common to both.
 ##

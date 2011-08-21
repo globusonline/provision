@@ -16,10 +16,13 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: MyProxy server for a single organization
+## RECIPE: Globus Toolkit 5.1.1 MyProxy
 ##
-## Sets up a MyProxy server that will use the organization's NIS domain 
-## to authenticate users.
+## Installs a MyProxy server, and sets is up as a xinetd service.
+##
+## For authentication, the MyProxy server will use the local UNIX accounts
+## through PAM. If the node this recipe is applied to is part of a NIS
+## domain, then the global NIS accounts will be used.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

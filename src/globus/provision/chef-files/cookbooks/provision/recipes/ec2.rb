@@ -18,7 +18,8 @@
 ##
 ## RECIPE: EC2 AMI software pre-install
 ##
-## TODO
+## This recipe preinstalls a subset of the software used on a Globus Provision
+## instance to speed up subsequent deployments.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

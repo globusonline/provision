@@ -1,4 +1,4 @@
 name "domain-condor"
-description "A domain's Condor head node (without GRAM)"
+description "A domain's Condor head node"
 run_list "recipe[condor::condor_head]"
 
