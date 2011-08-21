@@ -253,6 +253,8 @@ contains connection-specific information, while the EC2 parameters included in t
 ``default_deploy_data`` of the topology is information specific to the topology: what
 AMI will be used to create the hosts, and what EC2 instance type will be used.
 
+.. _sec_runlist:
+
 Specifying the "run list" of a host
 ===================================
 

@@ -11,21 +11,21 @@ def print_section(title, marker):
 def get_ptype(p):
     p_type = pt_to_str(p.type, p.items)
     if inspect.isclass(p.type) and issubclass(p.type, PersistentObject):
-        p_type = ":ref:`topology_%s`" % p.type.__name__
+        p_type = ":ref:`%s <topology_%s>`" % (p.type.__name__, p.type.__name__)
     elif p.type == PropertyTypes.ARRAY and inspect.isclass(p.items) and issubclass(p.items, PersistentObject):
-        p_type = "list of :ref:`topology_%s`" % (p.items.__name__)
+        p_type = "list of :ref:`%s <topology_%s>`" % (p.items.__name__, p.items.__name__)
     return p_type
 
 def gen_cls_doc(cls):
     print ".. _topology_%s:" %  cls.__name__
     print
-    print_section("``%s``" % cls.__name__, "=")
+    print_section("``%s`` Object" % cls.__name__, "=")
     print
     doc = cls.__doc__
     if doc != None:
         doc = textwrap.dedent(doc).strip()
     else:
-        doc = "TODO"    
+        doc = ""    
     
     p_names = cls.properties.keys()
     p_names.sort()
