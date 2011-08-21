@@ -110,17 +110,15 @@ to the configuration file::
 
 	[globusonline]
 	username = go-user
-	auth = go
 	
-By default, Globus Provision will user the username specified in ``username`` to connect
-to the GO CLI and run the necessary commands to create the endpoint. By default, it will
+Globus Provision will user the username specified in ``username`` to connect
+to the GO CLI via SSH and run the necessary commands to create the endpoint. By default, it will
 use the SSH key in ``~/.ssh/id_rsa``, but you can specify an alternate key using the
 ``ssh-key`` parameter::
 
 	[globusonline]
 	username = go-user
 	ssh-key = ~/.ssh/myotherkey_rsa
-	auth = go
 	
 If you want to use an X.509 certificate to connect to GO through the Transfer API, then
 use the ``cert-file`` and ``cert-key`` options. For example::
@@ -129,7 +127,6 @@ use the ``cert-file`` and ``cert-key`` options. For example::
 	username = go-user
 	cert-file = ~/.globus/usercert.pem
 	key-file = ~/.globus/userkey.pem
-	auth = go
 
 .. warning::
 
@@ -142,6 +139,7 @@ use the ``cert-file`` and ``cert-key`` options. For example::
 		[general]
 		ca-cert = ~/.globus/cacert.pem
 		ca-key = ~/.globus/cakey.pem
+		ca-dn = O=My Organization, OU=My Department
 		deploy = ec2
 
 Next, you will need to define the endpoints themselves in your topology. Using the

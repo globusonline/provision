@@ -173,20 +173,34 @@ class GPConfig(Config):
                   """)
     go.options = \
     [       
+     Option(name        = "ssh-key",
+            getter      = "go-ssh-key",
+            type        = OPTTYPE_FILE,
+            default     = "~/.ssh/id_rsa",            
+            required    = False,
+            doc         = """
+            SSH key to use when connecting to the Globus Online CLI. The public key
+            for this SSH key must have been previously added to your Globus Online
+            profile.
+            """),          
      Option(name        = "cert-file",
             getter      = "go-cert-file",
             type        = OPTTYPE_FILE,
-            required    = True,
+            required    = False,
             doc         = """
-            Location of the user certificate (PEM-encoded) that Globus Provision should
-            use to contact Globus Online's Transfer API. If a topology contains GO
-            endpoints, this certificate must be authorized to access all the accounts
-            in those endpoints.
+            When this option is specified, Globus Provision will access your GO
+            account using Globus Online's Transfer API (instead of sending commands
+            to Globus Online's CLI via SSH). To do so, Globus Provision needs the
+            location of a user certificate (PEM-encoded) that is authorized to access 
+            the accounts specified in your topology's endpoints.
+            
+            See :ref:`chap_go` for more details on the differences between using the
+            Transfer API, instead of the CLI via SSH.
             """),         
      Option(name        = "key-file",
             getter      = "go-key-file",
             type        = OPTTYPE_FILE,
-            required    = True,
+            required    = False,
             doc         = """
             Location of the private key (PEM-encoded) for the certificate
             specified in ``cert-file``.
@@ -194,27 +208,14 @@ class GPConfig(Config):
      Option(name        = "server-ca-file",
             getter      = "go-server-ca-file",
             type        = OPTTYPE_STRING,
-            required    = True,
+            required    = False,
             doc         = """
             To verify the server certificate of the Globus Online Transfer API server,
             Globus Provision needs the certificate of the CA that signed that certificate.
-            This file is available for download at https://transfer.api.globusonline.org/gd-bundle_ca.cert
-            """),           
-     Option(name        = "auth",
-            getter      = "go-auth",
-            type        = OPTTYPE_STRING,
-            required    = True,
-            valid       = ["myproxy", "go"],
-            doc         = """
-            The authentication method that Globus Online will use when contacting the endpoint on
-            behalf of a user. The valid options are:
-            
-            * ``myproxy``: Contact the MyProxy server specified in the topology.
-            * ``go``: Use Globus Online accounts. Note that this requires setting up a domain's
-              gridmap file in a specific way. 
-              
-            See :ref:`Globus Online Authentication Methods <sec_go_auth>` for more details on
-            the implications of each authentication method.
+            This file is already bundled with Globus Provision. The only reason for using
+            this option to specify a different CA certificate is in the unlikely case that
+            the API server decides to switch to a different CA (and the file bundled
+            with Globus Provision has not been updated to that CA yet).
             """)
     ]         
     sections.append(go)
@@ -430,14 +431,16 @@ class SimpleTopologyConfig(Config):
             required    = False,
             valid       = ["myproxy", "go"],            
             doc         = """
-            This is similar to the :ref:`go-auth option<GPConfig_go-auth>` of the configuration file.
-            When ``myproxy`` is selected, the endpoint will be configured to authenticate users
-            with this domain's MyProxy server (note that the :ref:`myproxy option<SimpleTopologyConfig_myproxy>`
-            must be set to ``true`` for this to work). If the ``go`` option is selected, Globus
-            Online will use its internal authentication (Globus Provision will set up the domain
-            so the GO identities will be authorized to access the endpoint).
+            The authentication method that Globus Online will use when contacting the endpoint on
+            behalf of a user. The valid options are:
             
-            See :ref:`chap_go` for more details.    
+            * ``myproxy``: Contact the MyProxy server specified in the topology. Note that 
+              the :ref:`myproxy option<SimpleTopologyConfig_myproxy>` must be set to ``true`` 
+              for this to work
+            * ``go``: Use Globus Online authentication.
+              
+            See :ref:`chap_go`, and specifically :ref:`Globus Online Authentication Methods <sec_go_auth>`,
+            for more details on the implications of each authentication method.            
             """)                            
     ]     
     sections.append(domain)

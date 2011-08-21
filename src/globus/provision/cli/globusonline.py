@@ -67,13 +67,10 @@ class gp_go_register_endpoint(Command):
                         print ce
                         exit(1)
                 
-                if inst.config.get("go-auth") == "go": 
-                    myproxy = "myproxy.globusonline.org"
+                if ep.myproxy.startswith("node:"):
+                    myproxy = inst.topology.get_node_by_id(ep.myproxy[5:])
                 else:
-                    if ep.myproxy.startswith("node:"):
-                        myproxy = inst.topology.get_node_by_id(ep.myproxy[5:])
-                    else:
-                        myproxy = ep.myproxy
+                    myproxy = ep.myproxy
                 
                 if ep_exists:
                     if not self.opt.replace:
