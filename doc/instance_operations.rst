@@ -9,6 +9,7 @@ and :ref:`gotten an Amazon AWS account <chap_ec2>`. If you didn't work through t
 through a simple example. If you've already read the Quickstart Guide, this chapter will
 show you a more complex example, so it should still be worthwhile to read the whole thing. 
 
+.. _sec_simple_topology:
 
 Defining a topology
 ===================
@@ -387,7 +388,7 @@ account if you ever want to stop and later resume this instance; that way, Globu
 know not to start ``simple-condor-wn3`` until ``simple-condor`` is running).
 
 We also need to tell Globus Provision that this new host will act as a Condor worker node in the domain.
-We do so by specifying what its "run list" will be. This concept is covered in much more detail in
+We do so by specifying what its "run list" will be. This concept is covered in more detail in
 the :ref:`chap_topology` chapter. The run list is actually passed to `Chef <http://www.opscode.com/chef/>`_,
 a configuration management framework that Globus Provision uses internally to set up the individual
 hosts in an instance. You can see the list of Chef "recipes" and "roles" that Globus Provision
