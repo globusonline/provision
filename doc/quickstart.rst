@@ -157,6 +157,16 @@ This command will take a few minutes to do its job and, for a while, all you wil
 
 	Starting instance gpi-52d4c9ec...
 	
+.. note:
+
+   Did you get an error message instead? You can debug the problem by looking at the
+   instance's log in ``~/.globusprovision/instances/gpi-nnnnnnnn/``, or by running
+   the Globus Provision commands with the ``--debug`` option, which will print
+   the log to the console as the command runs. 
+   
+   If you need any help, don't hesitate to :ref:`contact us <support>`. Make sure you
+   include the error message and the part of the log related to that error.	
+	
 In a separate console, you can track the progress of the deployment using this command:	
 	
 ::
