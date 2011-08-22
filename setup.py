@@ -17,7 +17,10 @@
 from distribute_setup import use_setuptools
 use_setuptools(version="0.6.15")
 from setuptools import setup, find_packages
+import sys
 
+sys.path.insert(0, './src')
+from globus.provision import RELEASE
 
 cmds = {"globus.provision.cli.api":
         ["gp-create", "gp-describe-instance", "gp-start", "gp-update-topology", "gp-stop",
@@ -39,7 +42,7 @@ for mod in cmds:
 
 
 setup(name='globus-provision',
-      version='0.3.0rc1',
+      version=RELEASE,
       description='A tool for deploying fully-configured Globus systems on an IaaS cloud, such as Amazon EC2',
       author='University of Chicago',
       author_email='borja@cs.uchicago.edu',
@@ -55,7 +58,6 @@ setup(name='globus-provision',
         'console_scripts': eps
         },
 
-      package_data = {"chef":["*"]},
       zip_safe = False,
 
       license="Apache Software License",
