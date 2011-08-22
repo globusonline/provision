@@ -1,6 +1,8 @@
 Download
 ========
 
+The latest version of Globus Provision is |release| (see :ref:`changelog`)
+
 The recommended way of installing Globus Provision is using ``easy_install``. You can find
 instructions on how to do this in both the :ref:`Quickstart Guide <chap_quickstart>` and the 
 :ref:`installation <chap_install>` chapter of the documentation.

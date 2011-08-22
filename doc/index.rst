@@ -2,9 +2,9 @@ Welcome to Globus Provision!
 ============================
 
 Globus Provision is a tool for deploying fully-configured `Globus <http://www.globus.org/>`_ systems 
-on an IaaS cloud, such as `Amazon EC2 <http://aws.amazon.com/ec2/>`_. It is designed to 
-be simple to use, and will allow you to run common Globus services, such as GridFTP and GRAM, 
-in just minutes after running a few simple commands. Globus Provision will also take care of 
+on `Amazon EC2 <http://aws.amazon.com/ec2/>`_. It is designed to 
+be simple to use, and will allow you to deploy common Globus services, such as GridFTP and GRAM, 
+in just minutes. Globus Provision will also take care of 
 generating user accounts, certificates, setting up NFS/NIS, etc.  
 
 Globus Provision currently supports the following Globus software:
@@ -23,7 +23,7 @@ Globus Provision can also set up the following software:
 Globus Provision can deploy these services in any combination you need. For example,
 you could deploy a single GridFTP server, a Condor pool with ten worker nodes and a GRAM server, 
 or 30 GridFTP servers to teach a tutorial where each student needs their own GridFTP server to 
-play around with. Once these services are deployed, you can dynamicall add and remove software,
+play around with. Once these services are deployed, you can dynamically add and remove software,
 hosts, and user accounts.
 
 Additionally, Globus Provision has experimental support for the `Globus Online <https://www.globusonline.org/>`_

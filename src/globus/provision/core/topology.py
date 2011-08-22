@@ -1,3 +1,19 @@
+# -------------------------------------------------------------------------- #
+# Copyright 2010-2011, University of Chicago                                 #
+#                                                                            #
+# Licensed under the Apache License, Version 2.0 (the "License"); you may    #
+# not use this file except in compliance with the License. You may obtain    #
+# a copy of the License at                                                   #
+#                                                                            #
+# http://www.apache.org/licenses/LICENSE-2.0                                 #
+#                                                                            #
+# Unless required by applicable law or agreed to in writing, software        #
+# distributed under the License is distributed on an "AS IS" BASIS,          #
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.   #
+# See the License for the specific language governing permissions and        #
+# limitations under the License.                                             #
+# -------------------------------------------------------------------------- #
+
 from globus.provision.common.persistence import PersistentObject, PropertyTypes,\
     Property
     
@@ -197,12 +213,26 @@ Topology.properties = {
                        Property(name="id",
                                 proptype = PropertyTypes.STRING,
                                 required = False,
-                                description = """TODO"""),       
+                                description = """
+                                Once an instance with this topology has been created,
+                                this property will contain the instance ID 
+                                (e.g., ``gpi-12345678``) assigned by Globus Provision.
+                                """),       
+                       
                        "state":
                        Property(name="state",
                                 proptype = PropertyTypes.INTEGER,
                                 required = False,
-                                description = """TODO"""),                                                      
+                                description = """
+                                Once an instance has been created with this topology,
+                                this property indicates the state the instance is in.
+                                Possible values are:
+                                
+                                %s
+                                
+                                """ % 
+"\n                                ".join(["* %i: %s" % (i, Topology.state_str[i]) for i in sorted(Topology.state_str.keys())])),     
+                                                                        
                        "domains": 
                        Property(name = "domains",
                                 proptype = PropertyTypes.ARRAY,
@@ -210,14 +240,20 @@ Topology.properties = {
                                 items_unique = True,
                                 editable = True,
                                 required = True,
-                                description = """TODO"""),
+                                description = """
+                                The domains in this topology.
+                                """),
 
                        "default_deploy_data":
                        Property(name = "default_deploy_data",
                                 proptype = DeployData,
                                 required = False,
                                 editable = True,                                
-                                description = """TODO""")          
+                                description = """
+                                The default deployment-specific data for this instance.
+                                Individual nodes can override the default values in their
+                                ``deploy_data`` property.
+                                """)          
                        }
 
 DeployData.properties = { "ec2":
@@ -225,7 +261,9 @@ DeployData.properties = { "ec2":
                                      proptype = EC2DeployData,
                                      required = False,
                                      editable = True,
-                                     description = """TODO""")          
+                                     description = """
+                                     Used to specify EC2-specific deployment data.
+                                     """)          
                        }
 
 EC2DeployData.properties = { 
@@ -234,18 +272,28 @@ EC2DeployData.properties = {
                                          proptype = PropertyTypes.STRING,
                                          required = False,
                                          editable = True,
-                                         description = """TODO"""),
+                                         description = """
+                                         An EC2 instance type (e.g., ``t1.micro``, ``m1.small``, etc.)
+                                         """),
+                            
                             "instance_id":
                                 Property(name = "instance_id",
                                          proptype = PropertyTypes.STRING,
                                          required = False,
-                                         description = """TODO"""),               
+                                         description = """
+                                         Once a host has been deployed on EC2,
+                                         this property will contain its EC2 instance identifier.                                        
+                                         """),               
                             "ami":
                                 Property(name = "ami",
                                          proptype = PropertyTypes.STRING,
                                          required = False,
                                          editable = True,
-                                         description = """TODO"""),
+                                         description = """
+                                         The Amazon Machine Image (AMI) to use when creating
+                                         new hosts on Amazon EC2.
+                                         """),
+                            
                             "security_groups":
                                 Property(name = "security_groups",
                                          proptype = PropertyTypes.ARRAY,
@@ -253,7 +301,12 @@ EC2DeployData.properties = {
                                          items_unique = True,                                         
                                          required = False,
                                          editable = True,
-                                         description = """TODO""")                                
+                                         description = """
+                                         A list of `Security Groups <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?using-network-security.html>`_
+                                         to apply to hosts on EC2. If no security groups are specified,
+                                         Globus Provision will create one called ``globus-provision``
+                                         that opens the TCP/UDP ports for SSH, GridFTP, and MyProxy. 
+                                         """)                                
                        }
 
 
@@ -262,7 +315,9 @@ Domain.properties = {
                      Property(name="id",
                               proptype = PropertyTypes.STRING,
                               required = True,
-                              description = """TODO"""),               
+                              description = """
+                              A unique name for the domain.
+                              """),               
                               
                      "nodes":
                      Property(name="nodes",
@@ -271,7 +326,9 @@ Domain.properties = {
                               items_unique = True,
                               required = True,
                               editable = True,
-                              description = """TODO"""),
+                              description = """
+                              The list of hosts (or *nodes*) in this domain.
+                              """),
                               
                      "go_endpoints":                    
                      Property(name="go_endpoints",
@@ -279,7 +336,9 @@ Domain.properties = {
                               items = GOEndpoint,
                               required = False,
                               editable = True,
-                              description = """TODO"""),
+                              description = """
+                              The list of Globus Online endpoints defined for this domain.
+                              """),
                                     
                      "users": 
                      Property(name="users",
@@ -288,7 +347,9 @@ Domain.properties = {
                               items_unique = True,
                               required = True,
                               editable = True,
-                              description = """TODO"""),
+                              description = """
+                              The list of users in this domain.
+                              """),
                             
                      "gridmap":                                           
                      Property(name="gridmap",
@@ -296,7 +357,12 @@ Domain.properties = {
                               items = GridMapEntry,
                               required = False,
                               editable = True,
-                              description = """TODO"""),
+                              description = """
+                              The list of gridmap entries for this domain. This
+                              is the gridmap that Globus services running on this
+                              domain will use to determine if a given user is
+                              authorized to access the service.
+                              """),
                      }
 
 Node.properties = {
@@ -304,51 +370,94 @@ Node.properties = {
                    Property(name="id",
                             proptype = PropertyTypes.STRING,
                             required = True,
-                            description = """TODO"""),
+                            description = """
+                            A unique identifier for this host. The value of this
+                            property is only used for identification purposes
+                            (e.g., when printing the status of an instance with
+                            ``gp-describe-instance``), and will not affect other
+                            properties, like its hostname, etc. (except when using
+                            the ``dummy`` deployer).
+                            """),
                    "state":
                    Property(name="state",
                             proptype = PropertyTypes.INTEGER,
                             required = False,
                             editable = False,
-                            description = """TODO"""),                            
+                            description = """
+                            Once an instance with this topology has been created,
+                            this property will indicate the state of this particular
+                            host.
+                            
+                            Possible values are:
+                                
+                                %s
+                                
+                                """ % 
+"\n                                ".join(["* %i: %s" % (i, Node.state_str[i]) for i in sorted(Node.state_str.keys())])),     
+                                                                        
                    "run_list":
                    Property(name="run_list",
                             proptype = PropertyTypes.ARRAY,
                             items = PropertyTypes.STRING,
                             required = True,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            The list of Chef recipes to run on this node.
+                            See :ref:`sec_runlist` for more details.
+                            """),
                             
                    "depends":
                    Property(name="depends",
                             proptype = PropertyTypes.STRING,
                             required = False,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            Sometimes, a host cannot be configured until another host
+                            in the topology is configured. For example, NFS clients cannot
+                            start until the NFS server is starting. This property is
+                            used to specify such dependencies. The value of this property
+                            must be of the form node:*node_id*, where *node_id* is
+                            the identifier of another node in the domain.
+                            
+                            For example, if this node depends on ``simple-nfs`` the value
+                            of this property would be ``node:simple-nfs``.
+                            """),
                             
                    "hostname":
                    Property(name="hostname",
                             proptype = PropertyTypes.STRING,
                             required = False,
-                            description = """TODO"""),
+                            description = """
+                            The fully-qualified hostname assigned by the deployer.
+                            """),
                             
                    "ip":
                    Property(name="ip",
                             proptype = PropertyTypes.STRING,
                             required = False,
-                            description = """TODO"""),
+                            description = """
+                            The IP address assigned by the deployer.
+                            """),
                             
                    "public_ip":
                    Property(name="public_ip",
                             proptype = PropertyTypes.STRING,
                             required = False,
-                            description = """TODO"""),                            
+                            description = """
+                            If the IP address assigned in ``ip`` is a private, non-routable,
+                            IP address, but the host is also assigned a public IP, it will
+                            be assigned to this property by the deployer.
+                            """),                            
                             
                    "deploy_data":
                    Property(name = "deploy_data",
                             proptype = DeployData,
                             required = False,
-                            description = """TODO""")     
+                            description = """
+                            Host-specific deployment data. The values specified here
+                            will override any values specified in the topology's
+                            ``default_deploy__data`` property.
+                            """)     
                    }          
 
 
@@ -357,41 +466,70 @@ User.properties = {
                    Property(name="id",                          
                             proptype = PropertyTypes.STRING,
                             required = True,
-                            description = """TODO"""),
+                            description = """
+                            The user's login name.
+                            """),
                             
                    "description":
                    Property(name="description",
                             proptype = PropertyTypes.STRING,
                             required = False,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            A description of the user.
+                            """),
                             
                    "password_hash":
                    Property(name="password_hash",
                             proptype = PropertyTypes.STRING,
                             required = True,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            The password hash for the user, exactly as it will appear
+                            in the shadow file (``/etc/shadow``). To generate a password,
+                            you can use the ``mkpasswd`` command. We recommend you generate
+                            SHA-512 password hashes. For example::
+                            
+                                $ mkpasswd -m sha-512 mypassword
+                                $6$XrtqyXi4LO$8M/sk6t8zE5Ac.acLPBt577f1eGv.YnUVZPhGmBlQF/YrYnkWQPq7EMfryWEdHm664B.RaY3O8oZtbiQjXfu10
+                            
+                            The string starting with ``$6$`` is the password hash.
+                            
+                            You can disable password access for this user by setting this 
+                            property to ``!``. 
+                            """),
                             
                    "ssh_pkey":
                    Property(name="ssh_pkey",
                             proptype = PropertyTypes.STRING,
                             required = False,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            A public SSH key. If a value is specified for this property,
+                            this public key will be added to the user's ``authorized_keys``
+                            file.
+                            """),
                             
                    "admin":
                    Property(name="admin",
                             proptype = PropertyTypes.BOOLEAN,
                             required = False,
                             editable = True,
-                            description = """TODO"""),
+                            description = """
+                            If ``true``, this user will be granted passwordless sudo
+                            access on all hosts in this domain.
+                            """),
                             
                    "certificate":
                    Property(name = "certificate",
                             proptype = PropertyTypes.STRING,
                             required = False,
-                            description = """TODO"""),           
+                            description = """
+                            This property can take on the following values:
+                            
+                            * ``"generated"``: A user certificate must be generated for this user.
+                            * ``"none"``: Do not generate a certificate for this user.
+                            """),           
                    }            
 
 GridMapEntry.properties = {                   
@@ -399,14 +537,20 @@ GridMapEntry.properties = {
                            Property(name="dn",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
-                                    description = """TODO"""),
+                                    description = """
+                                    The distinguished name in the gridmap entry
+                                    (e.g., ``"/O=Grid/OU=My Grid/CN=J.Random User"``)
+                                    """),
                                    
                            "login":
                            Property(name="login",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
                                     editable = True,
-                                    description = """TODO"""),
+                                    description = """
+                                    The login the distinguished name will map to.
+                                    Must be a valid login in the domain.
+                                    """),
                            }       
 
 GOEndpoint.properties = {           
@@ -415,25 +559,57 @@ GOEndpoint.properties = {
                            Property(name="user",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
-                                    description = """TODO"""),
+                                    description = """
+                                    The Globus Online user account in which to create
+                                    this endpoint.
+                                    """),
                            "name":
                            Property(name="name",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
-                                    description = """TODO"""),
+                                    description = """
+                                    The endpoint name.
+                                    """),
                                    
                            "gridftp":
                            Property(name="gridftp",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
                                     editable = True,
-                                    description = """TODO"""),
+                                    description = """
+                                    The GridFTP server for this endpoint. You can specify
+                                    either a fully qualified hostname, or refer to an existing
+                                    node in this domain by writing node:*node_id*, 
+                                    where *node_id* is the identifier of another node in the domain.
+                                    """),
                                    
                            "myproxy":
                            Property(name="myproxy",
                                     proptype = PropertyTypes.STRING,
                                     required = True,
                                     editable = True,
-                                    description = """TODO""")                 
+                                    description = """
+                                    The MyProxy server that will be used for authenticating
+                                    users that want to use this endpoint. You can specify
+                                    either a fully qualified hostname, or refer to an existing
+                                    node in this domain by writing node:*node_id*, 
+                                    where *node_id* is the identifier of another node in the domain.
+                                    
+                                    Take into account that, to set up this endpoint for
+                                    "Globus Online Authentication" (as described in :ref:`sec_go_auth`)
+                                    you will need to do the following:
+                                    
+                                    * Set this property to ``myproxy.globusonline.org``
+                                    * For each GO user you want to authorize in this endpoint,
+                                      add an entry with the following distinguished name::
+                                       
+                                           "/C=US/O=Globus Consortium/OU=Globus Connect User/CN=username"
+                                      
+                                      Where ``username`` is the username of the GO account you
+                                      want to authorized. Usually, you will want that DN to map
+                                      to the same username in the domain, although this is not
+                                      required.
+
+                                    """)                 
                            
                         }                                                                                                                 

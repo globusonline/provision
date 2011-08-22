@@ -20,8 +20,10 @@
 ##
 ## This recipe creates the users in a domain.
 ##
-## If the nis_server attribute is specified in the domain's topology,
-## this recipe must be run on the same node as the nis_server recipe.
+## This recipe will work both on a node that has the ``nfs_server`` and/or
+## ``nis_server`` recipes on it (in which case global accounts will be
+## created) and on a node that is not an NFS/NIS server (in which case,
+## local accounts will be created).
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

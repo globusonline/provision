@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                      #
+# Copyright 2010-2011, University of Chicago                                 #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,11 +16,11 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Globus Toolkit 5.0.3 basic install
+## RECIPE: Globus Toolkit 5.1.1 client tools
 ##
-## This recipe performs a barebones install of Globus. Users on a node where this
-## recipe has been run will have access to Globus command-line utilities,
-## but little else. GridFTP, GRAM, etc. are set up in separate recipes.
+## This recipe installs only the Globus client tools (grid-proxy-init,
+## myproxy-logon, globus-url-copy, etc.). GridFTP, GRAM, etc. are set up 
+## in separate recipes.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

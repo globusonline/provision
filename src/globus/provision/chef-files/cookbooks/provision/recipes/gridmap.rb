@@ -18,8 +18,7 @@
 ##
 ## RECIPE: Gridmap file
 ##
-## This recipe creates a gridmap file where users with their :gridmap
-## attribute set to true are added.
+## This recipe creates a gridmap file with the entries specified in the topoloy.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

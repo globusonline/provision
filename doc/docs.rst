@@ -36,6 +36,7 @@ Globus Provision Documentation
    topology_ref_top.rst
    cli_ref_top.rst
    recipe_ref_top.rst
+   changelog.rst
 
 .. Indices and tables
    ==================

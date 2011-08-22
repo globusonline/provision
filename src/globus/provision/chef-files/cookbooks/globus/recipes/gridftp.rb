@@ -16,11 +16,9 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Globus Toolkit 5.0.3 GridFTP
+## RECIPE: Globus Toolkit 5.1.1 GridFTP
 ##
-## This recipe performs a barebones install of GridFTP. It assumes that the
-## "globus" recipe has been run, so it just involves setting up GridFTP
-## as a xinetd service.
+## This recipe installs the GridFTP server and sets it up as a xinetd service.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -16,9 +16,14 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: GO CA certificate
+## RECIPE: GO CA certificates
 ##
+## This recipe installs the certificates of CAs that sign the various GO
+## certificates (user certificates, the Transfer API server, etc.)
 ##
+## This recipe must be applied to any node that will be interacting with 
+## a GO service.
+## 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 # Create the grid-security directory

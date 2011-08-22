@@ -18,12 +18,13 @@
 ##
 ## RECIPE: SimpleCA
 ##
-## This recipe install a CA certificate and key so the node can use SimpleCA
+## This recipe installs the CA certificate and key so the node can use SimpleCA
 ## commands to sign certificate requests.
 ##
-## Note that, instead of using GPT, we set up all the necessary files manually.
-## This is necessary since the CA certificate is created beforehand by
-## Globus Provision, instead of through the usual Globus installation procedure.
+## Note that, instead of using grid-create-ca, we set up all the necessary files 
+## manually. This is necessary since the CA certificate already exists when the
+## recipes are run (it is either created by Globus Provision or provided 
+## explicitly by the user), and we need to install that specific CA.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -18,6 +18,6 @@
 #
 # RECIPE: Default recipe.
 #
-# Globus Provision has no default recipe.
+# This cookbook has no default recipe.
 #
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
