@@ -16,6 +16,7 @@
 
 import sys
 import os.path
+from pkg_resources import resource_filename
 
 from globus.provision.cli import Command
 from globus.transfer.transfer_api import TransferAPIClient, ClientError
@@ -52,7 +53,7 @@ class gp_go_register_endpoint(Command):
 
         go_cert_file = os.path.expanduser(inst.config.get("go-cert-file"))
         go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
-        go_server_ca = os.path.expanduser(inst.config.get("go-server-ca-file"))
+        go_server_ca = resource_filename("globus.provision", "chef-files/cookbooks/globus/files/default/gd-bundle_ca.cert")
 
         for domain_name, domain in inst.topology.domains.items():
             for ep in domain.go_endpoints:
