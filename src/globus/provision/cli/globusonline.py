@@ -17,6 +17,7 @@
 import sys
 import os.path
 from pkg_resources import resource_filename
+from globus.provision.common.ssh import SSH
 
 from globus.provision.cli import Command
 from globus.transfer.transfer_api import TransferAPIClient, ClientError
@@ -50,16 +51,22 @@ class gp_go_register_endpoint(Command):
         
         istore = InstanceStore(self.opt.dir)
         inst = istore.get_instance(inst_id)        
+        
+        if inst.config.get("go-cert-file") == None:
+            # Use SSH
+            use_ssh = True
+            ssh_key = os.path.expanduser(inst.config.get("go-ssh-key"))
+        else:
+            # Use Transfer API
+            use_ssh = False
+            go_cert_file = os.path.expanduser(inst.config.get("go-cert-file"))
+            go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
+            go_server_ca = resource_filename("globus.provision", "chef-files/cookbooks/globus/files/default/gd-bundle_ca.cert")
 
-        go_cert_file = os.path.expanduser(inst.config.get("go-cert-file"))
-        go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
-        go_server_ca = resource_filename("globus.provision", "chef-files/cookbooks/globus/files/default/gd-bundle_ca.cert")
+
 
         for domain_name, domain in inst.topology.domains.items():
             for ep in domain.go_endpoints:
-
-                api = TransferAPIClient(ep.user, go_server_ca, go_cert_file, go_key_file)
-
                 if ep.gridftp.startswith("node:"):
                     gridftp = inst.topology.get_node_by_id(ep.gridftp[5:]).hostname
                 else:
@@ -67,51 +74,73 @@ class gp_go_register_endpoint(Command):
     
                 ca_dn = inst.config.get("ca-dn")
                 if ca_dn == None:
-                    ca_dn = "/O=Grid/OU=Globus Provision (generated)" % inst_id
+                    ca_dn = "/O=Grid/OU=Globus Provision (generated)"
                 else:
                     ca_dn = [x.split("=") for x in ca_dn.split(",")]
                     ca_dn = "".join(["/%s=%s" % (n.upper().strip(), v.strip()) for n,v in ca_dn])
 
                 gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp)
     
-                try:
-                    (code, msg, data) = api.endpoint(ep.name)
-                    ep_exists = True
-                except ClientError as ce:
-                    if ce.status_code == 404:
-                        ep_exists = False
-                    else:
-                        print ce
-                        exit(1)
-                
                 if ep.myproxy.startswith("node:"):
                     myproxy = inst.topology.get_node_by_id(ep.myproxy[5:])
                 else:
                     myproxy = ep.myproxy
+    
+                if use_ssh:
+                    print ep.user, ssh_key
+                    ssh = SSH(ep.user, "cli.globusonline.org", ssh_key, default_outf = None, default_errf = None)
+                    ssh.open()
+                    rc = ssh.run("endpoint-add %s -p %s -s %s %s" % (ep.name, gridftp, gridftp_subject), exception_on_error=False)
+                    if rc != 0:
+                        print "Could not create endpoint."
+                        exit(1)
+                    rc = ssh.run("endpoint-modify --myproxy-server=%s %s" % (myproxy, ep.name), exception_on_error=False)
+                    if rc != 0:
+                        print "Could not set endpoint's MyProxy server."
+                        exit(1)
+                    if self.opt.public:
+                        rc = ssh.run("endpoint-modify --public %s" % (ep.name), exception_on_error=False)
+                        if rc != 0:
+                            print "Could not make the endpoint public."
+                            exit(1)
+                    ssh.close()
+                else:
+                    api = TransferAPIClient(ep.user, go_server_ca, go_cert_file, go_key_file)
+    
+                    try:
+                        (code, msg, data) = api.endpoint(ep.name)
+                        ep_exists = True
+                    except ClientError as ce:
+                        if ce.status_code == 404:
+                            ep_exists = False
+                        else:
+                            print ce
+                            exit(1)
                 
-                if ep_exists:
-                    if not self.opt.replace:
-                        print "An endpoint called '%s' already exists. Please choose a different name." % ep.name
-                        exit(1)
-                    else:
-                        (code, msg, data) = api.endpoint_delete(ep.name)
-                    
-                (code, msg, data) = api.endpoint_create(ep.name, gridftp, description="Globus Provision endpoint",
-                                                        scheme="gsiftp", port=2811, subject=gridftp_subject,
-                                                        myproxy_server=myproxy)
-                if code >= 400:
-                    print code, msg
-                    exit(1)        
-        
-                if self.opt.public:
-                    (code, msg, data) = api.endpoint(ep.name)
+                
+                    if ep_exists:
+                        if not self.opt.replace:
+                            print "An endpoint called '%s' already exists. Please choose a different name." % ep.name
+                            exit(1)
+                        else:
+                            (code, msg, data) = api.endpoint_delete(ep.name)
+                        
+                    (code, msg, data) = api.endpoint_create(ep.name, gridftp, description="Globus Provision endpoint",
+                                                            scheme="gsiftp", port=2811, subject=gridftp_subject,
+                                                            myproxy_server=myproxy)
                     if code >= 400:
                         print code, msg
-                        exit(1)
-                    data["public"] = True
-                    (code, msg, data) = api.endpoint_update(ep.name, data)
-                    if code >= 400:
-                        print code, msg
-                        exit(1)
+                        exit(1)        
+            
+                    if self.opt.public:
+                        (code, msg, data) = api.endpoint(ep.name)
+                        if code >= 400:
+                            print code, msg
+                            exit(1)
+                        data["public"] = True
+                        (code, msg, data) = api.endpoint_update(ep.name, data)
+                        if code >= 400:
+                            print code, msg
+                            exit(1)
                         
                 print "Created endpoint '%s#%s' for domain '%s'" % (ep.user, ep.name, domain_name)
