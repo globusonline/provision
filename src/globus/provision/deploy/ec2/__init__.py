@@ -81,7 +81,7 @@ class Deployer(BaseDeployer):
             sgs = []
         
         if len(sgs) == 0 and not self.has_gp_sg:
-            gp_sg = self.conn.get_all_security_groups(groupnames = ["globus-provision"])
+            gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
             if len(gp_sg) == 0:
                 gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
                 
@@ -110,11 +110,22 @@ class Deployer(BaseDeployer):
         ami = topology.get_deploy_data(node, "ec2", "ami")
         security_groups = self.__get_security_groups(topology, node)
 
-        image = self.conn.get_image(ami)
+        try:
+            image = self.conn.get_image(ami)
+        except EC2ResponseError, ec2err:
+            if ec2err.error_code in ("InvalidAMIID.NotFound", "InvalidAMIID.Malformed"):
+                raise DeploymentException, "AMI %s does not exist" % ami
+            else:
+                raise ec2err
+
         if image == None:
             # Workaround for this bug:
             # https://bugs.launchpad.net/eucalyptus/+bug/495670
-            image = [i for i in self.conn.get_all_images() if i.id == ami][0]
+            image = [i for i in self.conn.get_all_images() if i.id == ami]
+            if len(image) == 0:
+                raise DeploymentException, "AMI %s does not exist" % ami
+            else:
+                image = image[0]
         
         log.info(" |- Launching a %s instance for %s." % (instance_type, node.id))
         reservation = image.run(min_count=1, 
