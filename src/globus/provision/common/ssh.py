@@ -49,26 +49,23 @@ class SSH(object):
         self.default_errf = default_errf
         self.port = port
         
-    def open(self, timeout = 180):
+    def open(self, timeout = 120):
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         connected = False
-        remaining = timeout
+        t_start = time.time()
         while not connected:
             try:
-                if remaining < 0:
-                    raise Exception("SSH timeout")
-                else:
-                    atfork()
-                    self.client = paramiko.SSHClient()
-                    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    self.client.connect(self.hostname, self.port, self.username, pkey=key)
-                    connected = True
+                atfork()
+                self.client = paramiko.SSHClient()
+                self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                self.client.connect(self.hostname, self.port, self.username, timeout=5, pkey=key)
+                connected = True
             except Exception, e:
-                if remaining - 2 < 0:
+                t_now = time.time()
+                if t_now - t_start > timeout:
                     raise e
                 else:
                     time.sleep(2)
-                    remaining -= 2
 
         self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
         

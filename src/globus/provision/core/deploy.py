@@ -85,7 +85,12 @@ class ConfigureThread(GPThread):
 
         log.debug("Establishing SSH connection", node)
         ssh = SSH(username, hostname, keyfile, default_outf = None, default_errf = None)
-        ssh.open()
+        try:
+            ssh.open()
+        except Exception, e:
+            log.debug("SSH connection timed out", node)
+            # Raise exception and let multi-thread manager handle it
+            raise e
         log.debug("SSH connection established", node)
         
         return ssh
