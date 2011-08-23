@@ -94,12 +94,13 @@ class SSH(object):
             else:
                 all_out_nbytes = 0
                 all_err_nbytes = 0   
-
+                rem_out = ""
+                rem_err = ""
                 while True:
                     rl, wl, xl = select.select([channel],[],[], 0.1)
                     if len(rl) > 0:
-                        out_nbytes = self.__recv(outf, channel.recv_ready, channel.recv, "SSH_OUT")
-                        err_nbytes = self.__recv(errf, channel.recv_stderr_ready, channel.recv_stderr, "SSH_ERR")
+                        out_nbytes, rem_out = self.__recv(outf, channel.recv_ready, channel.recv, "SSH_OUT", rem_out)
+                        err_nbytes, rem_err = self.__recv(errf, channel.recv_stderr_ready, channel.recv_stderr, "SSH_ERR", rem_err)
 
                         if out_nbytes + err_nbytes == 0:
                             break
@@ -169,8 +170,7 @@ class SSH(object):
                 self.sftp.put(fromfile, tofile)
                 log.debug("scp %s -> %s:%s" % (fromfile, self.hostname, tofile))
                 
-    def __recv(self, f, ready_func, recv_func, log_label):
-        rem = ""
+    def __recv(self, f, ready_func, recv_func, log_label, rem):
         nbytes = 0
         while ready_func():
             data = recv_func(4096)
@@ -179,16 +179,20 @@ class SSH(object):
                 
                 if f is not None: 
                     f.write(data)
-                    
-                stdout_lines = data.split('\n')
-                log.debug(log_label + ": %s" % rem + stdout_lines[0])
-                for line in stdout_lines[1:-1]:
-                    log.debug(log_label + ": %s" % line)
-                rem = stdout_lines[-1]
+
+                lines = data.split('\n')
+
+                if len(lines) == 1:
+                    rem += lines[0]
+                else:
+                    log.debug(log_label + ": %s" % (rem + lines[0]))
+                    for line in lines[1:-1]:
+                        log.debug(log_label + ": %s" % line)
+                    rem = lines[-1]
                 
         if f is not None: f.flush()
         
-        return nbytes    
+        return nbytes, rem
     
 
 def get_parent_directories(filepath):
