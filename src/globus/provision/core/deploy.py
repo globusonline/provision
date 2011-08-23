@@ -85,7 +85,12 @@ class ConfigureThread(GPThread):
 
         log.debug("Establishing SSH connection", node)
         ssh = SSH(username, hostname, keyfile, default_outf = None, default_errf = None)
-        ssh.open()
+        try:
+            ssh.open()
+        except Exception, e:
+            log.debug("SSH connection timed out", node)
+            # Raise exception and let multi-thread manager handle it
+            raise e
         log.debug("SSH connection established", node)
         
         return ssh
@@ -129,8 +134,25 @@ class ConfigureThread(GPThread):
             log.debug("Running chef", node)
             ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf", expectnooutput=True)        
             ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"domain_id\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), domain.id, node.id), expectnooutput=True)
-            ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
-    
+            
+            # Sometimes, Chef will fail because a service didn't start or restart
+            # properly (NFS-related services seem to do this occasionally).
+            # In most cases, the problem just "goes away" if you try to restart the
+            # service again. So, if Chef fails, we don't give up and try again
+            # (since the recipes are idempotent, there's no harm to running them
+            # multiple times)
+            chef_tries = 3
+            while chef_tries > 0:
+                rc = ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json", exception_on_error = False)    
+                if rc != 0:
+                    chef_tries -= 1
+                    log.debug("chef-solo failed. %i attempts left", node)
+                else:
+                    break
+                    
+            if chef_tries == 0:
+                raise DeploymentException, "Failed to configure node %s" % node.id
+                    
             self.check_continue()
 
         if self.basic:
