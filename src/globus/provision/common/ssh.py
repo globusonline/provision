@@ -92,20 +92,29 @@ class SSH(object):
             
         try:
             channel.exec_command(command)
-            if not expectnooutput:   
-                log_msg = ""
+            if expectnooutput:
+                log.debug("Ignoring output from command (not expecting any)")
+            else:
+                all_out_nbytes = 0
+                all_err_nbytes = 0   
+
                 while True:
-                    rl, wl, xl = select.select([channel],[],[])
+                    rl, wl, xl = select.select([channel],[],[], 0.1)
                     if len(rl) > 0:
-                        # Must be stdout
-                        x = channel.recv(1)
-                        if not x: break
-                        if outf is not None: outf.write(x)
-                        log_msg += x
-                        if x == "\n":
-                            log.debug("SSH_OUT: %s" % log_msg.rstrip())
-                            log_msg = ""
-                        if outf is not None: outf.flush()
+                        out_nbytes = self.__recv(outf, channel.recv_ready, channel.recv, "SSH_OUT")
+                        err_nbytes = self.__recv(errf, channel.recv_stderr_ready, channel.recv_stderr, "SSH_ERR")
+
+                        if out_nbytes + err_nbytes == 0:
+                            break
+
+                        all_out_nbytes += out_nbytes
+                        all_err_nbytes += err_nbytes
+
+                if all_out_nbytes == 0:
+                    log.debug("Command did not write to standard output.")
+
+                if all_err_nbytes == 0:
+                    log.debug("Command did not write to standard error.")
             
                 if outf is not None: 
                     if outf != sys.stdout:
@@ -162,6 +171,28 @@ class SSH(object):
                 tofile = todir_full + "/" + f
                 self.sftp.put(fromfile, tofile)
                 log.debug("scp %s -> %s:%s" % (fromfile, self.hostname, tofile))
+                
+    def __recv(self, f, ready_func, recv_func, log_label):
+        rem = ""
+        nbytes = 0
+        while ready_func():
+            data = recv_func(4096)
+            if len(data) > 0:
+                nbytes += len(data)
+                
+                if f is not None: 
+                    f.write(data)
+                    
+                stdout_lines = data.split('\n')
+                log.debug(log_label + ": %s" % rem + stdout_lines[0])
+                for line in stdout_lines[1:-1]:
+                    log.debug(log_label + ": %s" % line)
+                rem = stdout_lines[-1]
+                
+        if f is not None: f.flush()
+        
+        return nbytes    
+    
 
 def get_parent_directories(filepath):
     dir = os.path.dirname(filepath)
