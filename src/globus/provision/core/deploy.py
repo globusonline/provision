@@ -103,7 +103,7 @@ class ConfigureThread(GPThread):
             ssh.run("sudo cp /chef/cookbooks/provision/files/default/hosts /etc/hosts", expectnooutput=True)
     
             ssh.run("sudo bash -c \"echo %s > /etc/hostname\"" % node.hostname, expectnooutput=True)
-            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart")
+            ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart", expectnooutput=True)
         
         self.check_continue()
 
@@ -127,7 +127,7 @@ class ConfigureThread(GPThread):
 
             # Run chef
             log.debug("Running chef", node)
-            ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
+            ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf", expectnooutput=True)        
             ssh.run("echo '{ \"run_list\": [ %s ], \"scratch_dir\": \"%s\", \"domain_id\": \"%s\", \"node_id\": \"%s\"  }' > /tmp/chef.json" % (",".join("\"%s\"" % r for r in node.run_list), self.config.get("scratch-dir"), domain.id, node.id), expectnooutput=True)
             ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
     
