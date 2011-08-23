@@ -80,43 +80,39 @@ class SSH(object):
         
         log.debug("%s - Running %s" % (self.hostname,command))
         
-        if expectnooutput:
-            outf = None
-            errf = None
+        if outf != None:
+            outf = open(outf, "w")
         else:
-            if outf != None:
-                outf = open(outf, "w")
-            else:
-                outf = self.default_outf
-        
-            if errf != None:
-                errf = open(errf, "w")
-            else:
-                errf = self.default_errf
+            outf = self.default_outf
+    
+        if errf != None:
+            errf = open(errf, "w")
+        else:
+            errf = self.default_errf
             
         try:
             channel.exec_command(command)
-    
-            log_msg = ""
-            while True:
-                rl, wl, xl = select.select([channel],[],[])
-                if len(rl) > 0:
-                    # Must be stdout
-                    x = channel.recv(1)
-                    if not x: break
-                    if outf is not None: outf.write(x)
-                    log_msg += x
-                    if x == "\n":
-                        log.debug("SSH_OUT: %s" % log_msg.rstrip())
-                        log_msg = ""
-                    if outf is not None: outf.flush()
+            if not expectnooutput:   
+                log_msg = ""
+                while True:
+                    rl, wl, xl = select.select([channel],[],[])
+                    if len(rl) > 0:
+                        # Must be stdout
+                        x = channel.recv(1)
+                        if not x: break
+                        if outf is not None: outf.write(x)
+                        log_msg += x
+                        if x == "\n":
+                            log.debug("SSH_OUT: %s" % log_msg.rstrip())
+                            log_msg = ""
+                        if outf is not None: outf.flush()
             
-            if outf is not None: 
-                if outf != sys.stdout:
-                    outf.close()
+                if outf is not None: 
+                    if outf != sys.stdout:
+                        outf.close()
                     
-                if errf != sys.stderr:
-                    outf.close()
+                    if errf != sys.stderr:
+                        outf.close()
             
             log.debug("%s - Waiting for exit status: %s" % (self.hostname,command))
             rc = channel.recv_exit_status()
