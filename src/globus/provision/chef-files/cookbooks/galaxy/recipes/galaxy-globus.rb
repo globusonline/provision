@@ -18,9 +18,15 @@
 ##
 ## RECIPE: Galaxy (Globus fork) server
 ##
-## 
+## This installs the Globus fork of Galaxy. 
+## If Galaxy is being installed on a domain with NFS/NIS, you must have applied
+## the galaxy-globus-common recipe to the NFS/NIS server. If you are running
+## a standalone Galaxy server, you will need to apply galaxy-globus-common and
+## galaxy-globus on the same node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+include_recipe "postgresql::server"
 
 database_exists = "psql galaxy postgres -c ''"
 

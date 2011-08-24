@@ -3,6 +3,22 @@
 Changelog and Release Notes
 ***************************
 
+0.3.0
+=====
+Released on *August 25, 2011*
+
+Changes:
+
+* "Hanging" SSH problem fixed. Also added a fix to allow the SSH
+  code to connect to ``cli.globusonline.org`` (which has a restricted
+  shell and, thus, won't allow SCP connections, which we try to
+  connect by default).
+* Polished up CLI documentation and other minor documentation fixes.
+
+Known issues:
+
+* Resuming a stopped instance still not working properly.
+
 0.3.0rc2
 ========
 Released on *August 22, 2011*

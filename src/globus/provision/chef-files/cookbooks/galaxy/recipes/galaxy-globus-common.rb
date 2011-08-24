@@ -18,7 +18,10 @@
 ##
 ## RECIPE: Galaxy (Globus fork) common actions
 ##
-## 
+## This recipe performs common actions required when installing the Globus
+## fork of Galaxy. If Galaxy is being installed on a domain with NFS/NIS,
+## this recipe must be run on the NFS/NIS server, and the galaxy-globus
+## recipe can be run on another node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

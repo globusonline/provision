@@ -43,7 +43,7 @@ for mod in cmds:
 
 setup(name='globus-provision',
       version=RELEASE,
-      description='A tool for deploying fully-configured Globus systems on an IaaS cloud, such as Amazon EC2',
+      description='A tool for deploying fully-configured Globus systems on Amazon EC2',
       author='University of Chicago',
       author_email='borja@cs.uchicago.edu',
       url='http://globus.org/provision',

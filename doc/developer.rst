@@ -55,7 +55,7 @@ The core exposes an API to create and manage instances. The commands in the
 is currently meant to be used locally (i.e., not accessible through a network
 via a remote call interface like REST, SOAP, etc.) and by a single user (i.e., there 
 is no notion of different users owning different instances). Future versions of 
-Globus Provision may run as a daemon with remotely-accessible API that supports 
+Globus Provision may run as a daemon with a remotely-accessible API that supports 
 multiple users.
 
 
