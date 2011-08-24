@@ -14,27 +14,91 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Core deployment classes.
+
+These classes contain code that is common to all deployers (i.e., they don't 
+contain any infrastructure-specific code).
+
+To create a new deployer, you will need to extend classes the classes
+in this module.
+
+"""
+
 from globus.provision.common.threads import GPThread
 from globus.provision.common.ssh import SSH
 from globus.provision.common import log
-import sys
 from globus.provision.core.topology import Node
+
+from abc import ABCMeta, abstractmethod
 
 class DeploymentException(Exception):
     """A simple exception class used for deployment exceptions"""
     pass
 
 class BaseDeployer(object):
+    """
+    The base class for a deployer.
+    
+    A deployer must implement all the abstract methods in this class
+    """
+    
+    __metaclass__ = ABCMeta
+    
     def __init__(self, extra_files = [], run_cmds = []):
         self.instance = None
         self.extra_files = extra_files
         self.run_cmds = run_cmds
         
+    @abstractmethod
+    def set_instance(self, inst): pass
+    
+    @abstractmethod
+    def allocate_vm(self, node): pass
+
+    @abstractmethod
+    def post_allocate(self, node, vm): pass
+
+    @abstractmethod
+    def stop_vms(self, nodes): pass
+    
+    @abstractmethod
+    def resume_vm(self, node): pass
+        
+    @abstractmethod
+    def terminate_vms(self, nodes): pass
+        
+    @abstractmethod
+    def get_node_vm(self, nodes): pass
+        
+    @abstractmethod
+    def get_wait_thread_class(self): pass
+
+    @abstractmethod
+    def get_configure_thread_class(self): pass
+
+            
 class VM(object):
+    """
+    A VM object represents a virtual machine managed by a
+    deployer. It is basically meant as an opaque type that
+    can be returned by the deployer to the core, and then
+    passed from the core to other functions in the deployer.
+    """
     def __init__(self):
         pass
     
 class WaitThread(GPThread):
+    """
+    The base class for "waiter threads".
+    
+    A derived class must implement the wait() method, with the
+    deployer-specific code that will wait until a VM
+    has reached a given state.
+    """
+    
+    __metaclass__ = ABCMeta
+        
     def __init__(self, multi, name, node, vm, deployer, state, depends):
         GPThread.__init__(self, multi, name, depends)
         self.node = node
@@ -49,8 +113,27 @@ class WaitThread(GPThread):
         
         self.node.state = self.state
         topology.save()
-    
+        
+    @abstractmethod
+    def wait(self): pass
+         
+
 class ConfigureThread(GPThread):
+    """
+    The base class for "configure threads".
+    
+    This is a thread that takes care of configuring a single VM.
+    Most of the actions (e.g., SSH'ing to the VM and running Chef)
+    will be the same in most deployers. So, this class simply
+    requires that derived classes implement pre_configure()
+    and post_configure(), in case there are deployer-specific
+    actions that must be taken. The connect() method must
+    also be implemented, although it can usually just be
+    a call to ssh_connect.
+    """    
+    
+    __metaclass__ = ABCMeta
+        
     def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
         GPThread.__init__(self, multi, name, depends)
         self.domain = node.parent_Domain
@@ -79,6 +162,14 @@ class ConfigureThread(GPThread):
         self.node.state = Node.STATE_RUNNING
         topology.save()
 
+    @abstractmethod
+    def connect(self): pass
+
+    @abstractmethod
+    def pre_configure(self): pass
+
+    @abstractmethod
+    def post_configure(self): pass
         
     def ssh_connect(self, username, hostname, keyfile):
         node = self.node

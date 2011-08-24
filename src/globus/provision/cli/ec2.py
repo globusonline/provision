@@ -14,6 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Commands related to the EC2 deployer, but which do not require access to the API
+"""
+
 import sys
 
 from globus.provision.cli import Command

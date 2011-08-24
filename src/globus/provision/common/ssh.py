@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Remote execution and file transfer via SSH
+
+This module provides an abstraction over the paramiko package.
+"""
+
 import sys
 import paramiko
 import time

@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The EC2 deployer
+
+This deployer will create and manage hosts for a topology using Amazon EC2.
+"""
+
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
 from globus.provision.common.utils import create_ec2_connection 
@@ -30,6 +36,13 @@ from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, Wait
 from globus.provision.core.topology import DeployData, EC2DeployData, Node
 
 class EC2VM(VM):
+    """
+    Represents a VM running on EC2.
+    
+    See the documentation on globus.provision.core.deploy.VM for details
+    on what the VM class is used for.
+    """
+        
     def __init__(self, ec2_instance):
         self.ec2_instance = ec2_instance
         
@@ -37,6 +50,9 @@ class EC2VM(VM):
         return self.ec2_instance.id
 
 class Deployer(BaseDeployer):
+    """
+    The EC2 deployer.
+    """
   
     def __init__(self, *args, **kwargs):
         BaseDeployer.__init__(self, *args, **kwargs)
@@ -52,8 +68,6 @@ class Deployer(BaseDeployer):
     
     def __connect(self):
         config = self.instance.config
-        keypair = config.get("ec2-keypair")
-        zone = config.get("ec2-availability-zone")
         
         try:
             log.debug("Connecting to EC2...")
@@ -211,6 +225,12 @@ class Deployer(BaseDeployer):
             if newstate == state:
                 return True
         # TODO: Check errors            
+        
+    def get_wait_thread_class(self):
+        return self.NodeWaitThread
+
+    def get_configure_thread_class(self):
+        return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, state, depends = None):

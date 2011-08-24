@@ -14,16 +14,23 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The CLI: A console frontend to Globus Provision that allows a user to request instances, 
+start them, etc.
+"""
+
 import subprocess
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 import os
 import os.path
 import getpass
 import colorama
 from globus.provision.common import defaults
 from globus.provision.common import log
+from globus.provision import RELEASE
 
 class Command(object):
+    """Base class for all Globus Provisioning commands"""
     
     def __init__(self, argv, root = False):
         
@@ -33,30 +40,33 @@ class Command(object):
                 exit(1)
                 
         self.argv = argv
-        self.optparser = OptionParser()
+        self.optparser = OptionParser(version = RELEASE)
         self.opt = None
         self.args = None
         
-        self.optparser.add_option("-v", "--verbose", 
+        common_opts = OptionGroup(self.optparser, "Common options", "These options are common to all Globus Provision commands")
+        self.optparser.add_option_group(common_opts)
+        
+        common_opts.add_option("-v", "--verbose", 
                                   action="store_true", dest="verbose", 
                                   help = "Produce verbose output.")
 
-        self.optparser.add_option("-d", "--debug", 
+        common_opts.add_option("-d", "--debug", 
                                   action="store_true", dest="debug", 
                                   help = "Write debugging information. Implies -v.")     
 
-        self.optparser.add_option("-i", "--instances-dir", 
+        common_opts.add_option("-i", "--instances-dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.INSTANCE_LOCATION,
-                                  help = """
-                                  Use this directory to store information about the instances
-                                   (instead of the default ~/.globusprovision/instances/)""")      
+                                  help = "Use this directory to store information about the instances "
+                                         "(instead of the default ~/.globusprovision/instances/)")
         
         colorama.init(autoreset = True)
                 
 
     def parse_options(self):
         opt, args = self.optparser.parse_args(self.argv)
+
         self.opt = opt
         self.args = args
         

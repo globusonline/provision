@@ -14,6 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Convenience functions around the logging module
+"""
+
 import logging
 import os.path
 

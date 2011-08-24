@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Commands that directly invoke the API. Most of these commands are a one-to-one
+mapping to the API, although some some (like gp-add-host) simply provide 
+a more convenient interface on top of instance_update().
+"""
+
 import time
 import sys
 
@@ -50,10 +56,8 @@ class gp_create(Command):
         
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
-                                  help = """
-                                  Topology file. Can be either a simple topology file (with extension .conf) or
-                                  a topology JSON file (with extension .json). 
-                                  """)        
+                                  help = "Topology file. Can be either a simple topology file (with extension .conf) "
+                                         "or a topology JSON file (with extension .json).")        
                 
     def run(self):    
         self.parse_options()
@@ -563,10 +567,8 @@ class gp_add_user(Command):
         self.optparser.add_option("-c", "--certificate", 
                                   action="store", type="string", dest="certificate", 
                                   default = "generated",                                  
-                                  help = """
-                                  Type of certificate. Can be "generated" or "none" (default is 
-                                  to generate a certificate for the user)
-                                  """)   
+                                  help = "Type of certificate. Can be \"generated\" or \"none\" (default is " 
+                                         "to generate a certificate for the user)")
 
                 
     def run(self):    

@@ -14,6 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Commands related to Globus Online endpoint management, but which do not require access to the API
+"""
+
 import sys
 import os.path
 from pkg_resources import resource_filename

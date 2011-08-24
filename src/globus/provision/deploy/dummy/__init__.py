@@ -14,6 +14,13 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The dummy deployer
+
+All the actions in this deployer simply return immediately, simulating a
+backend that never fails. This deployer is useful for testing.
+"""
+
 from globus.provision.common.threads import GPThread
 import sys
 from globus.provision.common import log
@@ -21,10 +28,20 @@ from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, Wait
 from globus.provision.core.topology import Node
 
 class DummyVM(VM):
+    """
+    A "dummy VM". Doesn't actually contain anything.
+    
+    See the documentation on globus.provision.core.deploy.VM for details
+    on what the VM class is used for.
+    """
+    
     def __init__(self):
         VM.__init__(self)
         
 class Deployer(BaseDeployer):
+    """
+    The dummy deployer
+    """
   
     def __init__(self, *args, **kwargs):
         BaseDeployer.__init__(self, *args, **kwargs)
@@ -54,7 +71,13 @@ class Deployer(BaseDeployer):
         log.info("Dummy nodes terminated.")         
 
     def terminate_vms(self, nodes):
-        log.info("Dummy nodes terminated.")               
+        log.info("Dummy nodes terminated.")
+
+    def get_wait_thread_class(self):
+        return self.NodeWaitThread
+
+    def get_configure_thread_class(self):
+        return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, state, depends = None):
@@ -76,4 +99,11 @@ class Deployer(BaseDeployer):
             self.node.state = Node.STATE_RUNNING
             topology.save()            
             log.info("Dummy configure done")
+            
+
+        def connect(self): pass
+    
+        def pre_configure(self): pass
+    
+        def post_configure(self): pass
             
