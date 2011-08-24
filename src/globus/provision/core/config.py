@@ -426,7 +426,15 @@ class SimpleTopologyConfig(Config):
             required    = False,
             doc         = """
             The number of worker nodes to create for the LRM.        
-            """),          
+            """),         
+     Option(name        = "galaxy",
+            getter      = "galaxy",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            Specifies whether to set up a Galaxy server on this domain.        
+            """),            
      Option(name        = "go-endpoint",
             getter      = "go-endpoint",
             type        = OPTTYPE_STRING,
@@ -604,6 +612,11 @@ class SimpleTopologyConfig(Config):
                     # If there is no login node, the NFS/NIS server will
                     # effectively act as one. 
                     server_node.add_to_array("run_list", "role[globus]")
+                if self.get((domain_name,"galaxy")):
+                    # If there is a Galaxy server in the domain, the "common"
+                    # recipe has to be installed on the NFS/NIS server
+                    server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                    
                 domain.add_node(server_node)
 
             if self.get((domain_name,"login")):            
@@ -640,6 +653,24 @@ class SimpleTopologyConfig(Config):
                     gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
                 gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
                 domain.add_node(gridftp_node)                
+            
+            if self.get((domain_name,"galaxy")):
+                galaxy_node = Node()
+                galaxy_node.set_property("id", "%s-galaxy" % domain_name)
+
+                if self.get((domain_name,"nfs-nis")):  
+                    galaxy_node.set_property("depends", "node:%s" % server_name)
+                    galaxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    galaxy_node.add_to_array("run_list", "recipe[provision::domain_users]")     
+                    galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
+
+                if self.get((domain_name,"go-endpoint")) != None:
+                    galaxy_node.add_to_array("run_list", "recipe[globus::go_cert]")
+                galaxy_node.add_to_array("run_list", "recipe[postgresql::server]")
+                galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
+                domain.add_node(galaxy_node)                
+            
             
             lrm = self.get((domain_name,"lrm"))
             if lrm != "none":
