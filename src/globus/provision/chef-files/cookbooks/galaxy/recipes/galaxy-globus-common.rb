@@ -14,83 +14,78 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Galaxy (Globus fork) common actions
+##
+## 
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Needed to create the galaxy user
-package "libshadow-ruby1.8" do
-  action :install
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
+
+go_endpoints = gp_domain[:go_endpoints].to_a
+
+if go_endpoints.size > 0
+	go_endpoint = go_endpoints[0]
+	go_endpoint = "#{go_endpoint[:user]}##{go_endpoint[:name]}" 
+else
+	go_endpoint = ""
 end
 
-
-# Create the galaxy group and user
+if gp_domain[:nfs_server]
+    homedirs = "/nfs/home"
+else
+    homedirs = "/home"
+end
 
 group "galaxy" do
-  gid 501
+  gid 4000
 end
 
 user "galaxy" do
   comment "Galaxy User"
-  uid 501
-  gid 501
-  home "/home/galaxy"
-  password "$1$rmHlRI5D$xNAqmRlrB6.P6SHOi2gpw1" # Password: globus
+  uid 4000
+  gid 4000
+  home "#{homedirs}/galaxy"
+  password "!"
   shell "/bin/bash"
   supports :manage_home => true
+  notifies :run, "execute[ypinit]"
+end
+
+# We need to run this for changes to take effect in the NIS server.
+execute "ypinit" do
+ only_if do gp_domain[:nis_server] end
+ user "root"
+ group "root"
+ command "make -C /var/yp"
+ action :nothing
 end
 
 if ! File.exists?(node[:galaxy][:dir])
-  
-  cookbook_file "/home/galaxy/galaxy-dist.tip.tar.gz" do
-    source "galaxy-dist.tip.tar.gz"
-    owner "root"
-    group "root"
-    mode "0644"
-  end  
 
-  execute "tar" do
-    user "galaxy"
-    group "galaxy"
-    cwd "/home/galaxy"
-    command "tar xzf galaxy-dist.tip.tar.gz"
-    action :run
-  end  	
-
-  directory "#{node[:galaxy][:dir]}/eggs" do
+  directory "#{node[:galaxy][:dir]}" do
     owner "galaxy"
     group "galaxy"
     mode "0755"
     action :create
   end
-
-  cookbook_file "#{node[:galaxy][:dir]}/eggs/galaxy-eggs.tgz" do
-    source "galaxy-eggs.tgz"
-    owner "galaxy"
-    group "galaxy"
+  
+  remote_file "#{node[:scratch_dir]}/galaxy-dist.tip.tar.bz2" do
+    source "https://bitbucket.org/steder/galaxy-globus/get/tip.tar.bz2"
+    owner "root"
+    group "root"    
     mode "0644"
-  end  
+  end
 
   execute "tar" do
     user "galaxy"
     group "galaxy"
-    cwd "#{node[:galaxy][:dir]}/eggs"
-    command "tar xzf galaxy-eggs.tgz"
+    command "tar xjf #{node[:scratch_dir]}/galaxy-dist.tip.tar.bz2 --strip-components=1 --directory #{node[:galaxy][:dir]}"
     action :run
   end  	
-
-  
-  # Add init script
-  cookbook_file "/etc/init.d/galaxy" do
-    source "galaxy.init"
-    owner "root"
-    group "root"
-    mode "0755"
-  end
-  
-  execute "update-rc.d" do
-    user "root"
-    group "root"
-    command "update-rc.d galaxy defaults"
-    action :run
-  end  
 
   cookbook_file "#{node[:galaxy][:dir]}/galaxy-setup.sh" do
     source "galaxy-setup.sh"
@@ -98,30 +93,17 @@ if ! File.exists?(node[:galaxy][:dir])
     group "galaxy"
     mode "0755"
   end
-
-  execute "galaxy-setup.sh" do
-    user "galaxy"
+  
+  template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
+    source "galaxy-universe.erb"
+    mode 0644
+    owner "galaxy"
     group "galaxy"
-    cwd node[:galaxy][:dir]
-    command "./galaxy-setup.sh"
-    action :run
+    variables(
+      :db_connect => "postgres:///galaxy?user=galaxy&password=galaxy&host=/var/run/postgresql",
+      :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:gp_domain]}"
+    )
   end  
+
 end
-
-cookbook_file "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
-  source "universe_wsgi.ini"
-  owner "galaxy"
-  group "galaxy"
-  mode "0644"
-end
-
-execute "galaxy_restart" do
- user "root"
- group "root"
- command "/etc/init.d/galaxy restart"
- action :run
-end
-
-
-
-
+  

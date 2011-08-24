@@ -46,7 +46,7 @@ def set_logging_instance(instance):
 
 def log(msg, func, node):
     if node != None:
-        msg = "%s - %s" % (node.hostname.split(".")[0], msg)
+        msg = "%s - %s" % (node.id, msg)
     func(msg)
 
 def debug(msg, node = None):

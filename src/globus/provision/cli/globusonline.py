@@ -90,7 +90,15 @@ class gp_go_register_endpoint(Command):
                     print ep.user, ssh_key
                     ssh = SSH(ep.user, "cli.globusonline.org", ssh_key, default_outf = None, default_errf = None)
                     ssh.open()
-                    rc = ssh.run("endpoint-add %s -p %s -s %s %s" % (ep.name, gridftp, gridftp_subject), exception_on_error=False)
+                    rc = ssh.run("endpoint-list %s" % (ep.name), exception_on_error=False)
+                    if rc == 0:
+                        if not self.opt.replace:
+                            print "An endpoint called '%s' already exists. Please choose a different name." % ep.name
+                            exit(1)
+                        else:
+                            rc = ssh.run("endpoint-remove %s" % (ep.name), exception_on_error=False)
+
+                    rc = ssh.run("endpoint-add %s -p %s -s \"%s\"" % (ep.name, gridftp, gridftp_subject), exception_on_error=False)
                     if rc != 0:
                         print "Could not create endpoint."
                         exit(1)
