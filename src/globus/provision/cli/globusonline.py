@@ -23,27 +23,34 @@ from globus.provision.cli import Command
 from globus.transfer.transfer_api import TransferAPIClient, ClientError
 from globus.provision.core.instance import InstanceStore
 
-def gp_go_register_endpoint_func():
-    return gp_go_register_endpoint(sys.argv).run()     
+def gp_go_register_endpoints_func():
+    return gp_go_register_endpoints(sys.argv).run()     
 
-class gp_go_register_endpoint(Command):
+class gp_go_register_endpoints(Command):
+    """
+    Creates the Globus Online endpoints specified in an instance's topology.
     
-    name = "gp-go-register-endpoint"
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-go-register-endpoints --public gpi-12345678    
+    """     
+    
+    name = "gp-go-register-endpoints"
     
     def __init__(self, argv):
         Command.__init__(self, argv)    
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain", 
-                                  help = "Only this domain")
+                                  help = "Register only the endpoints in this domain")
         
         self.optparser.add_option("-p", "--public", 
                                   action="store_true", dest="public", 
-                                  help = "Create a public endpoint")           
+                                  help = "Create public endpoints")           
 
         self.optparser.add_option("-r", "--replace", 
                                   action="store_true", dest="replace", 
-                                  help = "If the endpoint already exists, replace it")           
+                                  help = "If an endpoint already exists, replace it")           
                 
     def run(self):    
         self.parse_options()

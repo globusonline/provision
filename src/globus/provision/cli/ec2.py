@@ -27,6 +27,10 @@ def gp_ec2_create_ami_func():
     return gp_ec2_create_ami(sys.argv).run()        
 
 class gp_ec2_create_ami(Command):
+    """
+    Creates a Globus Provision AMI with Chef files pre-deployed, and
+    some software pre-installed.            
+    """
     
     name = "gp-ec2-create-ami"
     
@@ -40,11 +44,11 @@ class gp_ec2_create_ami(Command):
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
                                   default = defaults.CONFIG_FILE,
-                                  help = "Configuration file.") 
+                                  help = "Configuration file. Must include an [ec2] section.") 
 
         self.optparser.add_option("-a", "--ami", 
                                   action="store", type="string", dest="ami", 
-                                  help = "AMI to use to create the volume.")
+                                  help = "AMI to base the new AMI on.")
 
         self.optparser.add_option("-n", "--name", 
                                   action="store", type="string", dest="aminame", 
@@ -64,6 +68,9 @@ def gp_ec2_update_ami_func():
     return gp_ec2_update_ami(sys.argv).run()     
         
 class gp_ec2_update_ami(Command):
+    """
+    Takes an existing AMI, adds files to it, and creates a new AMI.
+    """    
     
     name = "gp-ec2-update-ami"
     
@@ -81,7 +88,7 @@ class gp_ec2_update_ami(Command):
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
                                   default = defaults.CONFIG_FILE,
-                                  help = "Configuration file.") 
+                                  help = "Configuration file. Must include an [ec2] section.") 
         
         self.optparser.add_option("-f", "--files", 
                                   action="store", type="string", dest="files", 

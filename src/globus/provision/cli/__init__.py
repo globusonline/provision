@@ -48,7 +48,9 @@ class Command(object):
         self.optparser.add_option("-i", "--instances-dir", 
                                   action="store", type="string", dest="dir", 
                                   default = defaults.INSTANCE_LOCATION,
-                                  help = "Location of the instance database.")      
+                                  help = """
+                                  Use this directory to store information about the instances
+                                   (instead of the default ~/.globusprovision/instances/)""")      
         
         colorama.init(autoreset = True)
                 

@@ -31,7 +31,7 @@ cmds = {"globus.provision.cli.api":
         ["gp-ec2-create-ami", "gp-ec2-update-ami"],
         
         "globus.provision.cli.globusonline":
-        ["gp-go-register-endpoint"]
+        ["gp-go-register-endpoints"]
         }
 
 eps = []

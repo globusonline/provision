@@ -81,7 +81,7 @@ three groups:
 * *API*: These are commands that map to an API function (e.g., :ref:`cli_gp-start`
   is a wrapper for the ``instance_start`` API function). The majority of commands
   fall into this category.
-* *Globus Online*: Currently only includes :ref:`cli_gp-go-register-endpoint`. This
+* *Globus Online*: Currently only includes :ref:`cli_gp-go-register-endpoints`. This
   command doesn't correspond to any Globus Provision API function, since creating
   a Globus Online endpoint is done through the Globus Online Transfer API.
 * *EC2*: Includes commands to create and update :ref:`Globus Provision AMIs <sec_ami>`.
@@ -185,6 +185,7 @@ repository, and add it to the ``src/globus/provision/chef-files/`` directory tre
 example, Globus Provision already includes the PostgreSQL cookbook, which is needed by
 our Galaxy cookbook.
 
+.. _sec_test_chef:
 
 Testing your Chef Recipes
 ========================= 
