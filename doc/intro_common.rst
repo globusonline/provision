@@ -1,5 +1,5 @@
 Globus Provision is a tool for deploying fully-configured `Globus <http://www.globus.org/>`_ 
-systems on an IaaS cloud, such as `Amazon EC2 <http://aws.amazon.com/ec2/>`_. For example,
+systems on `Amazon EC2 <http://aws.amazon.com/ec2/>`_. For example,
 you could use Globus Provision to deploy a cluster on EC2 with various Globus services, and
 a Condor pool, installed on it: 
 

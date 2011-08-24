@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Commands that directly invoke the API. Most of these commands are a one-to-one
+mapping to the API, although some some (like gp-add-host) simply provide 
+a more convenient interface on top of instance_update().
+"""
+
 import time
 import sys
 
@@ -34,6 +40,9 @@ def gp_create_func():
     return gp_create(sys.argv).run()
         
 class gp_create(Command):
+    """
+    Creates a new Globus Provision instance.
+    """
     
     name = "gp-create"
 
@@ -47,7 +56,8 @@ class gp_create(Command):
         
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
-                                  help = "Topology file.")        
+                                  help = "Topology file. Can be either a simple topology file (with extension .conf) "
+                                         "or a topology JSON file (with extension .json).")        
                 
     def run(self):    
         self.parse_options()
@@ -99,6 +109,17 @@ def gp_describe_instance_func():
     return gp_describe_instance(sys.argv).run()            
         
 class gp_describe_instance(Command):
+    """
+    Describes a Globus Provision instance, providing information on the state of the instance,
+    and of the individual hosts (including their hostnames and IPs, if the instance is running). 
+    Running in verbose mode (with the ``-v`` option)
+    will print out the raw JSON representation of the instance's topology.
+    
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp_describe_instance --verbose gpi-12345678
+        
+    """
     
     name = "gp-describe-instance"
     
@@ -216,7 +237,18 @@ def gp_start_func():
     return gp_start(sys.argv).run()  
 
 class gp_start(Command):
+    """
+    Starts a Globus Provision instance. If the instance was previous stopped, ``gp-start``
+    will resume it.
     
+    See :ref:`sec_test_chef` for details on how to use the ``--extra-files`` option.
+    
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-start --extra-files foo.txt gpi-12345678
+        
+    """
+        
     name = "gp-start"
     
     def __init__(self, argv):
@@ -224,11 +256,11 @@ class gp_start(Command):
 
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
-                                  help = "Upload extra files")
+                                  help = "File with list of files to upload to each host before configuring the instance.")
 
         self.optparser.add_option("-r", "--run", 
                                   action="store", type="string", dest="run", 
-                                  help = "Run commands after configuration")
+                                  help = "File with list of commands to run on each host after configuring the instance.")
                         
     def run(self):    
         SIGINTWatcher(self.cleanup_after_kill)
@@ -276,7 +308,19 @@ def gp_update_topology_func():
     return gp_update_topology(sys.argv).run()  
 
 class gp_update_topology(Command):
+    """
+    Updates a Globus Provision instance's topology. Globus Provision will determine what changes
+    and necessary (adding/removing hosts, etc.) and will return an error if an invalid update
+    was specified.
     
+    See :ref:`sec_test_chef` for details on how to use the ``--extra-files`` option.
+    
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-update-topology --topology newtopology.json gpi-12345678
+        
+    """
+        
     name = "gp-update-topology"
     
     def __init__(self, argv):
@@ -284,15 +328,15 @@ class gp_update_topology(Command):
 
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
-                                  help = "Topology file.")
+                                  help = "Topology file (JSON format only)")
 
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
-                                  help = "Upload extra files")
+                                  help = "File with list of files to upload to each host before configuring the instance.")
         
         self.optparser.add_option("-r", "--run", 
                                   action="store", type="string", dest="run", 
-                                  help = "Run commands after configuration")        
+                                  help = "File with list of commands to run on each host after configuring the instance.")        
                 
     def run(self):    
         SIGINTWatcher(self.cleanup_after_kill) 
@@ -351,7 +395,18 @@ def gp_stop_func():
     return gp_stop(sys.argv).run()         
         
 class gp_stop(Command):
+    """
+    Stops a running Globus Provision instance. This will shut down all the hosts in the instance,
+    but it will not free the corresponding resources. You can use :ref:`cli_gp-start` to resume
+    the instance at a later time. Use :ref:`cli_gp-terminate` if you want to shut down the hosts
+    *and* free all their resources (including all associated storage) 
     
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-stop --verbose gpi-12345678
+        
+    """
+        
     name = "gp-stop"
     
     def __init__(self, argv):
@@ -385,6 +440,21 @@ def gp_terminate_func():
     return gp_terminate(sys.argv).run()     
 
 class gp_terminate(Command):
+    """
+    Terminates a Globus Provision instance. This not only shuts down all the hosts in the
+    instance, but also frees up all associated resources, including storage. Use this command
+    only if you want to irreversibly "kill" your instance. If you only want to stop it temporarily
+    (shutting down the hosts, but allowing them to be resumed at a later time), use 
+    :ref:`cli_gp-stop` instead.
+    
+    This command can also be used on instances that are in the "Failed" state, to free their
+    resources.
+    
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-terminate --verbose gpi-12345678
+        
+    """
     
     name = "gp-terminate"
     
@@ -419,7 +489,16 @@ def gp_list_instances_func():
     return gp_list_instances(sys.argv).run()     
 
 class gp_list_instances(Command):
+    """
+    Lists all instances you've created, showing their identifier and their state.
     
+    If you only want to list certain instances, you can specify a list of instance
+    identifiers after all other parameters. For example::
+    
+        gp-list-instances --verbose gpi-11111111 gpi-22222222 gpi-33333333
+        
+    """
+        
     name = "gp-list-instances"
     
     def __init__(self, argv):
@@ -450,7 +529,15 @@ def gp_add_user_func():
     return gp_add_user(sys.argv).run()     
 
 class gp_add_user(Command):
+    """
+    Adds a user to a running instance.
     
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-add-user --domain simple --login johnsmith gpi-12345678
+        
+    """
+        
     name = "gp-add-user"
     
     def __init__(self, argv):
@@ -458,7 +545,7 @@ class gp_add_user(Command):
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
-                                  help = "Add user to this domain")  
+                                  help = "Domain that the user will be added to.")  
 
         self.optparser.add_option("-l", "--login", 
                                   action="store", type="string", dest="login",
@@ -471,16 +558,17 @@ class gp_add_user(Command):
         
         self.optparser.add_option("-s", "--ssh-pubkey", 
                                   action="store", type="string", dest="ssh", 
-                                  help = "User's public SSH key")        
+                                  help = "Public SSH key to be added to the new user's authorized_keys file.")        
 
         self.optparser.add_option("-a", "--admin", 
                                   action="store_true", dest="admin", 
-                                  help = "Give the user sudo privileges.")
+                                  help = "Gives the user sudo privileges.")
         
         self.optparser.add_option("-c", "--certificate", 
                                   action="store", type="string", dest="certificate", 
                                   default = "generated",                                  
-                                  help = "Type of certificate (default is generate a certificate for the user)")   
+                                  help = "Type of certificate. Can be \"generated\" or \"none\" (default is " 
+                                         "to generate a certificate for the user)")
 
                 
     def run(self):    
@@ -545,7 +633,15 @@ def gp_add_host_func():
     return gp_add_host(sys.argv).run()     
         
 class gp_add_host(Command):
+    """
+    Adds a new host to a running instance.
     
+    The instance identifier must be specified after all other parameters. For example::
+    
+        gp-add-host --domain simple --id simple-gridftp --run-list role[domain-gridftp] gpi-12345678
+        
+    """
+        
     name = "gp-add-host"
     
     def __init__(self, argv):
@@ -553,20 +649,20 @@ class gp_add_host(Command):
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
-                                  help = "Add node to this domain")  
+                                  help = "Domain that the user will be added to.")  
 
         self.optparser.add_option("-n", "--id", 
                                   action="store", type="string", dest="id",
-                                  help = "New node's ID")        
+                                  help = "Unique identifier for the new host.")        
 
         self.optparser.add_option("-p", "--depends", 
                                   action="store", type="string", dest="depends", 
                                   default = None,
-                                  help = "Node (if any) the new node depends on.")
+                                  help = "ID of the node (if any) that the new host depends on.")
         
         self.optparser.add_option("-r", "--run-list", 
                                   action="store", type="string", dest="runlist", 
-                                  help = "Node's run list")     
+                                  help = "List of Chef recipes or roles to apply to this host.")     
                 
     def run(self):    
         SIGINTWatcher(self.cleanup_after_kill) 
@@ -626,7 +722,16 @@ def gp_remove_users_func():
     return gp_remove_users(sys.argv).run()     
 
 class gp_remove_users(Command):
+    """
+    Removes users from a running instance.
     
+    The logins of the users to be removed must be specified after the instance identifier which,
+    in turn, must be specified after all other parameters. For example::
+    
+        gp-remove-users --domain simple gpi-12345678 johnsmith sarahjane
+        
+    """
+        
     name = "gp-remove-users"
     
     def __init__(self, argv):
@@ -634,7 +739,7 @@ class gp_remove_users(Command):
                 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
-                                  help = "Remove hosts from this domain")  
+                                  help = "Removes users from this domain")  
                 
     def run(self):    
         SIGINTWatcher(self.cleanup_after_kill) 
@@ -700,7 +805,16 @@ def gp_remove_hosts_func():
     return gp_remove_hosts(sys.argv).run()             
         
 class gp_remove_hosts(Command):
+    """
+    Removes hosts from a running instance.
     
+    The host identifiers must be specified after the instance identifier which,
+    in turn, must be specified after all other parameters. For example::
+    
+        gp-remove-hosts --domain simple gpi-12345678 simple-gridftp simple-condor
+        
+    """
+        
     name = "gp-remove-hosts"
     
     def __init__(self, argv):

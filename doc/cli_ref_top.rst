@@ -3,10 +3,6 @@
 Command-line interface reference
 ********************************
 
-TODO
-
-Contents:
-
 .. toctree::
    :maxdepth: 2
    

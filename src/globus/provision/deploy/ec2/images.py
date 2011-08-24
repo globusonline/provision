@@ -14,12 +14,22 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+EC2 images utilities.
+
+Contains code to manage Globus Provision AMIs.
+"""
+
 from globus.provision.common.utils import create_ec2_connection
 from globus.provision.common.ssh import SSH
 from globus.provision.common import log
 import time
 
 class EC2AMICreator(object):
+    """
+    Used to create a Globus Provision AMI.
+    """ 
+    
     def __init__(self, chef_dir, base_ami, ami_name, config):
         self.chef_dir = chef_dir
         self.base_ami = base_ami
@@ -112,6 +122,10 @@ class EC2AMICreator(object):
         
 
 class EC2AMIUpdater(object):
+    """
+    Used to update a Globus Provision AMI.
+    """ 
+        
     def __init__(self, base_ami, ami_name, files, config):
         self.base_ami = base_ami
         self.ami_name = ami_name

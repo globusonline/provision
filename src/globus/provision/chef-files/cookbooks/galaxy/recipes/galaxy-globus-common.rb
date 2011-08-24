@@ -14,6 +14,35 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Galaxy (Globus fork) common actions
+##
+## This recipe performs common actions required when installing the Globus
+## fork of Galaxy. If Galaxy is being installed on a domain with NFS/NIS,
+## this recipe must be run on the NFS/NIS server, and the galaxy-globus
+## recipe can be run on another node.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
+
+go_endpoints = gp_domain[:go_endpoints].to_a
+
+if go_endpoints.size > 0
+	go_endpoint = go_endpoints[0]
+	go_endpoint = "#{go_endpoint[:user]}##{go_endpoint[:name]}" 
+else
+	go_endpoint = ""
+end
+
+if gp_domain[:nfs_server]
+    homedirs = "/nfs/home"
+else
+    homedirs = "/home"
+end
+
 group "galaxy" do
   gid 4000
 end
@@ -22,7 +51,7 @@ user "galaxy" do
   comment "Galaxy User"
   uid 4000
   gid 4000
-  home "/nfs/home/galaxy"
+  home "#{homedirs}/galaxy"
   password "!"
   shell "/bin/bash"
   supports :manage_home => true
@@ -31,9 +60,10 @@ end
 
 # We need to run this for changes to take effect in the NIS server.
 execute "ypinit" do
+ only_if do gp_domain[:nis_server] end
  user "root"
  group "root"
- command "echo | /usr/lib/yp/ypinit -m"
+ command "make -C /var/yp"
  action :nothing
 end
 
@@ -52,13 +82,6 @@ if ! File.exists?(node[:galaxy][:dir])
     group "root"    
     mode "0644"
   end
-  
-  #cookbook_file "#{node[:scratch_dir]}/galaxy-dist.tip.tar.bz2" do
-  #  source "galaxy-globus.tip.tar.bz2"
-  #  owner "root"
-  #  group "root"
-  #  mode "0644"
-  #end  
 
   execute "tar" do
     user "galaxy"
@@ -67,13 +90,6 @@ if ! File.exists?(node[:galaxy][:dir])
     action :run
   end  	
 
-  directory "#{node[:galaxy][:dir]}/eggs" do
-    owner "galaxy"
-    group "galaxy"
-    mode "0755"
-    action :create
-  end
-
   cookbook_file "#{node[:galaxy][:dir]}/galaxy-setup.sh" do
     source "galaxy-setup.sh"
     owner "galaxy"
@@ -81,16 +97,16 @@ if ! File.exists?(node[:galaxy][:dir])
     mode "0755"
   end
   
-template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
-  source "galaxy-universe.erb"
-  mode 0644
-  owner "galaxy"
-  group "galaxy"
-  variables(
-    :db_connect => "foo",
-    :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:gp_domain]}"
-  )
-end  
+  template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
+    source "galaxy-universe.erb"
+    mode 0644
+    owner "galaxy"
+    group "galaxy"
+    variables(
+      :db_connect => "postgres:///galaxy?user=galaxy&password=galaxy&host=/var/run/postgresql",
+      :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:gp_domain]}"
+    )
+  end  
 
 end
   

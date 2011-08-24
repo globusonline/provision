@@ -14,6 +14,16 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The Globus Provision API
+
+This API is currently meant to be used locally (i.e., not accessible through a 
+network via a remote call interface like REST, SOAP, etc.) and by a single 
+user (i.e., there is no notion of different users owning different instances). 
+Future versions of Globus Provision may run as a daemon with a remotely-accessible 
+API that supports multiple users.
+"""
+
 import sys
 import traceback
 
@@ -31,6 +41,9 @@ from globus.provision.common.config import ConfigException
 from globus.provision.common.persistence import ObjectValidationException
 
 class API(object):
+    """
+    The Globus Provision API.
+    """
     
     STATUS_SUCCESS = 0
     STATUS_FAIL = 1
@@ -59,8 +72,6 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message, None)
-
-        log.set_logging_instance(inst_id)
                 
         try:
             json_string = inst.topology.to_json_string()

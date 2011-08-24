@@ -14,12 +14,19 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Remote execution and file transfer via SSH
+
+This module provides an abstraction over the paramiko package.
+"""
+
 import sys
 import paramiko
 import time
 import select
 import os.path
 import traceback
+from paramiko.ssh_exception import SSHException
 
 # Try to use our patched version of paraproxy only if
 # it is available. If it isn't, ProxyCommand support
@@ -49,28 +56,30 @@ class SSH(object):
         self.default_errf = default_errf
         self.port = port
         
-    def open(self, timeout = 180):
+    def open(self, timeout = 120):
         key = paramiko.RSAKey.from_private_key_file(self.key_path)
         connected = False
-        remaining = timeout
+        t_start = time.time()
         while not connected:
             try:
-                if remaining < 0:
-                    raise Exception("SSH timeout")
-                else:
-                    atfork()
-                    self.client = paramiko.SSHClient()
-                    self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    self.client.connect(self.hostname, self.port, self.username, pkey=key)
-                    connected = True
+                atfork()
+                self.client = paramiko.SSHClient()
+                self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                self.client.connect(self.hostname, self.port, self.username, timeout=5, pkey=key)
+                connected = True
             except Exception, e:
-                if remaining - 2 < 0:
+                t_now = time.time()
+                if t_now - t_start > timeout:
                     raise e
                 else:
                     time.sleep(2)
-                    remaining -= 2
 
-        self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
+        try:
+            self.sftp = self.client.get_transport().open_sftp_client()
+        except SSHException, sshe:
+            # Some SSH servers, like the GO CLI, are not amenable to SFTP
+            log.debug("Unable to create an SFTP client on this connection.")
+            self.sftp = None  
         
     def close(self):
         self.client.close()
@@ -92,20 +101,30 @@ class SSH(object):
             
         try:
             channel.exec_command(command)
-            if not expectnooutput:   
-                log_msg = ""
+            if expectnooutput:
+                log.debug("Ignoring output from command (not expecting any)")
+            else:
+                all_out_nbytes = 0
+                all_err_nbytes = 0   
+                rem_out = ""
+                rem_err = ""
                 while True:
-                    rl, wl, xl = select.select([channel],[],[])
+                    rl, wl, xl = select.select([channel],[],[], 0.1)
                     if len(rl) > 0:
-                        # Must be stdout
-                        x = channel.recv(1)
-                        if not x: break
-                        if outf is not None: outf.write(x)
-                        log_msg += x
-                        if x == "\n":
-                            log.debug("SSH_OUT: %s" % log_msg.rstrip())
-                            log_msg = ""
-                        if outf is not None: outf.flush()
+                        out_nbytes, rem_out = self.__recv(outf, channel.recv_ready, channel.recv, "SSH_OUT", rem_out)
+                        err_nbytes, rem_err = self.__recv(errf, channel.recv_stderr_ready, channel.recv_stderr, "SSH_ERR", rem_err)
+
+                        if out_nbytes + err_nbytes == 0:
+                            break
+
+                        all_out_nbytes += out_nbytes
+                        all_err_nbytes += err_nbytes
+
+                if all_out_nbytes == 0:
+                    log.debug("Command did not write to standard output.")
+
+                if all_err_nbytes == 0:
+                    log.debug("Command did not write to standard error.")
             
                 if outf is not None: 
                     if outf != sys.stdout:
@@ -162,6 +181,31 @@ class SSH(object):
                 tofile = todir_full + "/" + f
                 self.sftp.put(fromfile, tofile)
                 log.debug("scp %s -> %s:%s" % (fromfile, self.hostname, tofile))
+                
+    def __recv(self, f, ready_func, recv_func, log_label, rem):
+        nbytes = 0
+        while ready_func():
+            data = recv_func(4096)
+            if len(data) > 0:
+                nbytes += len(data)
+                
+                if f is not None: 
+                    f.write(data)
+
+                lines = data.split('\n')
+
+                if len(lines) == 1:
+                    rem += lines[0]
+                else:
+                    log.debug(log_label + ": %s" % (rem + lines[0]))
+                    for line in lines[1:-1]:
+                        log.debug(log_label + ": %s" % line)
+                    rem = lines[-1]
+                
+        if f is not None: f.flush()
+        
+        return nbytes, rem
+    
 
 def get_parent_directories(filepath):
     dir = os.path.dirname(filepath)

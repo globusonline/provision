@@ -19,7 +19,7 @@ commands = [api.gp_create, api.gp_start, api.gp_describe_instance,
             
             ec2.gp_ec2_create_ami, ec2.gp_ec2_update_ami,
             
-            globusonline.gp_go_register_endpoint
+            globusonline.gp_go_register_endpoints
             ]
 
 def print_section(title, marker):
@@ -35,19 +35,24 @@ for command in commands:
     c = command([])
     print 
     if command == Command:
+        print ".. _cli_common:"
+        print
         print_section("Common options", "=")
+        print
+        print "These are the options common to all Globus Provision commands."
+        print
     else:
         print ".. _cli_%s:" % command.name
         print
         print_section("``%s``" % command.name, "=")
-    print
-    doc = command.__doc__
-    if doc != None:
-        doc = textwrap.dedent(doc).strip()
-    else:
-        doc = "TODO"
-    print doc
-    print
+        print
+        doc = command.__doc__
+        if doc != None:
+            doc = textwrap.dedent(doc).strip()
+        else:
+            doc = "TODO"
+        print doc
+        print
 
     opts = c.optparser.option_list
     if command != Command:
@@ -68,7 +73,7 @@ for command in commands:
         print rest_table(col_names, rows)
     
     else:
-        print "No options"    
+        print "This command has no options (besides the :ref:`common options <cli_common>`)"    
 
 
 

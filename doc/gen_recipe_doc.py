@@ -3,7 +3,7 @@ import re
 import glob
 import os.path
 
-cookbooks = ["provision", "globus", "condor"]
+cookbooks = ["provision", "globus", "condor", "galaxy"]
 
 def print_section(title, marker):
     print title

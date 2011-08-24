@@ -55,7 +55,7 @@ The core exposes an API to create and manage instances. The commands in the
 is currently meant to be used locally (i.e., not accessible through a network
 via a remote call interface like REST, SOAP, etc.) and by a single user (i.e., there 
 is no notion of different users owning different instances). Future versions of 
-Globus Provision may run as a daemon with remotely-accessible API that supports 
+Globus Provision may run as a daemon with a remotely-accessible API that supports 
 multiple users.
 
 
@@ -81,7 +81,7 @@ three groups:
 * *API*: These are commands that map to an API function (e.g., :ref:`cli_gp-start`
   is a wrapper for the ``instance_start`` API function). The majority of commands
   fall into this category.
-* *Globus Online*: Currently only includes :ref:`cli_gp-go-register-endpoint`. This
+* *Globus Online*: Currently only includes :ref:`cli_gp-go-register-endpoints`. This
   command doesn't correspond to any Globus Provision API function, since creating
   a Globus Online endpoint is done through the Globus Online Transfer API.
 * *EC2*: Includes commands to create and update :ref:`Globus Provision AMIs <sec_ami>`.
@@ -185,6 +185,7 @@ repository, and add it to the ``src/globus/provision/chef-files/`` directory tre
 example, Globus Provision already includes the PostgreSQL cookbook, which is needed by
 our Galaxy cookbook.
 
+.. _sec_test_chef:
 
 Testing your Chef Recipes
 ========================= 
