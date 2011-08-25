@@ -4,7 +4,7 @@ Getting help
 ==============================
 
 If you run into any problems when using Globus Provision, please contact us
-through out mailing list:
+through our mailing list:
 
 .. centered:: ``provision-user@lists.globus.org``
 

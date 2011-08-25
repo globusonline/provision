@@ -94,7 +94,7 @@ so we need to provide some EC2 parameters that will allow Globus Provision to us
 account to deploy this topology. More specifically, you will need an 
 `Access Key ID and Secret Access Key <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-access-key>`_
 and an `SSH Keypair <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-keypair>`_.
-We suggest that you create an keypair called ``gp-key``, and save the keypair file as ``~/.ec2/gp-key.pem``, since many of the sample files assume that naming.
+We suggest that you create a keypair called ``gp-key``, and save the keypair file as ``~/.ec2/gp-key.pem``, since many of the sample files assume that naming.
 
 You will need to add the following to the topology file:
 
@@ -140,8 +140,8 @@ This should immediately return the following:
 	Created new instance: gpi-52d4c9ec
 
 The ``gp-create`` command doesn't actually deploy the topology, but simply validates that the topology 
-is correct, and creates an entry for it in a database. This entry is called an *instance*, you can think
-of the topology as a specification of what you want to deploy, and the instance as one particular
+is correct, and creates an entry for it in a database. This entry is called an *instance*. You can think
+of the topology as a specification of what you want to deploy and the instance as one particular
 deployment of that topology.
 
 To actually launch this instance, we use the ``gp-start`` command (make sure you use the identifier
@@ -265,7 +265,7 @@ You will see the following:
 What's next?
 ============
 
-In this quickstart guide, you have have created a simple topology and deployed it on EC2 using Globus
+In this quickstart guide, you have created a simple topology and deployed it on EC2 using Globus
 Provision. Although this topology only had two users and a single GridFTP server, Globus Provision
 allows you to define and deploy much more complex topologies. Now that you've done this Quickstart,
 you may want to read the following parts of the documentation:

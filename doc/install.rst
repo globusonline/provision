@@ -35,7 +35,7 @@ This option has the following prerequisites:
   package manager (e.g., ``apt-get install python`` on Debian and Ubuntu). If you are using a Mac,
   Python is included by default; however, if your version is too old, take a look at the following
   instructions: http://www.python.org/getit/mac/
-* `Python Distribute <http://packages.python.org/distribute/>` 0.6.15 or higher. As noted above,
+* `Python Distribute <http://packages.python.org/distribute/>`_ 0.6.15 or higher. As noted above,
   you can verify if this package is installed by running ``easy_install --version``. If it is not
   available, you can find installation instructions here: http://pypi.python.org/pypi/distribute#installation-instructions.
   Take into account that, although Python Distribute is included as an optional package in most 
