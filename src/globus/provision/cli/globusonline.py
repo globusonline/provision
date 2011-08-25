@@ -20,6 +20,7 @@ Commands related to Globus Online endpoint management, but which do not require 
 
 import sys
 import os.path
+import paramiko
 from pkg_resources import resource_filename
 from globus.provision.common.ssh import SSH
 
@@ -74,8 +75,6 @@ class gp_go_register_endpoints(Command):
             go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
             go_server_ca = resource_filename("globus.provision", "chef-files/cookbooks/globus/files/default/gd-bundle_ca.cert")
 
-
-
         for domain_name, domain in inst.topology.domains.items():
             for ep in domain.go_endpoints:
                 if ep.gridftp.startswith("node:"):
@@ -98,9 +97,14 @@ class gp_go_register_endpoints(Command):
                     myproxy = ep.myproxy
     
                 if use_ssh:
-                    print ep.user, ssh_key
                     ssh = SSH(ep.user, "cli.globusonline.org", ssh_key, default_outf = None, default_errf = None)
-                    ssh.open()
+                    try:
+                        ssh.open()
+                    except paramiko.PasswordRequiredException, pre:
+                        print "The specified SSH key (%s) requires a password." % ssh_key
+                        print "Please specify a passwordless SSH key."
+                        exit(1)
+                         
                     rc = ssh.run("endpoint-list %s" % (ep.name), exception_on_error=False)
                     if rc == 0:
                         if not self.opt.replace:
