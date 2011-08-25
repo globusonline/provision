@@ -14,5 +14,5 @@ to subscribe to the list or to check out the list's archive.
 Reporting bugs, feature requests, etc.
 ======================================
 
-.. todo::
-	Should we create a JIRA project for this?
+We will be setting up a mechanism for reporting bugs soon. For now, please report any bugs
+or feature requests on the mailing list.
