@@ -102,6 +102,9 @@ class Deployer(BaseDeployer):
                 if len(gp_sg) == 0:
                     gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
                     
+                    # Internal
+                    gp_sg.authorize(src_group = gp_sg)
+
                     # SSH
                     gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
                     
