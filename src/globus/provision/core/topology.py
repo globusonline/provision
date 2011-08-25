@@ -14,6 +14,18 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Topology
+
+This module contains classes used to manage a topology. All of these classes
+are PersistentObjects, so the properties are defined separately from
+the classes themselves, which can make the code a bit hard to read. 
+Before diving into this code, you may want to check out the topology 
+documentation (in the Globus Provision Documentation), which is automatically
+generated from the code in this module.  
+
+"""
+
 from globus.provision.common.persistence import PersistentObject, PropertyTypes,\
     Property
     

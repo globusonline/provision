@@ -16,6 +16,11 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+A self-documenting, self-validating configuration file parser
+(derived from Python's ConfigParser)
+"""
+
 import ConfigParser
 import textwrap
 import os.path
@@ -31,6 +36,10 @@ class ConfigException(Exception):
     pass
 
 class Section(object):
+    """
+    A section in the configuration file
+    """
+    
     def __init__(self, name, required, multiple = None, required_if=None, doc=None):
         self.name = name
         self.required = required
@@ -44,6 +53,10 @@ class Section(object):
 
 
 class Option(object):
+    """
+    An option in a section
+    """
+    
     def __init__(self, name, getter, type, required, required_if=None, default=None, valid=None, doc=None):
         self.name = name
         self.getter = getter
@@ -58,6 +71,10 @@ class Option(object):
         return textwrap.dedent(self.doc).strip()
 
 class Config(object):
+    """
+    A configuration file
+    """
+    
     def __init__(self, config_file, sections):
         self.config = ConfigParser.ConfigParser()
         self.config.readfp(open(config_file, "r"))        

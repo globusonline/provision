@@ -14,6 +14,14 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Instance Management
+
+This module is the single point of access to information about instances.
+See the documentation in InstanceStore and Instance for more details.
+ 
+"""
+
 import os.path
 import random
 from globus.provision.core.config import GPConfig
@@ -22,9 +30,31 @@ from globus.provision.common.certs import CertificateGenerator
 from globus.provision.common.persistence import ObjectValidationException
 
 class InstanceException(Exception):
+    """A simple exception class used for instance exceptions"""
     pass
 
 class InstanceStore(object):
+    """
+    The instance database.
+    
+    Stores information on all the instances created by the user.
+    
+    Currently, it uses a simple filesystem-based model. There is a
+    designated "instances directory" (default: ~/.globusprovision/instances/).
+    When an instance is created, a directory with the instance's id is
+    created in the instances directory. For example::
+    
+         ~/.globusprovision/instances/gpi-12345678/
+         
+    All files related to an instance, including the topology file are
+    stored in that directory. Generated files (such as certificates, etc.)
+    are also stored there.
+    
+    The rest of the code only accesses the instances through this class.
+    So, it should be possible to eventually replace this with a more elaborate
+    solution (e.g., storing the instance data in a database, etc.)    
+    """
+    
     def __init__(self, instances_dir):
         self.instances_dir = instances_dir
         
@@ -69,11 +99,28 @@ class InstanceStore(object):
         return inst_ids
 
 class Instance(object):
+    """
+    A Globus Provision Instance
     
-    # Relative to generated dir
+    This class represents a single instance. Right now, an instance is 
+    the combination of a configuration file and a topology (both of which
+    are provided when the instance is created).
+    
+    The configuration file contains all the information about
+    the instance that will (arguably) not change during its lifetime.
+    The topology contains the specification of the hosts, users, etc.
+    that are going to be deployed, and that could change during the
+    instance's lifetime.
+    
+    For example, the configuration file specifies what keypair to use
+    when accessing EC2. Although this could conceivably change, it is
+    not as likely as a change in the topology (e.g., adding a new host,
+    changing the run list of a host, etc.)
+    
+    """
+    
+    # Relative to instance directory
     CERTS_DIR = "/certs"
-    CHEF_FILES_DIR = "/chef/cookbooks/provision/files/default/"  
-    CHEF_ATTR_DIR = "/chef/cookbooks/provision/attributes/"
 
     def __init__(self, inst_id, instance_dir):
         self.instance_dir = instance_dir

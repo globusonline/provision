@@ -14,10 +14,18 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Certificate management
+"""
+
 from OpenSSL import crypto
 import os.path
 
 class CertificateGenerator(object):
+    """
+    A class for generating CA, host, and user certificates.
+    """
+    
     def __init__(self, dn, ca_cert = None, ca_key = None):
         self.ca_cert = ca_cert
         self.ca_key = ca_key

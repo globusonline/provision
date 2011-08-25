@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The EC2 deployer
+
+This deployer will create and manage hosts for a topology using Amazon EC2.
+"""
+
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
 from globus.provision.common.utils import create_ec2_connection 
@@ -30,6 +36,13 @@ from globus.provision.core.deploy import BaseDeployer, VM, ConfigureThread, Wait
 from globus.provision.core.topology import DeployData, EC2DeployData, Node
 
 class EC2VM(VM):
+    """
+    Represents a VM running on EC2.
+    
+    See the documentation on globus.provision.core.deploy.VM for details
+    on what the VM class is used for.
+    """
+        
     def __init__(self, ec2_instance):
         self.ec2_instance = ec2_instance
         
@@ -37,6 +50,9 @@ class EC2VM(VM):
         return self.ec2_instance.id
 
 class Deployer(BaseDeployer):
+    """
+    The EC2 deployer.
+    """
   
     def __init__(self, *args, **kwargs):
         BaseDeployer.__init__(self, *args, **kwargs)
@@ -52,8 +68,6 @@ class Deployer(BaseDeployer):
     
     def __connect(self):
         config = self.instance.config
-        keypair = config.get("ec2-keypair")
-        zone = config.get("ec2-availability-zone")
         
         try:
             log.debug("Connecting to EC2...")
@@ -69,8 +83,8 @@ class Deployer(BaseDeployer):
                 self.conn = create_ec2_connection()
             
             if self.conn == None:
-                print "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
-                exit(1)
+                raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
+
             log.debug("Connected to EC2.")
         except BotoClientError, exc:
             raise DeploymentException, "Could not connect to EC2. %s" % exc.reason
@@ -80,22 +94,32 @@ class Deployer(BaseDeployer):
         if sgs is None:
             sgs = []
         
-        if len(sgs) == 0 and not self.has_gp_sg:
-            gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
-            if len(gp_sg) == 0:
-                gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
-                
-                # SSH
-                gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
-                
-                # GridFTP
-                gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
-                gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
-                
-                # MyProxy
-                gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
+        if len(sgs) == 0:
+            if self.has_gp_sg:
+                sgs = ["globus-provision"]
+            else:
+                gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
+                if len(gp_sg) == 0:
+                    gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
+                    
+                    # Internal
+                    gp_sg.authorize(src_group = gp_sg)
+
+                    # SSH
+                    gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+                    
+                    # GridFTP
+                    gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
+                    gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
+                    gp_sg.authorize('tcp', 50000, 51000, '0.0.0.0/0')
+                    
+                    # MyProxy
+                    gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
     
-                sgs = ['globus-provision'] 
+                    # Galaxy
+                    gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
+        
+                sgs = ["globus-provision"]
                 self.has_gp_sg = True
         else:
             all_sgs = self.conn.get_all_security_groups()
@@ -211,6 +235,12 @@ class Deployer(BaseDeployer):
             if newstate == state:
                 return True
         # TODO: Check errors            
+        
+    def get_wait_thread_class(self):
+        return self.NodeWaitThread
+
+    def get_configure_thread_class(self):
+        return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
         def __init__(self, multi, name, node, vm, deployer, state, depends = None):

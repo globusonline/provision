@@ -14,7 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Commands related to the EC2 deployer, but which do not require access to the API
+"""
+
 import sys
+import os.path
 
 from globus.provision.cli import Command
 from globus.provision.deploy.ec2.images import EC2AMICreator, EC2AMIUpdater
@@ -27,6 +32,10 @@ def gp_ec2_create_ami_func():
     return gp_ec2_create_ami(sys.argv).run()        
 
 class gp_ec2_create_ami(Command):
+    """
+    Creates a Globus Provision AMI with Chef files pre-deployed, and
+    some software pre-installed.            
+    """
     
     name = "gp-ec2-create-ami"
     
@@ -40,11 +49,11 @@ class gp_ec2_create_ami(Command):
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
                                   default = defaults.CONFIG_FILE,
-                                  help = "Configuration file.") 
+                                  help = "Configuration file. Must include an [ec2] section.") 
 
         self.optparser.add_option("-a", "--ami", 
                                   action="store", type="string", dest="ami", 
-                                  help = "AMI to use to create the volume.")
+                                  help = "AMI to base the new AMI on.")
 
         self.optparser.add_option("-n", "--name", 
                                   action="store", type="string", dest="aminame", 
@@ -54,9 +63,10 @@ class gp_ec2_create_ami(Command):
     def run(self):    
         self.parse_options()
 
-        config = GPConfig(self.opt.conf)
+        config = GPConfig(os.path.expanduser(self.opt.conf))
+        chef_dir = os.path.expanduser(self.opt.chef_dir)
 
-        c = EC2AMICreator(self.opt.chef_dir, self.opt.ami, self.opt.aminame, config)
+        c = EC2AMICreator(chef_dir, self.opt.ami, self.opt.aminame, config)
         c.run()
         
         
@@ -64,6 +74,9 @@ def gp_ec2_update_ami_func():
     return gp_ec2_update_ami(sys.argv).run()     
         
 class gp_ec2_update_ami(Command):
+    """
+    Takes an existing AMI, adds files to it, and creates a new AMI.
+    """    
     
     name = "gp-ec2-update-ami"
     
@@ -81,7 +94,7 @@ class gp_ec2_update_ami(Command):
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
                                   default = defaults.CONFIG_FILE,
-                                  help = "Configuration file.") 
+                                  help = "Configuration file. Must include an [ec2] section.") 
         
         self.optparser.add_option("-f", "--files", 
                                   action="store", type="string", dest="files", 
@@ -91,7 +104,7 @@ class gp_ec2_update_ami(Command):
         self.parse_options()
         
         files = parse_extra_files_files(self.opt.files)
-        config = GPConfig(self.opt.conf)
+        config = GPConfig(os.path.expanduser(self.opt.conf))
         
         c = EC2AMIUpdater(self.opt.ami, self.opt.aminame, files, config)
         c.run()        

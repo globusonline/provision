@@ -87,34 +87,7 @@ will be deployed as EC2 instances (virtual machines running on an Amazon datacen
 also select the ``dummy`` deployer, which will just pretend to deploy your topology (this can
 be useful for testing purposes).
 
-Because we've selected the ``ec2`` deployer, there is also an ``[ec2]`` section where we have
-to specify some EC2-specific options:
-
-.. parsed-literal::
-
-	[ec2]
-	ami: |ami|
-	instance-type: t1.micro
-
-Here, we are specifying what AMI (Amazon Machine Image) we will use to deploy the hosts
-in our topology. The |ami| ami is an Ubuntu 11.04 image with some software preinstalled,
-which will reduce the deployment time considerably.
-
-.. note::
-	In case you're wondering, the documentation is automatically updated to reflect
-	the latest version of the Globus Provision "golden AMI", so you can use the 
-	configuration files shown here verbatim. 
-	
-	The latest version of the AMI is also listed on the main Globus Provision website.
-	
-We are also specifying the `EC2 instance type <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/instance-types.html>`_
-to use. We are using the `"micro-instance" <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?concepts_micro_instances.html>`_
-type, an instance with limited memory and CPU power, but good enough for tinkering around. This is also
-Amazon's cheapest instance type ($0.02/hour), which means running the example in this chapter
-won't cost you more that $0.08/hour (as we'll see soon, the topology is "translated" into four
-hosts).
-
-Finally, we have the specification of the ``simple`` domain itself. The options are fairly
+Next, we have the specification of the ``simple`` domain itself. The options are fairly
 self-explanatory:
 
 ::
@@ -145,15 +118,37 @@ in all the hosts in the domain).
 ::
 
 	lrm: condor
-	
-This option specifies what LRM (Local Resource Manager) should be installed on this domain.
-Currently, only ``condor`` is supported.	
-
-::
-	
 	cluster-nodes: 2
 	
-Finally, we specify that the LRM must have two worker nodes.
+This option specifies what LRM (Local Resource Manager) should be installed on this domain, and
+how many worker nodes that LRM will have.	
+
+Finally, because we've selected the ``ec2`` deployer, there is also an ``[ec2]`` section where we have
+to specify some EC2-specific options:
+
+.. parsed-literal::
+
+	[ec2]
+	ami: |ami|
+	instance-type: t1.micro
+
+Here, we are specifying what AMI (Amazon Machine Image) we will use to deploy the hosts
+in our topology. The |ami| ami is an Ubuntu 11.04 image with some software preinstalled,
+which will reduce the deployment time considerably.
+
+.. note::
+	In case you're wondering, the documentation is automatically updated to reflect
+	the latest version of the Globus Provision "golden AMI", so you can use the 
+	configuration files shown here verbatim. 
+	
+	The latest version of the AMI is also listed on the main Globus Provision website.
+	
+We are also specifying the `EC2 instance type <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/instance-types.html>`_
+to use. We are using the `"micro-instance" <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?concepts_micro_instances.html>`_
+type, an instance with limited memory and CPU power, but good enough for tinkering around. This is also
+Amazon's cheapest instance type ($0.02/hour), which means running the example in this chapter
+won't cost you more than $0.08/hour (as we'll see soon, the topology is "translated" into four
+hosts).
 
 .. note::
 
@@ -351,7 +346,7 @@ the ``-v`` option:
 	gp-describe-instance -v gpi-02156188
 	
 As you'll see, this provides a much more verbose output than the regular ``gp-describe-instance``.
-The :ref:`chap_topology` chapter describes this JSON format in more detail. 
+:ref:`chap_topology` describes this JSON format in more detail. 
 
 Modifying a running instance
 ============================
@@ -387,7 +382,7 @@ know not to start ``simple-condor-wn3`` until ``simple-condor`` is running).
 
 We also need to tell Globus Provision that this new host will act as a Condor worker node in the domain.
 We do so by specifying what its "run list" will be. This concept is covered in more detail in
-the :ref:`chap_topology` chapter. The run list is actually passed to `Chef <http://www.opscode.com/chef/>`_,
+:ref:`chap_topology`. The run list is actually passed to `Chef <http://www.opscode.com/chef/>`_,
 a configuration management framework that Globus Provision uses internally to set up the individual
 hosts in an instance. You can see the list of Chef "recipes" and "roles" that Globus Provision
 supports in :ref:`chap_recipe_ref`.
@@ -473,7 +468,7 @@ For example, to remove ``simple-condor-wn3``, we could do the following::
 	                gpi-02156188 \
 	                simple-condor-wn3 simple-foo simple-bar
 	
-Notice how we've also specified two hosts that don't exists. In this case, ``gp-remove-hosts``
+Notice how we've also specified two hosts that don't exist. In this case, ``gp-remove-hosts``
 will just print out a warning::
 
 	Warning: Host simple-foo does not exist.
@@ -522,7 +517,7 @@ would be able to do the following changes:
   a ``t1.micro`` EC2 instance, you could add a few ``m1.small`` EC2 instances). 
 * Add or remove several users at once (instead of one by one using ``gp-add-user``).
   Furthermore, you can also modify existing users (for example, changing a user's
-  password or authorized SSH public key)
+  password or authorized SSH public key).
 * Add or remove entire domains.
 * Add software to one or several hosts.
 
@@ -603,7 +598,7 @@ are essentially idling most of the time.
 
 On the other hand, it would be inconvenient to have to
 create a completely new instance from scratch, transfer all your files into it,
-etc. every time you wanted to tinker around. So, Globus Provision allows you
+etc., every time you wanted to tinker around. So, Globus Provision allows you
 to shut down -but not *terminate*- your instance, so that you can resume it
 later. You will still have to pay Amazon EC2 for the cost of storing your
 instance (more specifically, each Globus Provision AMI uses an 8GB 

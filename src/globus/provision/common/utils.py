@@ -14,6 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Miscellaneous utility functions.
+"""
+
 import glob
 import os
 
@@ -119,6 +123,5 @@ def rest_table(col_names, rows):
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
-
 
 

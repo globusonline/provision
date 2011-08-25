@@ -14,12 +14,19 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Remote execution and file transfer via SSH
+
+This module provides an abstraction over the paramiko package.
+"""
+
 import sys
 import paramiko
 import time
 import select
 import os.path
 import traceback
+from paramiko.ssh_exception import SSHException
 
 # Try to use our patched version of paraproxy only if
 # it is available. If it isn't, ProxyCommand support
@@ -67,7 +74,12 @@ class SSH(object):
                 else:
                     time.sleep(2)
 
-        self.sftp = paramiko.SFTPClient.from_transport(self.client.get_transport())    
+        try:
+            self.sftp = self.client.get_transport().open_sftp_client()
+        except SSHException, sshe:
+            # Some SSH servers, like the GO CLI, are not amenable to SFTP
+            log.debug("Unable to create an SFTP client on this connection.")
+            self.sftp = None  
         
     def close(self):
         self.client.close()

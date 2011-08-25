@@ -14,6 +14,16 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+The Globus Provision API
+
+This API is currently meant to be used locally (i.e., not accessible through a 
+network via a remote call interface like REST, SOAP, etc.) and by a single 
+user (i.e., there is no notion of different users owning different instances). 
+Future versions of Globus Provision may run as a daemon with a remotely-accessible 
+API that supports multiple users.
+"""
+
 import sys
 import traceback
 
@@ -22,6 +32,7 @@ from boto.exception import EC2ResponseError
 import globus.provision.deploy.ec2 as ec2_deploy
 import globus.provision.deploy.dummy as dummy_deploy
 
+from globus.provision.core.deploy import DeploymentException
 from globus.provision.core.topology import Topology, Node
 from globus.provision.core.instance import InstanceStore, InstanceException
 from globus.provision.common.threads import MultiThread
@@ -31,6 +42,9 @@ from globus.provision.common.config import ConfigException
 from globus.provision.common.persistence import ObjectValidationException
 
 class API(object):
+    """
+    The Globus Provision API.
+    """
     
     STATUS_SUCCESS = 0
     STATUS_FAIL = 1
@@ -59,8 +73,6 @@ class API(object):
         
         if not success:
             return (API.STATUS_FAIL, message, None)
-
-        log.set_logging_instance(inst_id)
                 
         try:
             json_string = inst.topology.to_json_string()
@@ -80,6 +92,15 @@ class API(object):
         log.set_logging_instance(inst_id)
             
         try:
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class(extra_files, run_cmds)
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)               
+            
             if inst.topology.state == Topology.STATE_NEW:
                 resuming = False
             elif inst.topology.state == Topology.STATE_STOPPED:
@@ -94,10 +115,6 @@ class API(object):
                 inst.topology.state = Topology.STATE_RESUMING
     
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(extra_files, run_cmds)
-            deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()
     
@@ -165,8 +182,13 @@ class API(object):
     
             deployer_class = self.__get_deployer_class(inst)
             deployer = deployer_class(extra_files, run_cmds)
-            deployer.set_instance(inst)            
-    
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)    
+                
             if topology_json != None:
                 old_topology = inst.topology
                 try:
@@ -254,13 +276,18 @@ class API(object):
             if inst.topology.state != Topology.STATE_RUNNING:
                 message = "Cannot start an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)
+
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class()
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)       
         
             inst.topology.state = Topology.STATE_STOPPING
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class()
-            deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            
     
@@ -299,13 +326,18 @@ class API(object):
             if inst.topology.state in [Topology.STATE_NEW]:
                 message = "Cannot terminate an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)
+
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class()
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)       
         
             inst.topology.state = Topology.STATE_TERMINATING
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class()
-            deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            
     

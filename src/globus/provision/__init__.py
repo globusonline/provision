@@ -14,6 +14,12 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Globus Provision is a tool for deploying fully-configured Globus systems on Amazon EC2
+
+See http://globus.org/provision/ for more details
+"""
+
 VERSION="0.3"
 RELEASE="0.3.0"
-AMI="ami-69bd7d00"
+AMI="ami-4104c428"

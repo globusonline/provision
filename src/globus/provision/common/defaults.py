@@ -14,6 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Default file locations
+"""
+
 import os.path
 
 CONFIG_FILE = os.path.expanduser("~/.globusprovision/provision.conf")

@@ -14,6 +14,14 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Persistent objects
+
+A self-documenting, self-validating, persistent object library.
+The only persistent backend currently supported is JSON, but
+others could be added.
+"""
+
 from globus.provision.common.utils import enum
 
 import inspect

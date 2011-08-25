@@ -31,7 +31,7 @@ cmds = {"globus.provision.cli.api":
         ["gp-ec2-create-ami", "gp-ec2-update-ami"],
         
         "globus.provision.cli.globusonline":
-        ["gp-go-register-endpoint"]
+        ["gp-go-register-endpoints"]
         }
 
 eps = []
@@ -43,7 +43,7 @@ for mod in cmds:
 
 setup(name='globus-provision',
       version=RELEASE,
-      description='A tool for deploying fully-configured Globus systems on an IaaS cloud, such as Amazon EC2',
+      description='A tool for deploying fully-configured Globus systems on Amazon EC2',
       author='University of Chicago',
       author_email='borja@cs.uchicago.edu',
       url='http://globus.org/provision',

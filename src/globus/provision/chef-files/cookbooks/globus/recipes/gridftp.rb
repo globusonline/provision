@@ -22,6 +22,9 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
+
 include_recipe "globus::repository"
 
 package "xinetd"
@@ -41,8 +44,7 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :ec2_public => node[:ec2_public],
-    :public_ip => node[:public_ip]
+    :public_ip => gp_node[:public_ip]
   )
   notifies :restart, "service[xinetd]"
 end

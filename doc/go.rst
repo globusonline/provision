@@ -168,9 +168,9 @@ in your domain:
 	go-auth: **myproxy**
 
 Finally, once your instance is running, you can just create the endpoint using the
-:ref:`cli_gp-go-register-endpoint` command:: 
+:ref:`cli_gp-go-register-endpoints` command:: 
 
-	$ gp-go-register-endpoint gpi-7a4f5ec1
+	$ gp-go-register-endpoints gpi-7a4f5ec1
 	Created endpoint 'go-user#gp-test' for domain 'simple'
 
 

@@ -1,5 +1,5 @@
 Globus Provision is a tool for deploying fully-configured `Globus <http://www.globus.org/>`_ 
-systems on an IaaS cloud, such as `Amazon EC2 <http://aws.amazon.com/ec2/>`_. For example,
+systems on `Amazon EC2 <http://aws.amazon.com/ec2/>`_. For example,
 you could use Globus Provision to deploy a cluster on EC2 with various Globus services, and
 a Condor pool, installed on it: 
 
@@ -72,7 +72,7 @@ So, if you have data you need to run some computation on, but do not have the
 resources for running this computation, the combination of
 Globus Provision and Globus Online Transfer allows you to do the following:
 
-#. Deploy a cluster like the one show above using Globus Provision.
+#. Deploy a cluster like the one shown above using Globus Provision.
 #. Turn it into a Globus Online transfer endpoint.
 #. Transfer your data into the cluster from an existing Globus Online endpoint, or from your
    own computer using `Globus Connect <https://www.globusonline.org/globus_connect/>`_.

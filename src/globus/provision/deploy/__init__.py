@@ -13,3 +13,13 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+
+"""
+This package contains the "deployers".
+
+Globus Provision can support multiple deployment backends called "deployers", 
+selected on a per-instance basis. Currently, Amazon EC2 is the only "real" 
+deployer available. A "dummy" deployer is also available for testing purposes. 
+However, additional deployers can be implemented by creating a child class 
+of globus.provision.core.deploy.BaseDeployer.
+"""

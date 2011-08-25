@@ -14,6 +14,13 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Thread management
+
+This module provides an abstraction over the threading package, including
+the ability to manage the execution of a tree of threads.
+"""
+
 import os
 import sys
 import signal

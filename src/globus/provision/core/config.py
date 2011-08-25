@@ -14,6 +14,19 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+"""
+Contains the parsers for the two configuration files used in Globus Provision:
+
+* The instance configuration file (GPConfig): This is the configuration file
+  that specifies options related to an instance's deploymenr.
+  
+* The simple topology file: This is a simple format for specifying topologies
+  (which internally translated to the topology JSON format). It has the
+  format of a configuration file although, strictly speaking, it is *not*
+  a configuration file.    
+
+"""
+
 from globus.provision.core.topology import Domain, User, Node, Topology,\
     DeployData, EC2DeployData, GridMapEntry, GOEndpoint
 from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN, OPTTYPE_FILE
@@ -21,6 +34,9 @@ import os.path
 import getpass
 
 class GPConfig(Config):
+    """
+    The instance configuration file.
+    """
 
     sections = []    
     
@@ -132,17 +148,6 @@ class GPConfig(Config):
             using the keypair specified in ``keypair``. If you are using one of the
             Globus Provision AMIs, you need to set this value to ``ubuntu``.
             """),     
-     Option(name        = "availability-zone",
-            getter      = "ec2-availability-zone",
-            type        = OPTTYPE_STRING,
-            required    = False,
-            default     = None,
-            doc         = """
-            The `availability zone <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/concepts-regions-availability-zones.html>`_ 
-            you want the VMs to be deployed in. 
-            Unless you have a good reason for choosing a specific availability zone,
-            you should let Globus Provision choose a default zone for you.
-            """),
      Option(name        = "server-hostname",
             getter      = "ec2-server-hostname",
             type        = OPTTYPE_STRING,
@@ -241,6 +246,9 @@ class GPConfig(Config):
 
 
 class SimpleTopologyConfig(Config):
+    """
+    The simple topology file
+    """    
     
     sections = []    
     
@@ -426,7 +434,15 @@ class SimpleTopologyConfig(Config):
             required    = False,
             doc         = """
             The number of worker nodes to create for the LRM.        
-            """),          
+            """),         
+     Option(name        = "galaxy",
+            getter      = "galaxy",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            Specifies whether to set up a Galaxy server on this domain.        
+            """),            
      Option(name        = "go-endpoint",
             getter      = "go-endpoint",
             type        = OPTTYPE_STRING,
@@ -488,7 +504,18 @@ class SimpleTopologyConfig(Config):
             This is the `EC2 instance type <http://en.wikipedia.org/wiki/Amazon_Machine_Image>`_ that will
             be used to launch the machines in this domain. The default is to use micro-instances (t1.micro),
             which tend to be enough if you are just tinkering around.
-            """),              
+            """),         
+     Option(name        = "availability-zone",
+            getter      = "ec2-availability-zone",
+            type        = OPTTYPE_STRING,
+            required    = False,
+            default     = None,
+            doc         = """
+            The `availability zone <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/concepts-regions-availability-zones.html>`_ 
+            you want the VMs to be deployed in. 
+            Unless you have a good reason for choosing a specific availability zone,
+            you should let Globus Provision choose a default zone for you.
+            """)          
     ]    
     sections.append(ec2)    
   
@@ -604,6 +631,11 @@ class SimpleTopologyConfig(Config):
                     # If there is no login node, the NFS/NIS server will
                     # effectively act as one. 
                     server_node.add_to_array("run_list", "role[globus]")
+                if self.get((domain_name,"galaxy")):
+                    # If there is a Galaxy server in the domain, the "common"
+                    # recipe has to be installed on the NFS/NIS server
+                    server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                    
                 domain.add_node(server_node)
 
             if self.get((domain_name,"login")):            
@@ -640,6 +672,23 @@ class SimpleTopologyConfig(Config):
                     gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
                 gridftp_node.add_to_array("run_list", "role[domain-gridftp]")
                 domain.add_node(gridftp_node)                
+            
+            if self.get((domain_name,"galaxy")):
+                galaxy_node = Node()
+                galaxy_node.set_property("id", "%s-galaxy" % domain_name)
+
+                if self.get((domain_name,"nfs-nis")):  
+                    galaxy_node.set_property("depends", "node:%s" % server_name)
+                    galaxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    galaxy_node.add_to_array("run_list", "recipe[provision::domain_users]")     
+                    galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
+
+                if self.get((domain_name,"go-endpoint")) != None:
+                    galaxy_node.add_to_array("run_list", "recipe[globus::go_cert]")
+                galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
+                domain.add_node(galaxy_node)                
+            
             
             lrm = self.get((domain_name,"lrm"))
             if lrm != "none":
