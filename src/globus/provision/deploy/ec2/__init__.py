@@ -108,6 +108,7 @@ class Deployer(BaseDeployer):
                     # GridFTP
                     gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
                     gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
+                    gp_sg.authorize('tcp', 50000, 51000, '0.0.0.0/0')
                     
                     # MyProxy
                     gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
