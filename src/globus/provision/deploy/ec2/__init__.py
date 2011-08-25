@@ -83,8 +83,8 @@ class Deployer(BaseDeployer):
                 self.conn = create_ec2_connection()
             
             if self.conn == None:
-                print "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
-                exit(1)
+                raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
+
             log.debug("Connected to EC2.")
         except BotoClientError, exc:
             raise DeploymentException, "Could not connect to EC2. %s" % exc.reason
