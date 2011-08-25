@@ -1,8 +1,0 @@
-authorized_retrievers "*"
-pam  "sufficient"
-certificate_issuer_cert /home/globus/.globus/simpleCA/cacert.pem
-certificate_issuer_key /home/globus/.globus/simpleCA/private/cakey.pem
-certificate_issuer_key_passphrase "cagrid"
-certificate_serialfile /home/globus/.globus/simpleCA/serial
-certificate_out_dir /home/globus/.globus/simpleCA/newcerts
-certificate_mapapp /usr/local/bin/myproxy-demogrid-certificate-mapapp

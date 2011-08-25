@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli import demogrid_clone_image
-import sys
-
-c = demogrid_clone_image(sys.argv)
-c.run()

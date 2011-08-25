@@ -1,7 +1,0 @@
-#!/usr/bin/python
-
-from demogrid.cli import demogrid_register_host_libvirt
-import sys
-
-c = demogrid_register_host_libvirt(sys.argv)
-c.run()

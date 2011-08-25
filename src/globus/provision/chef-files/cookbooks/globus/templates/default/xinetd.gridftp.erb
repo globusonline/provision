@@ -1,0 +1,17 @@
+service gsiftp
+             {
+             instances               = 50
+             socket_type             = stream
+             wait                    = no
+             user                    = root     
+             server                  = /usr/sbin/globus-gridftp-server
+             <% if @public_ip %>
+             server_args             = -i  --data-interface <%= @public_ip %>
+             <% else %>
+             server_args             = -i
+             <% end %>
+             env                     += GLOBUS_TCP_PORT_RANGE=50000,51000
+             log_on_success          += DURATION
+             nice                    = 10
+             disable                 = no
+             }
