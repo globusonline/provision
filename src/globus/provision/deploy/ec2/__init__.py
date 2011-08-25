@@ -111,6 +111,9 @@ class Deployer(BaseDeployer):
                     
                     # MyProxy
                     gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
+    
+                    # Galaxy
+                    gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
         
                 sgs = ["globus-provision"]
                 self.has_gp_sg = True
