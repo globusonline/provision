@@ -78,18 +78,26 @@ class gp_go_register_endpoints(Command):
         for domain_name, domain in inst.topology.domains.items():
             for ep in domain.go_endpoints:
                 if ep.gridftp.startswith("node:"):
-                    gridftp = inst.topology.get_node_by_id(ep.gridftp[5:]).hostname
+                    gridftp_node = inst.topology.get_node_by_id(ep.gridftp[5:])
+                    gridftp = gridftp_node.hostname
+                    if ep.globus_connect_cert:
+                        gc_setupkey = gridftp_node.gc_setupkey
+                        gridftp_subject = "/C=US/O=Globus Consortium/OU=Globus Connect Service/CN=%s" % gc_setupkey
+                    else:
+                        ca_dn = inst.config.get("ca-dn")
+                        if ca_dn == None:
+                            ca_dn = "/O=Grid/OU=Globus Provision (generated)"
+                        else:
+                            ca_dn = [x.split("=") for x in ca_dn.split(",")]
+                            ca_dn = "".join(["/%s=%s" % (n.upper().strip(), v.strip()) for n,v in ca_dn])
+        
+                        gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp)
                 else:
+                    # Note: If user specifies an arbitrary GridFTP hostname, it
+                    # will only work if it uses a valid host certificate that
+                    # is trusted by Globus Online.
                     gridftp = ep.gridftp
-    
-                ca_dn = inst.config.get("ca-dn")
-                if ca_dn == None:
-                    ca_dn = "/O=Grid/OU=Globus Provision (generated)"
-                else:
-                    ca_dn = [x.split("=") for x in ca_dn.split(",")]
-                    ca_dn = "".join(["/%s=%s" % (n.upper().strip(), v.strip()) for n,v in ca_dn])
-
-                gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp)
+                    gridftp_subject = None
     
                 if ep.myproxy.startswith("node:"):
                     myproxy = inst.topology.get_node_by_id(ep.myproxy[5:])
