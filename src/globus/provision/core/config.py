@@ -371,6 +371,17 @@ class SimpleTopologyConfig(Config):
                 N madduri
             
             """),   
+     
+     Option(name        = "barebones-nodes",
+            getter      = "barebones-nodes",
+            type        = OPTTYPE_INT,
+            default     = 0,
+            required    = False,
+            doc         = """
+            A "barebones node" is a node on which no software will be installed. If ``nfs-nis`` is ``True``,
+            these nodes *will* be configured as NFS/NIS clients. These nodes can be useful for testing.   
+            """),            
+     
      Option(name        = "nfs-nis",
             getter      = "nfs-nis",
             type        = OPTTYPE_BOOLEAN,
@@ -565,7 +576,7 @@ class SimpleTopologyConfig(Config):
             domain = Domain()
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
-            
+
             has_go_ep = self.get((domain_name,"go-endpoint")) != None
 
             user = User()
@@ -657,6 +668,20 @@ class SimpleTopologyConfig(Config):
                     
                 domain.add_node(server_node)
 
+            for i in range(self.get((domain_name,"barebones-nodes"))):
+                bb_name = "%s-blank-%i" % (domain_name, i+1)
+
+                bb_node = Node()
+                bb_node.set_property("id", bb_name)
+                if self.get((domain_name,"nfs-nis")):  
+                    bb_node.set_property("depends", "node:%s" % server_name)
+                    bb_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+                else:
+                    bb_node.add_to_array("run_list", "recipe[provision::gp_node]")  
+                    bb_node.add_to_array("run_list", "recipe[provision::domain_users]")              
+                               
+                domain.add_node(bb_node)
+
             if self.get((domain_name,"login")):            
                 login_node = Node()
                 login_node.set_property("id", "%s-login" % domain_name)
@@ -664,6 +689,7 @@ class SimpleTopologyConfig(Config):
                     login_node.set_property("depends", "node:%s" % server_name)
                     login_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
+                    login_node.add_to_array("run_list", "recipe[provision::gp_node]")
                     login_node.add_to_array("run_list", "recipe[provision::domain_users]")
                 login_node.add_to_array("run_list", "role[globus]")
                 domain.add_node(login_node)                
@@ -675,6 +701,7 @@ class SimpleTopologyConfig(Config):
                     myproxy_node.set_property("depends", "node:%s" % server_name)
                     myproxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
+                    myproxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
                     myproxy_node.add_to_array("run_list", "recipe[provision::domain_users]")
                 myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
                 domain.add_node(myproxy_node)
@@ -686,6 +713,7 @@ class SimpleTopologyConfig(Config):
                     gridftp_node.set_property("depends", "node:%s" % server_name)
                     gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
+                    gridftp_node.add_to_array("run_list", "recipe[provision::gp_node]")
                     gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")     
                     
                 if has_go_ep:
@@ -706,6 +734,7 @@ class SimpleTopologyConfig(Config):
                     galaxy_node.set_property("depends", "node:%s" % server_name)
                     galaxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
+                    galaxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
                     galaxy_node.add_to_array("run_list", "recipe[provision::domain_users]")     
                     galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
 
@@ -733,6 +762,7 @@ class SimpleTopologyConfig(Config):
                     lrm_node.set_property("depends", "node:%s" % server_name)
                     lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
                 else:
+                    lrm_node.add_to_array("run_list", "recipe[provision::gp_node]")
                     lrm_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
                 lrm_node.add_to_array("run_list", role)
                 domain.add_node(lrm_node)
@@ -747,13 +777,14 @@ class SimpleTopologyConfig(Config):
                     if self.get((domain_name,"nfs-nis")):
                         wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
                     else:
+                        wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
                         wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
                     wn_node.add_to_array("run_list", workernode_role)
                     domain.add_node(wn_node)
 
                     clusternode_host += 1
             
-            if has_go_ep != None:
+            if has_go_ep:
                 goep = GOEndpoint()
                 gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
                 goep.set_property("user", gouser)
