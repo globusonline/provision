@@ -49,10 +49,10 @@ ruby_block "get_gc_certificate" do
   block do
   	ENV["X509_USER_CERT"]="/etc/grid-security/anon.cert"
   	ENV["X509_USER_KEY"]="/etc/grid-security/anon.key"
-    #cert_blob = `gsissh -F /dev/null -o "GSSApiTrustDns no" -o "ServerAliveInterval 15" -o "ServerAliveCountMax 8" relay.globusonline.org -p 2223 register #{gp_node[:gc_setupkey]}`
+    cert_blob = `gsissh -F /dev/null -o "GSSApiTrustDns no" -o "ServerAliveInterval 15" -o "ServerAliveCountMax 8" relay.globusonline.org -p 2223 register #{gp_node[:gc_setupkey]}`
 
 	# Just for testing
-	cert_blob = `cat $X509_USER_CERT $X509_USER_KEY`
+	#cert_blob = `cat $X509_USER_CERT $X509_USER_KEY`
 
     cert = OpenSSL::X509::Certificate.new(cert_blob)
     cert_f = File.new(cert_file, 'w')
