@@ -231,7 +231,16 @@ class Deployer(BaseDeployer):
         jitter = random.uniform(0.0, 0.5)
         while True:
             time.sleep(interval + jitter)
-            newstate = obj.update()
+            try:
+                newstate = obj.update()
+            except EC2ResponseError, ec2err:
+                if ec2err.error_code == "InvalidInstanceID.NotFound":
+                    # If the instance was just created, this is a transient error. 
+                    # We just have to wait until the instance appears.
+                    pass
+                else:
+                    raise ec2err            
+            
             if newstate == state:
                 return True
         # TODO: Check errors            

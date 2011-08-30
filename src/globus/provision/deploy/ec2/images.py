@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+from boto.exception import EC2ResponseError
 
 """
 EC2 images utilities.
@@ -57,8 +58,19 @@ class EC2AMICreator(object):
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
         
-        while instance.update() != "running":
-            time.sleep(2)
+        while True:
+            try:
+                newstate = instance.update()
+                if newstate == "running":
+                    break
+                time.sleep(2)
+            except EC2ResponseError, ec2err:
+                if ec2err.error_code == "InvalidInstanceID.NotFound":
+                    # If the instance was just created, this is a transient error. 
+                    # We just have to wait until the instance appears.
+                    pass
+                else:
+                    raise ec2err            
         
         print "Instance running"
         print self.username, instance.public_dns_name, self.keyfile
