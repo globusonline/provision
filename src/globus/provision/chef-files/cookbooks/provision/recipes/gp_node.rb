@@ -41,3 +41,16 @@ file "/etc/profile.d/globusprovision" do
   group "root"
   content "export MYPROXY_SERVER=#{gp_domain[:myproxy_server]}"
 end
+
+# Add passwordless access to members of the gp-admins group
+execute "add_sudoers" do
+  line = "%gp-admins ALL=NOPASSWD: ALL"
+  only_if do
+    File.read("/etc/sudoers").index(line).nil?
+  end  
+  user "root"
+  group "root"
+  command "echo \"#{line}\" >> /etc/sudoers"
+  action :run
+end
+

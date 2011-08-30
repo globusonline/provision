@@ -35,6 +35,14 @@ package "libshadow-ruby1.8" do
   action :install
 end
 
+# Create the "Globus Provision Admins" group.
+# Users in this group have passwordless sudo access
+# on all nodes.
+group "gp-admins" do
+  gid 3000
+end
+
+
 # The :users attribute is part of the generated topology.rb file,
 # and contains information on a domain's users (username,
 # password, etc.)
@@ -101,15 +109,12 @@ users.values.each do |u|
     action :run
   end    
   
-  case node.platform
-    when "ubuntu"
-      group "admin" do
-        only_if do u[:admin] end
-        members [u[:id]]
-        append true
-        action :modify
-      end
-  end 
+  group "gp-admins" do
+    only_if do u[:admin] end
+    members [u[:id]]
+    append true
+    action :modify
+  end
 
 end
 
