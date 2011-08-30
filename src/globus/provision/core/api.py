@@ -375,13 +375,14 @@ class API(object):
             
             # Remove GO endpoints
             for domain_name, domain in inst.topology.domains.items():
-                for ep in domain.go_endpoints:     
-                    go_helper.connect(ep.user)
-                    try:
-                        go_helper.endpoint_remove(ep)
-                    except:
-                        pass   
-                    go_helper.disconnect()
+                if domain.has_property("go_endpoints"):
+                    for ep in domain.go_endpoints:     
+                        go_helper.connect(ep.user)
+                        try:
+                            go_helper.endpoint_remove(ep)
+                        except:
+                            pass   
+                        go_helper.disconnect()
         
             inst.topology.state = Topology.STATE_TERMINATED
             inst.topology.save()
@@ -441,14 +442,15 @@ class API(object):
         go_helper = GlobusOnlineHelper.from_instance(inst)
         
         for domain_name, domain in inst.topology.domains.items():
-            for ep in domain.go_endpoints:
-                if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
-                    if ep.gridftp.startswith("node:"):
-                        gridftp_node = inst.topology.get_node_by_id(ep.gridftp[5:])
-                        go_helper.connect(ep.user)
-                        gc_setupkey = go_helper.endpoint_gc_create(ep, replace = True)
-                        gridftp_node.set_property("gc_setupkey", gc_setupkey)
-                        go_helper.disconnect()        
+            if domain.has_property("go_endpoints"):
+                for ep in domain.go_endpoints:
+                    if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                        if ep.gridftp.startswith("node:"):
+                            gridftp_node = inst.topology.get_node_by_id(ep.gridftp[5:])
+                            go_helper.connect(ep.user)
+                            gc_setupkey = go_helper.endpoint_gc_create(ep, replace = True)
+                            gridftp_node.set_property("gc_setupkey", gc_setupkey)
+                            go_helper.disconnect()        
 
 
     def __globusonline_post_start(self, inst):
@@ -456,14 +458,15 @@ class API(object):
         
         # Globus Online
         for domain_name, domain in inst.topology.domains.items():
-            for ep in domain.go_endpoints:
-                go_helper.connect(ep.user)
-                if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
-                    if ep.gridftp.startswith("node:"):
-                        go_helper.endpoint_gc_create_finalize(ep)
-                else:        
-                    go_helper.create_endpoint(ep, replace=True)
-                go_helper.disconnect()
+            if domain.has_property("go_endpoints"):
+                for ep in domain.go_endpoints:
+                    go_helper.connect(ep.user)
+                    if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                        if ep.gridftp.startswith("node:"):
+                            go_helper.endpoint_gc_create_finalize(ep)
+                    else:        
+                        go_helper.create_endpoint(ep, replace=True)
+                    go_helper.disconnect()
                     
         
     def __allocate_vms(self, deployer, nodes, resuming):
