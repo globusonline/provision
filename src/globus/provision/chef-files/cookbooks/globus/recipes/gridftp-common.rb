@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                 #
+# Copyright 2010-2011, University of Chicago                                      #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,12 +14,23 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-"""
-Globus Provision is a tool for deploying fully-configured Globus systems on Amazon EC2
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: Globus Toolkit 5.1.1 GridFTP
+##
+## This recipe installs the GridFTP server and sets it up as a xinetd service.
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See http://globus.org/provision/ for more details
-"""
+include_recipe "globus::repository"
 
-VERSION="0.3"
-RELEASE="0.3.0"
-AMI="ami-4104c428"
+package "xinetd"
+package "globus-gridftp-server-progs"
+package "libglobus-xio-gsi-driver-dev"
+
+cookbook_file "/etc/gridftp.conf.default" do
+  source "gridftp.conf"
+  mode 0644
+  owner "root"
+  group "root"
+end

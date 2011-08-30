@@ -36,7 +36,7 @@ What you need from Amazon EC2
 
 First of all, if you don't have an account, you will have to 
 `get one <http://aws-portal.amazon.com/gp/aws/developer/subscription/index.html?productCode=AmazonEC2>`_.
-Take into account that you may be able to you can take advantage of their 
+Consider that you may be able to you can take advantage of their 
 `Free Usage Tier <http://aws.amazon.com/free/>`_ and get 750 hours on EC2 completely free.
 
 If you are completely new to EC2, it may be worthwhile to read through their
@@ -49,16 +49,16 @@ to monitor your EC2 instances.
 Once you have an account, Globus Provision will need the following information:
 
 * Globus Provision needs to request EC2 instances on your behalf. To do this, you need to
-  get an `Access Key ID and Secret Access Key <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-access-key>`_.
+  get an `Access Key ID and Secret Access Key <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-access-key>`_
   from Amazon EC2 (follow the link for instructions on how to do this). These keys will
   *only* reside on your own computer. The Globus Provision commands will contact EC2
   directly using those keys, and the keys are *never* sent through any intermediate Globus servers.
   
 * Globus Provision needs to log into the EC2 instances it creates, so it can configure them
   according to the topology you specified. You will need to obtain an 
-  `SSH Keypair <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-keypair>`_.
+  `SSH Keypair <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-keypair>`_
   from Amazon EC2 (follow the link for instructions on how to do this). We suggest that you 
-  create an keypair called ``gp-key``, and save the keypair file as ``~/.ec2/gp-key.pem``, since 
+  create a keypair called ``gp-key``, and save the keypair file as ``~/.ec2/gp-key.pem``, since 
   many of the sample files assume that naming.
   
 For now, just hold on to your access keys and your keypair. In the next chapter, we will see

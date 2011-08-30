@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                      #
+# Copyright 2010-2011, University of Chicago                                 #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,35 +16,52 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Globus Toolkit 5.1.1 GridFTP
+## RECIPE: GC certificate
 ##
-## This recipe installs the GridFTP server and sets it up as a xinetd service.
-##
+## 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-include_recipe "globus::repository"
+require "openssl"
 
-package "xinetd"
-package "globus-gridftp-server-progs"
-package "libglobus-xio-gsi-driver-dev"
+include_recipe "globus::go_cert"
 
-cookbook_file "/etc/gridftp.conf.default" do
-  source "gridftp.conf"
+gp_domain = node[:topology][:domains][node[:domain_id]]
+gp_node   = gp_domain[:nodes][node[:node_id]]
+
+cookbook_file "/etc/grid-security/anon.cert" do
+  source "anon.cert"
   mode 0644
   owner "root"
   group "root"
 end
 
-template "/etc/xinetd.d/gsiftp" do
-  source "xinetd.gridftp.erb"
-  mode 0644
+cookbook_file "/etc/grid-security/anon.key" do
+  source "anon.key"
+  mode 0400
   owner "root"
   group "root"
-  variables(
-    :ec2_public => node[:ec2_public],
-    :public_ip => node[:public_ip]
-  )
-  notifies :restart, "service[xinetd]"
 end
 
-service "xinetd"
+ruby_block "get_gc_certificate" do
+  cert_file = "/etc/grid-security/gc-cert-#{gp_node[:gc_setupkey]}.pem"
+  key_file = "/etc/grid-security/gc-key-#{gp_node[:gc_setupkey]}.pem"
+  only_if do ! File.exists?(cert_file) end
+  block do
+  	ENV["X509_USER_CERT"]="/etc/grid-security/anon.cert"
+  	ENV["X509_USER_KEY"]="/etc/grid-security/anon.key"
+    cert_blob = `gsissh -F /dev/null -o "GSSApiTrustDns no" -o "ServerAliveInterval 15" -o "ServerAliveCountMax 8" relay.globusonline.org -p 2223 register #{gp_node[:gc_setupkey]}`
+
+	# Just for testing
+	#cert_blob = `cat $X509_USER_CERT $X509_USER_KEY`
+
+    cert = OpenSSL::X509::Certificate.new(cert_blob)
+    cert_f = File.new(cert_file, 'w')
+    cert_f.write(cert.to_pem)
+    cert_f.chmod(0644)
+    
+    key = OpenSSL::PKey::RSA.new(cert_blob)
+    key_f = File.new(key_file, 'w')
+    key_f.write(key.to_pem)
+    key_f.chmod(0400)
+  end
+end

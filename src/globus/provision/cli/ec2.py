@@ -19,6 +19,7 @@ Commands related to the EC2 deployer, but which do not require access to the API
 """
 
 import sys
+import os.path
 
 from globus.provision.cli import Command
 from globus.provision.deploy.ec2.images import EC2AMICreator, EC2AMIUpdater
@@ -62,9 +63,10 @@ class gp_ec2_create_ami(Command):
     def run(self):    
         self.parse_options()
 
-        config = GPConfig(self.opt.conf)
+        config = GPConfig(os.path.expanduser(self.opt.conf))
+        chef_dir = os.path.expanduser(self.opt.chef_dir)
 
-        c = EC2AMICreator(self.opt.chef_dir, self.opt.ami, self.opt.aminame, config)
+        c = EC2AMICreator(chef_dir, self.opt.ami, self.opt.aminame, config)
         c.run()
         
         
@@ -102,7 +104,7 @@ class gp_ec2_update_ami(Command):
         self.parse_options()
         
         files = parse_extra_files_files(self.opt.files)
-        config = GPConfig(self.opt.conf)
+        config = GPConfig(os.path.expanduser(self.opt.conf))
         
         c = EC2AMIUpdater(self.opt.ami, self.opt.aminame, files, config)
         c.run()        

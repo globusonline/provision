@@ -35,7 +35,7 @@ This option has the following prerequisites:
   package manager (e.g., ``apt-get install python`` on Debian and Ubuntu). If you are using a Mac,
   Python is included by default; however, if your version is too old, take a look at the following
   instructions: http://www.python.org/getit/mac/
-* `Python Distribute <http://packages.python.org/distribute/>` 0.6.15 or higher. As noted above,
+* `Python Distribute <http://packages.python.org/distribute/>`_ 0.6.15 or higher. As noted above,
   you can verify if this package is installed by running ``easy_install --version``. If it is not
   available, you can find installation instructions here: http://pypi.python.org/pypi/distribute#installation-instructions.
   Take into account that, although Python Distribute is included as an optional package in most 
@@ -121,15 +121,15 @@ make any modifications to the code, you should run ``python setup.py install`` a
 in the previous section.
 
 If you intend to modify the code, and want the Globus Provision commands to use the code
-in the git repository you've created on your machine, you can instead install only the
-Globus Provision commands:
+in the git repository you've created on your machine, you can instead install Globus
+Provision in "developer" mode::
 
-::
+	python setup.py develop
 
-	python setup.py install_scripts -d ~/bin/
-
-You must additionally set your ``PYTHONPATH`` environment variable to point to the ``src``
-directory in your repository.
+This will install Globus Provision but, instead of copying the Python source code
+to a system directory, it will create a pointer to the source directory you checked out.
+That way, any changes you make to the source code will take effect immediately
+(without having to reinstall Globus Provision).
 
 Take into account that there are, at least, two branches in our GitHub repository: ``master``
 and ``dev``. The former always contains the latest stable release, including bug fixes, and

@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+from globus.provision.common.globusonline import GlobusOnlineCLIHelper,\
+    GlobusOnlineHelper
 
 """
 The Globus Provision API
@@ -26,12 +28,15 @@ API that supports multiple users.
 
 import sys
 import traceback
+import os.path
+
 
 from boto.exception import EC2ResponseError
 
 import globus.provision.deploy.ec2 as ec2_deploy
 import globus.provision.deploy.dummy as dummy_deploy
 
+from globus.provision.core.deploy import DeploymentException
 from globus.provision.core.topology import Topology, Node
 from globus.provision.core.instance import InstanceStore, InstanceException
 from globus.provision.common.threads import MultiThread
@@ -91,6 +96,15 @@ class API(object):
         log.set_logging_instance(inst_id)
             
         try:
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class(extra_files, run_cmds)
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)               
+            
             if inst.topology.state == Topology.STATE_NEW:
                 resuming = False
             elif inst.topology.state == Topology.STATE_STOPPED:
@@ -105,10 +119,10 @@ class API(object):
                 inst.topology.state = Topology.STATE_RESUMING
     
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class(extra_files, run_cmds)
-            deployer.set_instance(inst)    
+
+            self.__globusonline_pre_start(inst)
+               
+            inst.topology.save()                            
             
             nodes = inst.topology.get_nodes()
     
@@ -128,7 +142,7 @@ class API(object):
                 deployer.post_allocate(node, vm)
 
             inst.topology.save()
-    
+                            
             # Generate certificates
             if not resuming:
                 inst.gen_certificates(force_hosts=False, force_users=False)
@@ -147,7 +161,10 @@ class API(object):
                 return (API.STATUS_FAIL, message)
     
             inst.topology.state = Topology.STATE_RUNNING
-            inst.topology.save()
+            inst.topology.save()         
+            
+            log.info("Creating Globus Online endpoints")        
+            self.__globusonline_post_start(inst)            
             
             return (API.STATUS_SUCCESS, "Success")
         except:
@@ -176,8 +193,13 @@ class API(object):
     
             deployer_class = self.__get_deployer_class(inst)
             deployer = deployer_class(extra_files, run_cmds)
-            deployer.set_instance(inst)            
-    
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)    
+                
             if topology_json != None:
                 old_topology = inst.topology
                 try:
@@ -265,13 +287,18 @@ class API(object):
             if inst.topology.state != Topology.STATE_RUNNING:
                 message = "Cannot start an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)
+
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class()
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)       
         
             inst.topology.state = Topology.STATE_STOPPING
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class()
-            deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            
     
@@ -310,13 +337,18 @@ class API(object):
             if inst.topology.state in [Topology.STATE_NEW]:
                 message = "Cannot terminate an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)
+
+            deployer_class = self.__get_deployer_class(inst)
+            deployer = deployer_class()
+            
+            try:
+                deployer.set_instance(inst)
+            except DeploymentException, de:
+                message = "Deployer failed to initialize. %s " % de
+                return (API.STATUS_FAIL, message)       
         
             inst.topology.state = Topology.STATE_TERMINATING
             inst.topology.save()
-            
-            deployer_class = self.__get_deployer_class(inst)
-            deployer = deployer_class()
-            deployer.set_instance(inst)    
             
             nodes = inst.topology.get_nodes()            
     
@@ -327,10 +359,22 @@ class API(object):
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)            
         
+            go_helper = GlobusOnlineHelper.from_instance(inst)
+            
+            # Remove GO endpoints
+            for domain_name, domain in inst.topology.domains.items():
+                for ep in domain.go_endpoints:     
+                    go_helper.connect(ep.user)
+                    try:
+                        go_helper.endpoint_remove(ep)
+                    except:
+                        pass   
+                    go_helper.disconnect()
+        
             inst.topology.state = Topology.STATE_TERMINATED
             inst.topology.save()
               
-            log.info("Instances have been stopped running.")
+            log.info("Instances have been terminated.")
             return (API.STATUS_SUCCESS, "Success")
         except:
             message = self.__unexpected_exception_to_text(what = "starting the instance.")
@@ -379,6 +423,36 @@ class API(object):
             deploy_module = dummy_deploy
             
         return deploy_module.Deployer        
+        
+
+    def __globusonline_pre_start(self, inst):
+        go_helper = GlobusOnlineHelper.from_instance(inst)
+        
+        for domain_name, domain in inst.topology.domains.items():
+            for ep in domain.go_endpoints:
+                if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                    if ep.gridftp.startswith("node:"):
+                        gridftp_node = inst.topology.get_node_by_id(ep.gridftp[5:])
+                        go_helper.connect(ep.user)
+                        gc_setupkey = go_helper.endpoint_gc_create(ep, replace = True)
+                        gridftp_node.set_property("gc_setupkey", gc_setupkey)
+                        go_helper.disconnect()        
+
+
+    def __globusonline_post_start(self, inst):
+        go_helper = GlobusOnlineHelper.from_instance(inst)
+        
+        # Globus Online
+        for domain_name, domain in inst.topology.domains.items():
+            for ep in domain.go_endpoints:
+                go_helper.connect(ep.user)
+                if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                    if ep.gridftp.startswith("node:"):
+                        go_helper.endpoint_gc_create_finalize(ep)
+                else:        
+                    go_helper.create_endpoint(ep, replace=True)
+                go_helper.disconnect()
+                    
         
     def __allocate_vms(self, deployer, nodes, resuming):
         # TODO: Make this an option
