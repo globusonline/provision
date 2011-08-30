@@ -187,7 +187,19 @@ class API(object):
     
             log.set_logging_instance(inst_id)
                             
-            if inst.topology.state != Topology.STATE_RUNNING:
+            if inst.topology.state == Topology.STATE_NEW:
+                # If the topology is still in a New state, we simply
+                # validate that the update is valid, and replace
+                # the old topology. We don't need to deploy or
+                # configure any hosts..
+                if topology_json != None:
+                    try:
+                        (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
+                    except ObjectValidationException, ove:
+                        message = "Error in topology file: %s" % ove
+                        return (API.STATUS_FAIL, message)
+                return (API.STATUS_SUCCESS, "Success")
+            elif inst.topology.state != Topology.STATE_RUNNING:
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
     
