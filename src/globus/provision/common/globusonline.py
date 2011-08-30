@@ -82,15 +82,17 @@ class GlobusOnlineHelper(object):
     
     @staticmethod
     def from_instance(inst):
-        if inst.config.get("go-cert-file") == None:
+        if inst.config.get("go-cert-file") == None and inst.config.get("go-ssh-key") != None:
             # Use SSH
             ssh_key = os.path.expanduser(inst.config.get("go-ssh-key"))
             return GlobusOnlineCLIHelper(inst, ssh_key)
-        else:
+        elif inst.config.get("go-cert-file") != None:
             go_cert_file = os.path.expanduser(inst.config.get("go-cert-file"))
             go_key_file = os.path.expanduser(inst.config.get("go-key-file"))
             go_server_ca = resource_filename("globus.provision", "chef-files/cookbooks/globus/files/default/gd-bundle_ca.cert")
             return GlobusOnlineAPIHelper(inst, go_cert_file, go_key_file, go_server_ca)
+        else:
+            raise GlobusOnlineException, "Must specify either an SSH key or a certificate to connect to GO"
         
 
 class GlobusOnlineAPIHelper(GlobusOnlineHelper):
