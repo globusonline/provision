@@ -592,6 +592,14 @@ GOEndpoint.properties = {
                                     description = """
                                     The endpoint name.
                                     """),
+
+                           "public":
+                           Property(name="public",
+                                    proptype = PropertyTypes.BOOLEAN,
+                                    required = True,
+                                    description = """
+                                    Whether the endpoint should be public or not.
+                                    """),                         
                                    
                            "gridftp":
                            Property(name="gridftp",

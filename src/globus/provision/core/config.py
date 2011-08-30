@@ -758,6 +758,7 @@ class SimpleTopologyConfig(Config):
                 gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
                 goep.set_property("user", gouser)
                 goep.set_property("name", goname)
+                goep.set_property("public", False)
                 goep.set_property("gridftp", "node:%s-gridftp" % domain_name)
                 
                 if self.get((domain_name,"go-auth")) == "myproxy":
