@@ -395,7 +395,36 @@ class SimpleTopologyConfig(Config):
             
             When ``False``, user accounts and home directories will be created on every individual host. This option can
             be useful if you are creating a single-host domain.       
-            """),             
+            """),     
+     
+     Option(name        = "glusterfs",
+            getter      = "glusterfs",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            TODO       
+            """),  
+
+     Option(name        = "glusterfs-servers",
+            getter      = "glusterfs-servers",
+            type        = OPTTYPE_INT,
+            required    = False,
+            default     = 1,
+            doc         = """
+            TODO       
+            """),  
+     
+     Option(name        = "glusterfs-type",
+            getter      = "glusterfs-type",
+            type        = OPTTYPE_STRING,
+            valid       = ["distribute", "mirror"],
+            default     = "distribute",
+            required    = False,
+            doc         = """
+            TODO       
+            """),  
+                  
      Option(name        = "login",
             getter      = "login",
             type        = OPTTYPE_BOOLEAN,
