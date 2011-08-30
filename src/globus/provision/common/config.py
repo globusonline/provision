@@ -119,9 +119,8 @@ class Config(object):
                                 raise ConfigException, "Section '%s' is required when %s.%s==%s" % (sec.name, condsec, condopt, condvalue)
                         
                 # Load options
-                if has_section:
-                    for opt in sec.options:
-                        self.__load_option(sec, sec.name, opt)
+                for opt in sec.options:
+                    self.__load_option(sec, sec.name, opt)
 
     
     def __load_option(self, sec, secname, opt, multiname = None):
