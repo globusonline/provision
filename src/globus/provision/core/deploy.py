@@ -134,7 +134,7 @@ class ConfigureThread(GPThread):
     
     __metaclass__ = ABCMeta
         
-    def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+    def __init__(self, multi, name, node, vm, deployer, depends = [], basic = True, chef = True):
         GPThread.__init__(self, multi, name, depends)
         self.domain = node.parent_Domain
         self.node = node

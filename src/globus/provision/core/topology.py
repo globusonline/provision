@@ -116,16 +116,22 @@ ff02::3 ip6-allhosts
     
     def get_depends(self, node):
         if not hasattr(node, "depends"):
-            return None
+            return []
         else:
-            return self.get_node_by_id(node.depends[5:])
+            return [self.get_node_by_id(d[5:]) for d in node.depends]
         
     def get_launch_order(self, nodes):
         order = []
-        parents = [n for n in nodes if self.get_depends(n) == None or self.get_depends(n) not in nodes]
-        while len(parents) > 0:
-            order.append(parents)
-            parents = [n for n in nodes if self.get_depends(n) in parents]   
+        no_depends = [n for n in nodes if len(self.get_depends(n)) == 0 or len(set(self.get_depends(n)) & set(nodes)) == 0]
+        while len(no_depends) > 0:
+            node = no_depends.pop()
+            order.append(node)
+            dependents = [n for n in nodes if node in self.get_depends(n)]
+            for dependent in dependents:
+                parents = self.get_depends(dependent)
+                if set(parents) <= set(order):
+                    no_depends.append(dependent)
+            
         return order        
     
     def get_node_by_id(self, node_id):
@@ -209,6 +215,9 @@ class Node(PersistentObject):
                  STATE_TERMINATING : "Terminating",
                  STATE_TERMINATED : "Terminated",
                  STATE_FAILED : "Failed"}   
+    
+    def __repr__(self):
+        return "<Node %s>" % self.id
 
 
 class User(PersistentObject):
@@ -420,11 +429,12 @@ Node.properties = {
                             
                    "depends":
                    Property(name="depends",
-                            proptype = PropertyTypes.STRING,
+                            proptype = PropertyTypes.ARRAY,
+                            items = PropertyTypes.STRING,
                             required = False,
                             editable = True,
                             description = """
-                            Sometimes, a host cannot be configured until another host
+                            Sometimes, a host cannot be configured until others hosts
                             in the topology is configured. For example, NFS clients cannot
                             start until the NFS server is starting. This property is
                             used to specify such dependencies. The value of this property
@@ -432,7 +442,7 @@ Node.properties = {
                             the identifier of another node in the domain.
                             
                             For example, if this node depends on ``simple-nfs`` the value
-                            of this property would be ``node:simple-nfs``.
+                            of this property would be a list with a single entry: ``node:simple-nfs``.
                             """),
                             
                    "hostname":
