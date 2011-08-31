@@ -22,6 +22,7 @@ This deployer will create and manage hosts for a topology using Amazon EC2.
 
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
+from boto.ec2.blockdevicemapping import BlockDeviceType, BlockDeviceMapping
 from globus.provision.common.utils import create_ec2_connection 
 from globus.provision.common.ssh import SSH, SSHCommandFailureException
 from globus.provision.common.threads import MultiThread, GPThread, SIGINTWatcher
@@ -150,6 +151,31 @@ class Deployer(BaseDeployer):
                 raise DeploymentException, "AMI %s does not exist" % ami
             else:
                 image = image[0]
+                
+        # Enable all possible ephemeral storage
+        map = BlockDeviceMapping()
+        sdb = BlockDeviceType()
+        sdc = BlockDeviceType()
+        sdd = BlockDeviceType()
+        sde = BlockDeviceType()
+        sdb.ephemeral_name = 'ephemeral0'
+        sdc.ephemeral_name = 'ephemeral1'
+        sdd.ephemeral_name = 'ephemeral2'
+        sde.ephemeral_name = 'ephemeral3'
+        map['/dev/sdb1'] = sdb
+        map['/dev/sdc1'] = sdc
+        map['/dev/sdd1'] = sdd
+        map['/dev/sde1'] = sde 
+                
+        # The following will only work with Ubuntu AMIs (including the AMI we provide)
+        # If using a different AMI, you may need to manually mount the ephemeral partitions.
+        user_data = """#cloud-config
+mounts:
+- [ ephemeral0, /ephemeral/0, auto, "defaults,noexec" ]
+- [ ephemeral1, /ephemeral/1, auto, "defaults,noexec" ]
+- [ ephemeral2, /ephemeral/2, auto, "defaults,noexec" ]
+- [ ephemeral3, /ephemeral/3, auto, "defaults,noexec" ]
+"""
         
         log.info(" |- Launching a %s instance for %s." % (instance_type, node.id))
         reservation = image.run(min_count=1, 
@@ -157,6 +183,8 @@ class Deployer(BaseDeployer):
                                 instance_type=instance_type,
                                 security_groups= security_groups,
                                 key_name=self.instance.config.get("ec2-keypair"),
+                                user_data=user_data,
+                                block_device_map=map,
                                 placement = None)
         instance = reservation.instances[0]
         
