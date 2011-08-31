@@ -88,15 +88,23 @@ ff02::3 ip6-allhosts
         
     def gen_chef_ruby_file(self, filename):
         
-        def gen_topology_line(server_name, domain_id, recipes):
-            server = domain.find_with_recipes(recipes)
-            if len(server) > 0:
-                server_node = server[0]
-                if len(server) > 1:
-                    # TODO: Print a warning saying more than one NFS server has been found
-                    pass
-                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.hostname)
-                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
+        def gen_topology_line(server_name, domain_id, recipes, multi=False):
+            servers = domain.find_with_recipes(recipes)
+            if len(servers) > 0:
+                if not multi:
+                    server_node = servers[0]
+                    if len(servers) > 1:
+                        # TODO: Print a warning saying more than one NFS server has been found
+                        pass
+                    
+                    servers_hostnames = "\"%s\"" % server_node.hostname
+                    servers_ips = "\"%s\"" % server_node.ip
+                else:
+                    servers_hostnames = "[%s]" % ",".join(["\"%s\"" % s.hostname for s in servers])
+                    servers_ips = "[%s]" % ",".join(["\"%s\"" % s.ip for s in servers])
+
+                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = %s\n" % (domain_id, server_name, servers_hostnames)
+                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = %s\n" % (domain_id, server_name, servers_ips)
                 
                 return hostname_line + ip_line
             else:
@@ -109,6 +117,13 @@ ff02::3 ip6-allhosts
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
             topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("glusterfs_head", domain.id, ["recipe[glusterfs::glusterfs-server-head]"])
+            topology += gen_topology_line("glusterfs_servers", domain.id, ["recipe[glusterfs::glusterfs-server]"], multi=True)
+        
+            # Kludge until we add a Filesystem object to the topology
+            if domain.has_property("glusterfs_type"):
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_type] = \"%s\"\n" % (domain.id, domain.glusterfs_type)
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_setsize] = %i\n" % (domain.id, domain.glusterfs_setsize)
         
         topologyfile = open(filename, "w")
         topologyfile.write(topology)
@@ -384,6 +399,21 @@ Domain.properties = {
                               domain will use to determine if a given user is
                               authorized to access the service.
                               """),
+                     
+                     "glusterfs_type":
+                     Property(name="glusterfs_type",
+                              proptype = PropertyTypes.STRING,
+                              required = False,
+                              description = """
+                              Kludge until we add a Filesystem object
+                              """),                         
+                     "glusterfs_setsize":
+                     Property(name="glusterfs_setsize",
+                              proptype = PropertyTypes.INTEGER,
+                              required = False,
+                              description = """
+                              Kludge until we add a Filesystem object
+                              """),                         
                      }
 
 Node.properties = {

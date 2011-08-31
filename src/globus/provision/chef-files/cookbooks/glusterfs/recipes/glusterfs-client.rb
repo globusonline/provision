@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                      #
+# Copyright 2010-2011, University of Chicago                                 #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -22,11 +22,26 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-gp_domain = node[:topology][:domains][node[:domain_id]]
-
 # The "glusterfs-common" recipe handles actions that are common to
 # both servers and clients
 include_recipe "glusterfs::glusterfs-common"
 
+gp_domain = node[:topology][:domains][node[:domain_id]]
+head_server = gp_domain[:glusterfs_head]
+peer_servers = gp_domain[:glusterfs_servers]
+glusterfs_servers = [head_server] + peer_servers
 
 
+directory "/glusterfs" do
+  owner "root"
+  group "root"
+  mode "0755"
+  action :create
+end
+
+execute "mount_glusterfs" do
+  user "root"
+  group "root"
+  command "mount -t glusterfs #{head_server}:/gp-vol /glusterfs"
+  action :run
+end   

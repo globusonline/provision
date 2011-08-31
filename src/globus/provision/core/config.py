@@ -418,12 +418,22 @@ class SimpleTopologyConfig(Config):
      Option(name        = "glusterfs-type",
             getter      = "glusterfs-type",
             type        = OPTTYPE_STRING,
-            valid       = ["distribute", "mirror"],
-            default     = "distribute",
+            valid       = ["distributed", "replicated", "striped",
+                           "distributed-striped", "distributed-replicated"],
+            default     = "distributed",
             required    = False,
             doc         = """
             TODO       
             """),  
+     
+     Option(name        = "glusterfs-setsize",
+            getter      = "glusterfs-setsize",
+            type        = OPTTYPE_INT,
+            required    = False,
+            default     = 2,
+            doc         = """
+            TODO       
+            """),       
                   
      Option(name        = "login",
             getter      = "login",
@@ -707,6 +717,11 @@ class SimpleTopologyConfig(Config):
             if self.get((domain_name, "glusterfs")):
                 glusterfs_servers_num = self.get((domain_name, "glusterfs-servers"))
                 glusterfs_type = self.get((domain_name, "glusterfs-type"))
+                glusterfs_setsize = self.get((domain_name, "glusterfs-setsize"))
+                
+                # Kludge until we add a general Filesystem object to the topology
+                domain.set_property("glusterfs_type", glusterfs_type)
+                domain.set_property("glusterfs_setsize", glusterfs_setsize)
                 
                 glusterfs_servers = []
                 
