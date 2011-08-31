@@ -514,7 +514,7 @@ class API(object):
             mt_instancewait = MultiThread()
             for node, vm in node_vm.items():
                 mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_RUNNING_UNCONFIGURED))
-
+            
             mt_instancewait.run()
             if not mt_instancewait.all_success():
                 message = self.__mt_exceptions_to_text(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
@@ -530,16 +530,15 @@ class API(object):
         order = topology.get_launch_order(nodes)
         
         threads = {}
-        for nodeset in order:
-            rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
-                            "configure-%s" % n.id, 
-                            n, 
-                            node_vm[n], 
-                            deployer, 
-                            depends=threads.get(topology.get_depends(n)),
-                            basic = basic,
-                            chef = chef)) for n in nodeset])
-            threads.update(rest)
+        for node in order:
+            threads[node] = deployer.NodeConfigureThread(mt_configure, 
+                                                         "configure-%s" % node.id, 
+                                                         node, 
+                                                         node_vm[node], 
+                                                         deployer, 
+                                                         depends=[threads[t] for t in topology.get_depends(node)],
+                                                         basic = basic,
+                                                         chef = chef)
         
         for thread in threads.values():
             mt_configure.add_thread(thread)
@@ -585,8 +584,8 @@ class API(object):
         order = topology.get_launch_order(nodes)
         order.reverse()
         
-        for nodeset in order:
-            deployer.stop_vms(nodeset)
+        for node in order:
+            deployer.stop_vms([node])
         
         node_vm = deployer.get_node_vm(nodes)
         

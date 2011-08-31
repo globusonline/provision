@@ -252,7 +252,7 @@ class Deployer(BaseDeployer):
         return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
-        def __init__(self, multi, name, node, vm, deployer, state, depends = None):
+        def __init__(self, multi, name, node, vm, deployer, state, depends = []):
             WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
             self.ec2_instance = vm.ec2_instance
                         
@@ -267,7 +267,7 @@ class Deployer(BaseDeployer):
             
             
     class NodeConfigureThread(ConfigureThread):
-        def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+        def __init__(self, multi, name, node, vm, deployer, depends = [], basic = True, chef = True):
             ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
             self.ec2_instance = self.vm.ec2_instance
             
