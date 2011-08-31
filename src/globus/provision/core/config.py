@@ -395,7 +395,46 @@ class SimpleTopologyConfig(Config):
             
             When ``False``, user accounts and home directories will be created on every individual host. This option can
             be useful if you are creating a single-host domain.       
-            """),             
+            """),     
+     
+     Option(name        = "glusterfs",
+            getter      = "glusterfs",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            TODO       
+            """),  
+
+     Option(name        = "glusterfs-servers",
+            getter      = "glusterfs-servers",
+            type        = OPTTYPE_INT,
+            required    = False,
+            default     = 1,
+            doc         = """
+            TODO       
+            """),  
+     
+     Option(name        = "glusterfs-type",
+            getter      = "glusterfs-type",
+            type        = OPTTYPE_STRING,
+            valid       = ["distributed", "replicated", "striped",
+                           "distributed-striped", "distributed-replicated"],
+            default     = "distributed",
+            required    = False,
+            doc         = """
+            TODO       
+            """),  
+     
+     Option(name        = "glusterfs-setsize",
+            getter      = "glusterfs-setsize",
+            type        = OPTTYPE_INT,
+            required    = False,
+            default     = 2,
+            doc         = """
+            TODO       
+            """),       
+                  
      Option(name        = "login",
             getter      = "login",
             type        = OPTTYPE_BOOLEAN,
@@ -577,6 +616,10 @@ class SimpleTopologyConfig(Config):
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
 
+            nfs = False
+            nis = False
+            glusterfs = False
+
             has_go_ep = self.get((domain_name,"go-endpoint")) != None
 
             user = User()
@@ -653,6 +696,7 @@ class SimpleTopologyConfig(Config):
                                   
             
             if self.get((domain_name,"nfs-nis")):  
+                nfs = nis = True
                 server_node = Node()
                 server_name = "%s-server" % domain_name
                 server_node.set_property("id", server_name)
@@ -667,122 +711,91 @@ class SimpleTopologyConfig(Config):
                     server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
                     
                 domain.add_node(server_node)
+                
+                nfs_server = nis_server = server_name
+                
+            if self.get((domain_name, "glusterfs")):
+                glusterfs_servers_num = self.get((domain_name, "glusterfs-servers"))
+                glusterfs_type = self.get((domain_name, "glusterfs-type"))
+                glusterfs_setsize = self.get((domain_name, "glusterfs-setsize"))
+                
+                # Kludge until we add a general Filesystem object to the topology
+                domain.set_property("glusterfs_type", glusterfs_type)
+                domain.set_property("glusterfs_setsize", glusterfs_setsize)
+                
+                glusterfs_servers = []
+                
+                # The first server is arbitrarily the one where we will set up GlusterFS
+                name = "glusterfsd-1"
+                head_node = self.__create_node(domain, name, nis_server, nfs_server, [])
+                head_node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server-head]")
+                glusterfs_servers.append("%s-%s" % (domain_name, name))                
+                
+                for i in range(1,glusterfs_servers_num):
+                    name = "glusterfsd-%i" % (i+1)
+                    node = self.__create_node(domain, name, nis_server, nfs_server, [])
+                    node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server]")
+
+                    node_name = "%s-%s" % (domain_name, name)
+                    glusterfs_servers.append(node_name)
+                    head_node.add_to_array("depends", "node:%s" % node_name)
 
             for i in range(self.get((domain_name,"barebones-nodes"))):
-                bb_name = "%s-blank-%i" % (domain_name, i+1)
+                self.__create_node(domain, "blank-%i" % (i+1), nis_server, nfs_server, glusterfs_servers)
 
-                bb_node = Node()
-                bb_node.set_property("id", bb_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    bb_node.set_property("depends", "node:%s" % server_name)
-                    bb_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    bb_node.add_to_array("run_list", "recipe[provision::gp_node]")  
-                    bb_node.add_to_array("run_list", "recipe[provision::domain_users]")              
-                               
-                domain.add_node(bb_node)
-
-            if self.get((domain_name,"login")):            
-                login_node = Node()
-                login_node.set_property("id", "%s-login" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    login_node.set_property("depends", "node:%s" % server_name)
-                    login_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    login_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    login_node.add_to_array("run_list", "recipe[provision::domain_users]")
-                login_node.add_to_array("run_list", "role[globus]")
-                domain.add_node(login_node)                
+            if self.get((domain_name,"login")): 
+                node = self.__create_node(domain, "login", nis_server, nfs_server, glusterfs_servers)
+                node.add_to_array("run_list", "role[globus]")
 
             if self.get((domain_name,"myproxy")):
-                myproxy_node = Node()
-                myproxy_node.set_property("id", "%s-myproxy" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    myproxy_node.set_property("depends", "node:%s" % server_name)
-                    myproxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    myproxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    myproxy_node.add_to_array("run_list", "recipe[provision::domain_users]")
-                myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
-                domain.add_node(myproxy_node)
+                node = self.__create_node(domain, "myproxy", nis_server, nfs_server, glusterfs_servers)
+                node.add_to_array("run_list", "role[domain-myproxy]")
 
             if self.get((domain_name,"gridftp")):
-                gridftp_node = Node()
-                gridftp_node.set_property("id", "%s-gridftp" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    gridftp_node.set_property("depends", "node:%s" % server_name)
-                    gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    gridftp_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")     
-                    
+                node = self.__create_node(domain, "gridftp", nis_server, nfs_server, glusterfs_servers)
+       
                 if has_go_ep:
                     if self.get((domain_name,"go-gc")):
-                        gridftp_node.add_to_array("run_list", "role[domain-gridftp-gc]")
+                        node.add_to_array("run_list", "role[domain-gridftp-gc]")
                     else:
-                        gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
-                        gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")
+                        node.add_to_array("run_list", "recipe[globus::go_cert]")
+                        node.add_to_array("run_list", "role[domain-gridftp-default]")
                 else:                
-                    gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")
-                domain.add_node(gridftp_node)                
+                    node.add_to_array("run_list", "role[domain-gridftp-default]")              
             
             if self.get((domain_name,"galaxy")):
-                galaxy_node = Node()
-                galaxy_node.set_property("id", "%s-galaxy" % domain_name)
+                node = self.__create_node(domain, "galaxy", nis_server, nfs_server, glusterfs_servers)
 
-                if self.get((domain_name,"nfs-nis")):  
-                    galaxy_node.set_property("depends", "node:%s" % server_name)
-                    galaxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    galaxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    galaxy_node.add_to_array("run_list", "recipe[provision::domain_users]")     
-                    galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
+                if not nfs:  
+                    node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
 
                 if self.get((domain_name,"go-endpoint")) != None:
-                    galaxy_node.add_to_array("run_list", "recipe[globus::go_cert]")
-                galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
-                domain.add_node(galaxy_node)                
-            
+                    node.add_to_array("run_list", "recipe[globus::go_cert]")
+                    
+                node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
             
             lrm = self.get((domain_name,"lrm"))
             if lrm != "none":
                 gram = self.get((domain_name,"gram"))
                 if lrm == "condor":
                     if gram:
-                        node_name = "%s-gram-condor" % domain_name
+                        node_name = "gram-condor"
                         role = "role[domain-gram-condor]"
                     else:
-                        node_name = "%s-condor" % domain_name
+                        node_name = "condor"
                         role = "role[domain-condor]"
                     workernode_role = "role[domain-clusternode-condor]"
 
-                lrm_node = Node()
-                lrm_node.set_property("id", node_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    lrm_node.set_property("depends", "node:%s" % server_name)
-                    lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    lrm_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    lrm_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
-                lrm_node.add_to_array("run_list", role)
-                domain.add_node(lrm_node)
+                node = self.__create_node(domain, node_name, nis_server, nfs_server, glusterfs_servers)                 
+                node.add_to_array("run_list", role)
 
-                clusternode_host = 1
                 for i in range(self.get((domain_name,"cluster-nodes"))):
-                    wn_name = "%s-condor-wn%i" % (domain_name, i+1)
+                    wn_name = "condor-wn%i" % (i+1)
 
-                    wn_node = Node()
-                    wn_node.set_property("id", wn_name)
-                    wn_node.set_property("depends", "node:%s" % node_name)
-                    if self.get((domain_name,"nfs-nis")):
-                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
-                    else:
-                        wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                        wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
-                    wn_node.add_to_array("run_list", workernode_role)
-                    domain.add_node(wn_node)
+                    node = self.__create_node(domain, wn_name, nis_server, nfs_server, glusterfs_servers)
+                    node.add_to_array("depends", "node:%s" % node_name)
+                    node.add_to_array("run_list", workernode_role)
 
-                    clusternode_host += 1
             
             if has_go_ep:
                 goep = GOEndpoint()
@@ -804,3 +817,33 @@ class SimpleTopologyConfig(Config):
         return topology
 
 
+    def __create_node(self, domain, name, nis_server, nfs_server, glusterfs_servers):
+        domain_name = domain.id
+        node = Node()
+        node.set_property("id", "%s-%s" % (domain_name, name))
+
+        node.add_to_array("run_list", "recipe[provision::gp_node]")
+        depends = set()
+
+        if nis_server != None:
+            depends.add("node:%s" % nis_server)
+            node.add_to_array("run_list", "recipe[provision::nis_client]")
+        else:
+            node.add_to_array("run_list", "recipe[provision::domain_users]")
+
+        if nfs_server != None:
+            depends.add("node:%s" % nfs_server)
+            node.add_to_array("run_list", "recipe[provision::nfs_client]")
+        
+        if len(glusterfs_servers) > 0:
+            for gs in glusterfs_servers:
+                depends.add("node:%s" % gs)
+            node.add_to_array("run_list", "recipe[glusterfs::glusterfs-client]")
+            
+        for d in depends:
+            node.add_to_array("depends", d)
+            
+        domain.add_node(node)
+        
+        return node
+            
