@@ -709,11 +709,21 @@ class SimpleTopologyConfig(Config):
                 glusterfs_type = self.get((domain_name, "glusterfs-type"))
                 
                 glusterfs_servers = []
-                for i in range(glusterfs_servers_num):
+                
+                # The first server is arbitrarily the one where we will set up GlusterFS
+                name = "glusterfsd-1"
+                head_node = self.__create_node(domain, name, nis_server, nfs_server, [])
+                head_node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server-head]")
+                glusterfs_servers.append("%s-%s" % (domain_name, name))                
+                
+                for i in range(1,glusterfs_servers_num):
                     name = "glusterfsd-%i" % (i+1)
-                    glusterfs_servers.append(name)
                     node = self.__create_node(domain, name, nis_server, nfs_server, [])
                     node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server]")
+
+                    node_name = "%s-%s" % (domain_name, name)
+                    glusterfs_servers.append(node_name)
+                    head_node.add_to_array("depends", "node:%s" % node_name)
 
             for i in range(self.get((domain_name,"barebones-nodes"))):
                 self.__create_node(domain, "blank-%i" % (i+1), nis_server, nfs_server, glusterfs_servers)
