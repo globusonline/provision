@@ -32,7 +32,15 @@ service "glusterd" do
   action :restart
 end
 
-directory "/mnt/glusterfs" do
+directory "/ephemeral/0/glusterfs" do
+  owner "root"
+  group "root"
+  mode 01777
+  recursive true
+  action :create
+end
+
+directory "/ephemeral/1/glusterfs" do
   owner "root"
   group "root"
   mode 01777
