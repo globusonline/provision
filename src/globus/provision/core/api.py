@@ -403,13 +403,16 @@ class API(object):
     def instance_list(self, inst_ids):
         istore = InstanceStore(self.instances_dir)
         
-        if inst_ids == None:
-            insts = istore.get_instances()
-        else:
-            insts = [istore.get_instance(inst_id) for inst_id in inst_ids]
+        (valid, invalid) = istore.get_instances(inst_ids)
+        instances_jsons = []
+        for inst in valid:
+            instances_jsons.append(inst.topology.to_json_string())
+            
+        instances_json = "[" + ",".join(instances_jsons) + "]"
                 
-        # TODO: Return JSON
-        return insts
+        # TODO: Return invalid instances as "warnings", once we
+        # add that extra return value to the API.
+        return API.STATUS_SUCCESS, "Success", instances_json
 
         
     def __get_instance(self, inst_id):

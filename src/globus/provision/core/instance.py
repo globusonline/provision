@@ -91,8 +91,19 @@ class InstanceStore(object):
             raise InstanceException("Instance %s does not exist" % inst_id)
         return Instance(inst_id, inst_dir)
 
-    def get_instances(self):
-        return [Instance(inst_id, "%s/%s" % (self.instances_dir, inst_id)) for inst_id in self.__get_instance_ids()]
+    def get_instances(self, inst_ids = None):
+        valid_instances = []
+        invalid_instances = []
+        
+        for inst_id in self.__get_instance_ids():
+            if inst_ids == None or (inst_ids != None and inst_id in inst_ids):
+                try:
+                    inst = Instance(inst_id, "%s/%s" % (self.instances_dir, inst_id))
+                    valid_instances.append(inst)
+                except Exception, e:
+                    invalid_instances.append((inst_id,str(e)))
+        
+        return (valid_instances, invalid_instances)
     
     def __get_instance_ids(self):
         inst_ids = [i for i in os.listdir(self.instances_dir)]
