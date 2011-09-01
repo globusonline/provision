@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+import json
 
 """
 Commands that directly invoke the API. Most of these commands are a one-to-one
@@ -125,44 +126,6 @@ class gp_describe_instance(Command):
     
     def __init__(self, argv):
         Command.__init__(self, argv)
-        
-    def __colorize_topology_state(self, state):
-        state_str = Topology.state_str[state]
-        reset = Fore.RESET + Style.RESET_ALL
-        if state == Topology.STATE_NEW:
-            return Fore.BLUE + Style.BRIGHT + state_str + reset
-        elif state == Topology.STATE_RUNNING:
-            return Fore.GREEN + Style.BRIGHT + state_str + reset
-        elif state in (Topology.STATE_STARTING, Topology.STATE_CONFIGURING, Topology.STATE_STOPPING, Topology.STATE_RESUMING, Topology.STATE_TERMINATING):
-            return Fore.YELLOW + Style.BRIGHT + state_str + reset
-        elif state in (Topology.STATE_TERMINATED, Topology.STATE_FAILED):
-            return Fore.RED + Style.BRIGHT + state_str + reset
-        elif state == Topology.STATE_STOPPED:
-            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
-        else:
-            return state_str
-
-    def __colorize_node_state(self, state):
-        state_str = Node.state_str[state]
-        reset = Fore.RESET + Style.RESET_ALL
-        if state == Node.STATE_NEW:
-            return Fore.BLUE + Style.BRIGHT + state_str + reset
-        elif state == Node.STATE_RUNNING:
-            return Fore.GREEN + Style.BRIGHT + state_str + reset
-        elif state in (Node.STATE_STARTING, Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_CONFIGURING, Node.STATE_STOPPING, Node.STATE_RESUMING, Node.STATE_TERMINATING):
-            return Fore.YELLOW + Style.BRIGHT + state_str + reset
-        elif state in (Node.STATE_TERMINATED, Node.STATE_FAILED):
-            return Fore.RED + Style.BRIGHT + state_str + reset
-        elif state == Node.STATE_STOPPED:
-            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
-        else:
-            return state_str
-        
-    def __pad(self, str, colorstr, width):
-        if colorstr == "":
-            return str.ljust(width)
-        else:
-            return colorstr + " " * (width - len(str))
                 
     def run(self):    
         self.parse_options()
@@ -186,7 +149,7 @@ class gp_describe_instance(Command):
             else:
                 topology = Topology.from_json_string(topology_json)
                 reset = Fore.RESET + Style.RESET_ALL
-                print Fore.WHITE + Style.BRIGHT + inst_id + reset + ": " + self.__colorize_topology_state(topology.state)
+                print Fore.WHITE + Style.BRIGHT + inst_id + reset + ": " + self._colorize_topology_state(topology.state)
                 print
                 for domain in topology.domains.values():
                     print "Domain " + Fore.CYAN + "'%s'" % domain.id
@@ -226,10 +189,10 @@ class gp_describe_instance(Command):
                         rows.append((node.id, state, state_str, hostname, ip))                          
                                                 
                     for (node_id, state, state_str, hostname, ip) in rows:
-                        node_id_pad = self.__pad(node_id, Fore.WHITE + Style.BRIGHT + node_id + Fore.RESET + Style.RESET_ALL, node_width + 2) 
-                        state_pad = self.__pad(state_str, self.__colorize_node_state(state), state_width + 2) 
-                        hostname_pad   = self.__pad(hostname, "", hostname_width + 2)
-                        ip_pad = self.__pad(ip, "", ip_width)
+                        node_id_pad = self._pad(node_id, Fore.WHITE + Style.BRIGHT + node_id + Fore.RESET + Style.RESET_ALL, node_width + 2) 
+                        state_pad = self._pad(state_str, self._colorize_node_state(state), state_width + 2) 
+                        hostname_pad   = self._pad(hostname, "", hostname_width + 2)
+                        ip_pad = self._pad(ip, "", ip_width)
                         print "    " + node_id_pad + state_pad + hostname_pad + ip_pad
                     print
                     
@@ -513,16 +476,23 @@ class gp_list_instances(Command):
             inst_ids = None
         
         api = API(self.opt.dir)
-        insts = api.instance_list(inst_ids)
+        (status_code, message, topologies_json) = api.instance_list(inst_ids)
         
-        for i in insts:
-            t = i.topology
-            print "%s\t%s" % (i.id, Topology.state_str[t.state])
-            if self.opt.verbose:
-                for node in t.get_nodes():
-                    print "\t%s\t%s\t%s" % (node.id, node.hostname, node.ip)
-                    if self.opt.debug:
-                        print "\t%s" % node.deploy_data
+        
+        if status_code != API.STATUS_SUCCESS:
+            self._print_error("Unable to list instances.", message)
+            exit(1) 
+        else:        
+            insts = json.loads(topologies_json)
+            
+            for inst in insts:
+                if self.opt.verbose or self.opt.debug:
+                    print json.dumps(inst, indent=2)
+                else:
+                    topology = Topology.from_json_dict(inst)
+                    
+                    reset = Fore.RESET + Style.RESET_ALL
+                    print Fore.WHITE + Style.BRIGHT + topology.id + reset + ": " + self._colorize_topology_state(topology.state)
 
 
 def gp_add_user_func():

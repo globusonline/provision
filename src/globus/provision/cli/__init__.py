@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+from globus.provision.core.topology import Topology, Node
 
 """
 The CLI: A console frontend to Globus Provision that allows a user to request instances, 
@@ -25,6 +26,7 @@ import os
 import os.path
 import getpass
 import colorama
+from colorama import Fore, Style
 from globus.provision.common import defaults
 from globus.provision.common import log
 from globus.provision import RELEASE
@@ -104,6 +106,44 @@ class Command(object):
         print ": %s" % what
         print colorama.Fore.WHITE + colorama.Style.BRIGHT + "\033[1;37mReason\033[0m",
         print ": %s" % reason
+        
+    def _colorize_topology_state(self, state):
+        state_str = Topology.state_str[state]
+        reset = Fore.RESET + Style.RESET_ALL
+        if state == Topology.STATE_NEW:
+            return Fore.BLUE + Style.BRIGHT + state_str + reset
+        elif state == Topology.STATE_RUNNING:
+            return Fore.GREEN + Style.BRIGHT + state_str + reset
+        elif state in (Topology.STATE_STARTING, Topology.STATE_CONFIGURING, Topology.STATE_STOPPING, Topology.STATE_RESUMING, Topology.STATE_TERMINATING):
+            return Fore.YELLOW + Style.BRIGHT + state_str + reset
+        elif state in (Topology.STATE_TERMINATED, Topology.STATE_FAILED):
+            return Fore.RED + Style.BRIGHT + state_str + reset
+        elif state == Topology.STATE_STOPPED:
+            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
+        else:
+            return state_str
+
+    def _colorize_node_state(self, state):
+        state_str = Node.state_str[state]
+        reset = Fore.RESET + Style.RESET_ALL
+        if state == Node.STATE_NEW:
+            return Fore.BLUE + Style.BRIGHT + state_str + reset
+        elif state == Node.STATE_RUNNING:
+            return Fore.GREEN + Style.BRIGHT + state_str + reset
+        elif state in (Node.STATE_STARTING, Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_CONFIGURING, Node.STATE_STOPPING, Node.STATE_RESUMING, Node.STATE_TERMINATING):
+            return Fore.YELLOW + Style.BRIGHT + state_str + reset
+        elif state in (Node.STATE_TERMINATED, Node.STATE_FAILED):
+            return Fore.RED + Style.BRIGHT + state_str + reset
+        elif state == Node.STATE_STOPPED:
+            return Fore.MAGENTA + Style.BRIGHT + state_str + reset
+        else:
+            return state_str
+        
+    def _pad(self, str, colorstr, width):
+        if colorstr == "":
+            return str.ljust(width)
+        else:
+            return colorstr + " " * (width - len(str))        
         
     def cleanup_after_kill(self):
         print "Globus Provision has been unexpectedly killed and may have left resources"
