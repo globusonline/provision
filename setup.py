@@ -23,9 +23,9 @@ sys.path.insert(0, './src')
 from globus.provision import RELEASE
 
 cmds = {"globus.provision.cli.api":
-        ["gp-create", "gp-describe-instance", "gp-start", "gp-update-topology", "gp-stop",
-         "gp-terminate", "gp-list-instances", "gp-add-user", "gp-add-host",
-         "gp-remove-users", "gp-remove-hosts"],
+        ["gp-instance-create", "gp-instance-describe", "gp-instance-start", "gp-instance-update", 
+         "gp-instance-stop", "gp-instance-terminate", "gp-instance-list", "gp-instance-add-user", "gp-instance-add-host",
+         "gp-instance-remove-users", "gp-instance-remove-hosts"],
          
         "globus.provision.cli.ec2":
         ["gp-ec2-create-ami", "gp-ec2-update-ami"],
