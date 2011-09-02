@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
-from globus.provision.common.globusonline import GlobusOnlineCLIHelper,\
-    GlobusOnlineHelper
-
 """
 The Globus Provision API
 
@@ -30,7 +27,6 @@ import sys
 import traceback
 import os.path
 
-
 from boto.exception import EC2ResponseError
 
 import globus.provision.deploy.ec2 as ec2_deploy
@@ -44,6 +40,7 @@ from globus.provision.common.ssh import SSHCommandFailureException
 from globus.provision.common import log
 from globus.provision.common.config import ConfigException
 from globus.provision.common.persistence import ObjectValidationException
+from globus.provision.common.go_transfer import GlobusOnlineCLIHelper, GlobusOnlineHelper
 
 class API(object):
     """

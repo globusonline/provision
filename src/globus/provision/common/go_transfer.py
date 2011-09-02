@@ -27,7 +27,7 @@ from pkg_resources import resource_filename
 
 from globus.provision.common.ssh import SSH
 from globus.provision.common import log
-from globus.transfer.transfer_api import TransferAPIClient, ClientError
+from globusonline.transfer.api_client import TransferAPIClient, ClientError
 
 
 class GlobusOnlineException(Exception):
