@@ -131,7 +131,7 @@ with that topology:
 
 ::
 
-	gp-create -c single-gridftp-ec2.conf
+	gp-instance-create -c single-gridftp-ec2.conf
 
 This should immediately return the following:
 
@@ -139,17 +139,17 @@ This should immediately return the following:
 
 	Created new instance: gpi-52d4c9ec
 
-The ``gp-create`` command doesn't actually deploy the topology, but simply validates that the topology 
+The ``gp-instance-create`` command doesn't actually deploy the topology, but simply validates that the topology 
 is correct, and creates an entry for it in a database. This entry is called an *instance*. You can think
 of the topology as a specification of what you want to deploy and the instance as one particular
 deployment of that topology.
 
-To actually launch this instance, we use the ``gp-start`` command (make sure you use the identifier
-returned by ``gp-create``, not the one used in these examples):
+To actually launch this instance, we use the ``gp-instance-start`` command (make sure you use the identifier
+returned by ``gp-instance-create``, not the one used in these examples):
 
 ::
 
-	gp-start gpi-52d4c9ec
+	gp-instance-start gpi-52d4c9ec
 	
 This command will take a few minutes to do its job and, for a while, all you will see is the following:	
 
@@ -171,7 +171,7 @@ In a separate console, you can track the progress of the deployment using this c
 	
 ::
 
-	gp-describe-instance gpi-52d4c9ec
+	gp-instance-describe gpi-52d4c9ec
 	
 You should first see something like this:	
 	
@@ -186,7 +186,7 @@ This command is telling us not just the status of the entire instance (``Startin
 each individual host in the topology's domains. In this case, Globus Provision "translated" our
 topology into a single host called ``simple-gridftp``.
 
-After a while, the output of ``gp-describe-instance`` will look like this:
+After a while, the output of ``gp-instance-describe`` will look like this:
 
 ::
 
@@ -199,14 +199,14 @@ At this point, the ``simple-gridftp`` host has started, and Globus Provision is 
 configuring it. Since the host has started, we now know what its actual hostname is. We will
 use this later to connect to that host.
 
-When ``gp-start`` finishes deploying the instance, it will show the following:
+When ``gp-instance-start`` finishes deploying the instance, it will show the following:
 
 ::
 
 	Starting instance gpi-52d4c9ec... done!
 	Started instance in 1 minutes and 22 seconds
 
-And ``gp-describe-instance`` will look like this:
+And ``gp-instance-describe`` will look like this:
 
 ::
 
@@ -221,7 +221,7 @@ SSH key will be authorized by default in all the users (in fact, their passwords
 disabled, and using an SSH key will be the only way of logging into the hosts).
 
 So, you should be able to log into the GridFTP host like this (make sure you substitute the hostname
-with the one returned by ``gp-describe-instance``):
+with the one returned by ``gp-instance-describe``):
 
 ::
 
@@ -253,7 +253,7 @@ Once you're done, just log out of the host, and terminate your instance like thi
 	
 ::
 
-	gp-terminate gpi-52d4c9ec
+	gp-instance-terminate gpi-52d4c9ec
 
 You will see the following:
 

@@ -147,5 +147,5 @@ class Command(object):
         
     def cleanup_after_kill(self):
         print "Globus Provision has been unexpectedly killed and may have left resources"
-        print "in an unconfigured state. Use gp-terminate to release resources."
+        print "in an unconfigured state. Use gp-instance-terminate to release resources."
         

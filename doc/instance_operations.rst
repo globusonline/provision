@@ -228,24 +228,24 @@ For the purposes of this example, we'll refer to this file as ``simple-ec2.conf`
 	:ref:`chap_config_ref` for a complete list of options.
 
 Ok, now that we have a topology and a configuration file, we are ready to create
-a Globus Provision instance. We do so with the :ref:`cli_gp-create` command::
+a Globus Provision instance. We do so with the :ref:`cli_gp-instance-create` command::
 
-	gp-create -c simple-ec2.conf
+	gp-instance-create -c simple-ec2.conf
 
 .. note::
 
 	If you want to keep the configuration file and the topology file in separate
-	files, you would run ``gp-create`` like this::
+	files, you would run ``gp-instance-create`` like this::
 	
-		gp-create -c simple-ec2-conf.conf -t simple-ec2-topology.conf
+		gp-instance-create -c simple-ec2-conf.conf -t simple-ec2-topology.conf
 		
-``gp-create`` should return something like this:
+``gp-instance-create`` should return something like this:
 
 ::
 
 	Created new instance: gpi-02156188
 
-The ``gp-create`` command doesn't actually deploy the topology, but simply validates that the topology 
+The ``gp-instance-create`` command doesn't actually deploy the topology, but simply validates that the topology 
 is correct, assigns a Globus Provision Instance (or GPI) identifier to it, and saves the information
 about the instance (including the topology and the configuration options) in a database. Hang on to
 the GPI identifier, as we will need it in all the following commands to refer to our instance.
@@ -253,11 +253,11 @@ the GPI identifier, as we will need it in all the following commands to refer to
 Starting an instance
 ====================
 
-You can start an instance using the :ref:`cli_gp-start` command:
+You can start an instance using the :ref:`cli_gp-instance-start` command:
 
 ::
 
-	gp-start gpi-02156188
+	gp-instance-start gpi-02156188
 	
 You will see the following output:
 
@@ -265,7 +265,7 @@ You will see the following output:
 
 	Starting instance gpi-02156188...
 
-``gp-start`` may take a few minutes to fully deploy the instance. The example topology in this chapter
+``gp-instance-start`` may take a few minutes to fully deploy the instance. The example topology in this chapter
 should only take ~3 minutes:
 
 ::
@@ -277,7 +277,7 @@ To see more detailed log messages, simply add the ``-d`` option.
 
 ::
 
-	gp-start -d gpi-02156188
+	gp-instance-start -d gpi-02156188
 		
 If you don't use the ``-d`` option, you can still see the detailed log messages in
 ``~/.globusprovision/instances/gpi-nnnnnnnn/deploy.log`` (where ``gpi-nnnnnnnn`` is the
@@ -287,11 +287,11 @@ identifier of your instance).
 Checking the status of an instance
 ==================================
 
-To check the status of an instance at any point, use the :ref:`cli_gp-describe-instance` command::
+To check the status of an instance at any point, use the :ref:`cli_gp-instance-describe` command::
 
-	gp-describe-instance gpi-02156188
+	gp-instance-describe gpi-02156188
 	
-This is useful while running ``gp-start``. For example, the output of ``gp-describe-instance``
+This is useful while running ``gp-instance-start``. For example, the output of ``gp-instance-describe``
 could look like this while the instance is still being deployed::
 
 	gpi-02156188: Configuring
@@ -302,7 +302,7 @@ could look like this while the instance is still being deployed::
 	    simple-condor-wn2  Running (unconfigured)  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
 	    simple-condor-wn1  Running (unconfigured)  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 		
 	
-When ``gp-start`` completes, the output of ``gp-describe-instance`` should look something like this::
+When ``gp-instance-start`` completes, the output of ``gp-instance-describe`` should look something like this::
 
 	gpi-02156188: Running
 	
@@ -312,7 +312,7 @@ When ``gp-start`` completes, the output of ``gp-describe-instance`` should look 
 	    simple-condor-wn2  Running  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
 	    simple-condor-wn1  Running  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 
 
-Notice how ``gp-describe-instance`` also provides the hostnames of the machines that have been
+Notice how ``gp-instance-describe`` also provides the hostnames of the machines that have been
 deployed for this topology. 
 
 For this chapter's example topology, the topology has been
@@ -343,16 +343,16 @@ the ``-v`` option:
 
 ::
 
-	gp-describe-instance -v gpi-02156188
+	gp-instance-describe -v gpi-02156188
 	
-As you'll see, this provides a much more verbose output than the regular ``gp-describe-instance``.
+As you'll see, this provides a much more verbose output than the regular ``gp-instance-describe``.
 :ref:`chap_topology` describes this JSON format in more detail. 
 
 Modifying a running instance
 ============================
 
 Once an instance is running, it is possible to do all sorts of modifications to its topology.
-You can actually edit the instance's topology in JSON format (as returned by ``gp-describe-instance -v``)
+You can actually edit the instance's topology in JSON format (as returned by ``gp-instance-describe -v``)
 and tell Globus Provision to modify the running instance so it will match the new topology.
 Globus Provision will figure out whether any hosts have to be added (or removed), whether
 additional software has to be installed on one of the machines, etc.
@@ -364,18 +364,18 @@ and users from a topology.
 Adding hosts
 ------------
 
-Additional hosts can be added using the :ref:`cli_gp-add-host` command. For example, let's
+Additional hosts can be added using the :ref:`cli_gp-instance-add-host` command. For example, let's
 say we want to add a new worker node to the Condor pool. 
 
 ::
 
-	gp-add-host   --domain  simple \
-	                  --id  simple-condor-wn3 \
-	             --depends  simple-condor \
-	            --run-list  role[domain-nfsnis-client],role[domain-clusternode-condor] \
-	            gpi-02156188
+	gp-instance-add-host   --domain  simple \
+	                           --id  simple-condor-wn3 \
+	                      --depends  simple-condor \
+	                     --run-list  role[domain-nfsnis-client],role[domain-clusternode-condor] \
+	                     gpi-02156188
 
-We are telling ``gp-add-host`` to add a new host with id ``simple-condor-wn3`` to the ``simple`` domain.
+We are telling ``gp-instance-add-host`` to add a new host with id ``simple-condor-wn3`` to the ``simple`` domain.
 We also tell Globus Provision that this node depends on ``simple-condor`` (this will be taken into
 account if you ever want to stop and later resume this instance; that way, Globus Provision will
 know not to start ``simple-condor-wn3`` until ``simple-condor`` is running).
@@ -391,14 +391,14 @@ For now, it is enough to know that we are assigning two roles to this new host: 
 so it will be an NFS/NIS client in the domain, and ``domain-clusternode-condor``, so it will be a
 worker node in the domain's Condor pool.
 
-After running ``gp-add-host``, you should see the following:  
+After running ``gp-instance-add-host``, you should see the following:  
 
 ::
 
 	Adding new host to gpi-02156188...done!
 	Added host in 1 minutes and 17 seconds
 	
-You can use ``gp-describe-instance`` to verify that the new host was added:	
+You can use ``gp-instance-describe`` to verify that the new host was added:	
 	
 ::
 
@@ -433,18 +433,18 @@ You should see the new worker node show up there too::
 Adding users
 ------------
 
-Extra users can be added to a domain using the :ref:`cli_gp-add-user` command. For example, let's
+Extra users can be added to a domain using the :ref:`cli_gp-instance-add-user` command. For example, let's
 add a user called ``newuser``::
 
-	gp-add-user     --domain  simple \
-	            --ssh-pubkey  "`cat ~/.ssh/id_rsa.pub`" \
-	                 --login  newuser \
-	            gpi-02156188
+	gp-instance-add-user     --domain  simple \
+	                     --ssh-pubkey  "`cat ~/.ssh/id_rsa.pub`" \
+	                          --login  newuser \
+	                     gpi-02156188
 
 Notice how we're also providing an SSH public key (in this case, your own SSH public key). This
 SSH key will be added to the new user's ``authorized_keys`` file.
 
-After running ``gp-add-user``, you should see the following::
+After running ``gp-instance-add-user``, you should see the following::
 
 	Adding new user to gpi-196d1660...done!
 	Added user in 0 minutes and 17 seconds
@@ -458,17 +458,17 @@ You should now be able to log into any of the instance's hosts as the ``newuser`
 Removing hosts and users
 ------------------------
 
-Similarly, you can remove hosts and users using the :ref:`cli_gp-remove-hosts` and :ref:`cli_gp-remove-users`,
+Similarly, you can remove hosts and users using the :ref:`cli_gp-instance-remove-hosts` and :ref:`cli_gp-instance-remove-users`,
 respectively. Besides providing the Globus Provision instance identifier, and the domain where
 you want to remove hosts or users, you also need to provide a list of hosts/users.
 
 For example, to remove ``simple-condor-wn3``, we could do the following::
 
-	gp-remove-hosts --domain simple \
-	                gpi-02156188 \
-	                simple-condor-wn3 simple-foo simple-bar
+	gp-instance-remove-hosts --domain simple \
+	                         gpi-02156188 \
+	                         simple-condor-wn3 simple-foo simple-bar
 	
-Notice how we've also specified two hosts that don't exist. In this case, ``gp-remove-hosts``
+Notice how we've also specified two hosts that don't exist. In this case, ``gp-instance-remove-hosts``
 will just print out a warning::
 
 	Warning: Host simple-foo does not exist.
@@ -478,11 +478,11 @@ will just print out a warning::
 
 Be careful when using this command: the host will be irreversibly terminated.
 
-``gp-remove-users`` works in a similar fashion::
+``gp-instance-remove-users`` works in a similar fashion::
 
-	gp-remove-users --domain simple \
-	                gpi-02156188 \
-	                newuser user3 user4 
+	gp-instance-remove-users --domain simple \
+	                         gpi-02156188 \
+	                         newuser user3 user4 
 
 This should output the following::
 
@@ -493,10 +493,10 @@ This should output the following::
 	
 .. note::
 
-   ``gp-remove-users`` currently doesn't remove the user account on the hosts themselves,
+   ``gp-instance-remove-users`` currently doesn't remove the user account on the hosts themselves,
    it just removes them from the topology. This means that, if you manually remove the
    user, that user will not be automatically re-created in subsequent updates to the instance.
-   In the future, ``gp-remove-users`` will also take care of removing the actual user account.
+   In the future, ``gp-instance-remove-users`` will also take care of removing the actual user account.
 
 Updating the topology
 ---------------------
@@ -511,11 +511,11 @@ by Amazon EC2).
 For example, by editing the JSON representation of the topology directly, you
 would be able to do the following changes:
 
-* Add or remove several hosts at once (instead of one by one using ``gp-add-host``).
+* Add or remove several hosts at once (instead of one by one using ``gp-instance-add-host``).
   When adding hosts, you can also specify deployment data that differs from the
   values specified in the simple topology file (for example, instead of creating
   a ``t1.micro`` EC2 instance, you could add a few ``m1.small`` EC2 instances). 
-* Add or remove several users at once (instead of one by one using ``gp-add-user``).
+* Add or remove several users at once (instead of one by one using ``gp-instance-add-user``).
   Furthermore, you can also modify existing users (for example, changing a user's
   password or authorized SSH public key).
 * Add or remove entire domains.
@@ -523,7 +523,7 @@ would be able to do the following changes:
 
 The first thing you need to do is retrieve the instance's JSON representation of the topology::
 
-	gp-describe-instance -v gpi-02156188 > newtopology.json
+	gp-instance-describe -v gpi-02156188 > newtopology.json
 
 In this example, we are going to make the Condor head node act as a GridFTP server too.
 In the JSON file, locate the entry corresponding to the ``simple-condor`` host:
@@ -558,10 +558,10 @@ In the ``run_list`` array, add an entry for the ``domain-gridftp`` role:
             **"role[domain-gridftp]"**
           ]	
 
-Next, we use the :ref:`cli_gp-update-topology` command to tell Globus Provision to
+Next, we use the :ref:`cli_gp-instance-update` command to tell Globus Provision to
 apply the new topology::
 
-	gp-update-topology -t newtopology.json gpi-02156188
+	gp-instance-update -t newtopology.json gpi-02156188
 	
 You can verify that GridFTP was correctly installed by logging into the ``simple-condor``
 host::
@@ -605,16 +605,16 @@ instance (more specifically, each Globus Provision AMI uses an 8GB
 `EBS <http://aws.amazon.com/ebs/>`_-backed partition), but this cost
 is much lower than the cost of running the EC2 instances.
 
-To stop your Globus Provision instance, simply use the :ref:`cli_gp-stop`
+To stop your Globus Provision instance, simply use the :ref:`cli_gp-instance-stop`
 command::
 
-	gp-stop gpi-02156188
+	gp-instance-stop gpi-02156188
 	
 You should see the following::
 
 	Stopping instance gpi-02156188... done!
 	
-And ``gp-describe-instance`` should show the following::
+And ``gp-instance-describe`` should show the following::
 
 	gpi-02156188: Stopped
 	
@@ -624,17 +624,17 @@ And ``gp-describe-instance`` should show the following::
 	    simple-condor-wn2  Stopped  ec2-R-R-R-R.compute-1.amazonaws.com  10.R.R.R  
 	    simple-condor-wn1  Stopped  ec2-S-S-S-S.compute-1.amazonaws.com  10.S.S.S 
 
-To resume your instance, just use the ``gp-start`` command. It will realize that
+To resume your instance, just use the ``gp-instance-start`` command. It will realize that
 your instance is stopped, and not completely new, and will resume it (instead of
 requesting new EC2 instances for it)::
 
-	gp-start gpi-02156188
+	gp-instance-start gpi-02156188
 	
 You should see the following::
 
 	Starting instance gpi-02156188... done!	
 
-And ``gp-describe-instance`` should report it as running again:
+And ``gp-instance-describe`` should report it as running again:
 ::
 
 	gpi-02156188: Running
@@ -678,15 +678,15 @@ Once you're completely done with a Globus Provision instance, you terminate all
 the hosts in that instance. Be careful when doing this: unlike stopping an instance,
 this action is irreversible, and the entire contents of the instance will be destroyed.
 
-To terminate an instance, use the :ref:`cli_gp-terminate` command::
+To terminate an instance, use the :ref:`cli_gp-instance-terminate` command::
 
-	gp-terminate gpi-02156188
+	gp-instance-terminate gpi-02156188
 
 You should see the following::
 
 	Terminating instance gpi-02156188... done!
 
-And you can verify that the instance was terminated by running ``gp-describe-instance``::
+And you can verify that the instance was terminated by running ``gp-instance-describe``::
 
 	gpi-02156188: Terminated
 	

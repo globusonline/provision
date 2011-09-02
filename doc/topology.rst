@@ -236,7 +236,7 @@ So, if you've written your topology in JSON, you can no longer merge it with the
 Globus Provision configuration file, as we've done in previous examples. Instead,
 you must specify the configuration file and the topology separately, like this::
 	
-	gp-create -c ec2.conf -t topology.json
+	gp-instance-create -c ec2.conf -t topology.json
 	
 In this case, ``ec2.conf`` could contain the following::
 
@@ -338,13 +338,13 @@ the ``dummy`` deployer)::
 
 Next, we create the instance::
 
-	$ gp-create -c samples/simple-dummy.conf
+	$ gp-instance-create -c samples/simple-dummy.conf
 	Created new instance: gpi-4bb1aefa
 
-If we run ``gp-describe-instance -v``, we will get the raw JSON representation of the
+If we run ``gp-instance-describe -v``, we will get the raw JSON representation of the
 topology::
 
-	$ gp-describe-instance -v gpi-4bb1aefa
+	$ gp-instance-describe -v gpi-4bb1aefa
 	{
 	  "domains": [
 	    {
@@ -430,7 +430,7 @@ topology::
 	
 Now, let's start this instance::
 
-	$ gp-start gpi-4bb1aefa
+	$ gp-instance-start gpi-4bb1aefa
 	Starting instance gpi-4bb1aefa... done!
 	Started instance in 0 minutes and 0 seconds
 

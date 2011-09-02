@@ -35,14 +35,14 @@ A typical Globus Provision interaction would look something like this:
 
 ::
 
-	$ gp-create -c mycluster.conf
+	$ gp-instance-create -c mycluster.conf
 	Created new instance: gpi-02156188
 	
-	$ gp-start gpi-02156188
+	$ gp-instance-start gpi-02156188
 	Starting instance gpi-02156188... done!
 	Started instance in 2 minutes and 34 seconds
 	
-	$ gp-describe-instance gpi-02156188
+	$ gp-instance-describe gpi-02156188
 	gpi-02156188: Running
 	
 	Domain 'mycluster'
@@ -53,16 +53,16 @@ A typical Globus Provision interaction would look something like this:
 	    mycluster-condor-wn2  Running  ec2-X-X-X-X.compute-1.amazonaws.com  10.X.X.X  
 	    mycluster-condor-wn3  Running  ec2-X-X-X-X.compute-1.amazonaws.com  10.X.X.X
 	   
-	$ gp-add-host   --domain  mycluster \
-	                    --id  mycluster-condor-wn4 \
-	               --depends  mycluster-condor \
-	              --run-list  role[domain-nfsnis-client],role[domain-clusternode-condor] \
-	              gpi-02156188
+	$ gp-instance-add-host   --domain  mycluster \
+	                             --id  mycluster-condor-wn4 \
+	                        --depends  mycluster-condor \
+	                       --run-list  role[domain-nfsnis-client],role[domain-clusternode-condor] \
+	                       gpi-02156188
 	              
 	Adding new host to gpi-02156188...done!
 	Added host in 1 minutes and 17 seconds
 	
-	$ gp-terminate gpi-02156188
+	$ gp-instance-terminate gpi-02156188
 	Terminating instance gpi-02156188... done!
 
 Globus Provision also includes experimental support for the `Globus Online <https://www.globusonline.org/>`_
