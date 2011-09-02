@@ -104,6 +104,7 @@ class gp_instance_create(Command):
         else:
             print "Created new instance:",
             print Fore.WHITE + Style.BRIGHT + inst_id
+            self._set_last_gpi(inst_id)
             
             
 def gp_instance_describe_func():
@@ -144,6 +145,8 @@ class gp_instance_describe(Command):
             self._print_error("Could not access instance.", message)
             exit(1) 
         else:
+            self._set_last_gpi(inst_id)
+            
             if self.opt.verbose or self.opt.debug:
                 print topology_json
             else:
@@ -256,6 +259,9 @@ class gp_instance_start(Command):
         
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
+
+            self._set_last_gpi(inst_id)
+            
             t_end = time.time()
             
             delta = t_end - t_start
@@ -343,6 +349,9 @@ class gp_instance_update(Command):
         
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
+            
+            self._set_last_gpi(inst_id)
+            
             t_end = time.time()
             
             delta = t_end - t_start
@@ -393,6 +402,7 @@ class gp_instance_stop(Command):
         
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
+            self._set_last_gpi(inst_id)
         elif status_code == API.STATUS_FAIL:
             self._print_error("Could not stop instance.", message)
             print
@@ -442,6 +452,7 @@ class gp_instance_terminate(Command):
         
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
+            self._set_last_gpi(inst_id)
         elif status_code == API.STATUS_FAIL:
             print
             self._print_error("Could not terminate instance.", message)
@@ -588,6 +599,9 @@ class gp_instance_add_user(Command):
             
             if status_code == API.STATUS_SUCCESS:
                 print Fore.GREEN + Style.BRIGHT + "done!"
+
+                self._set_last_gpi(inst_id)
+                
                 t_end = time.time()
                 
                 delta = t_end - t_start
@@ -677,6 +691,9 @@ class gp_instance_add_host(Command):
             
             if status_code == API.STATUS_SUCCESS:
                 print Fore.GREEN + Style.BRIGHT + "done!"
+                
+                self._set_last_gpi(inst_id)
+                
                 t_end = time.time()
                 
                 delta = t_end - t_start
@@ -759,6 +776,9 @@ class gp_instance_remove_users(Command):
     
                 if status_code == API.STATUS_SUCCESS:
                     print Fore.GREEN + Style.BRIGHT + "done!"
+                    
+                    self._set_last_gpi(inst_id)
+                    
                     t_end = time.time()
                     
                     delta = t_end - t_start
@@ -842,6 +862,9 @@ class gp_instance_remove_hosts(Command):
     
                 if status_code == API.STATUS_SUCCESS:
                     print Fore.GREEN + Style.BRIGHT + "done!"
+                    
+                    self._set_last_gpi(inst_id)
+                    
                     t_end = time.time()
                     
                     delta = t_end - t_start
