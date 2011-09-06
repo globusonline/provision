@@ -21,5 +21,5 @@ See http://globus.org/provision/ for more details
 """
 
 VERSION="0.3"
-RELEASE="0.3.0"
+RELEASE="0.3.1b2"
 AMI="ami-4104c428"
