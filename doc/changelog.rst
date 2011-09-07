@@ -3,6 +3,35 @@
 Changelog and Release Notes
 ***************************
 
+0.3.1
+=====
+Released on *September NN, 2011*
+
+Changes:
+
+* :jira:`2`: Access to a CA trusted by Globus Online is no longer required
+  to create a GP instance with GO endpoints. When creating an endpoint, 
+  GP will now dynamically request a certificate from the Globus Online CA. This certificate will be used
+  by the GridFTP server in that GP instance. 
+* :jira:`3`: Added a dependency on the `globusonline-transfer-api-client <http://pypi.python.org/pypi/globusonline-transfer-api-client>`_
+  package, instead of shipping our own copy of the Globus Online Transfer API client.   
+* Changed the names of the commands so they will follow a more coherent naming
+  convention. For example, `gp-start` has been renamed to `gp-instance-start`,
+  `gp-describe-instance` has been renamed to `gp-instance-describe`, etc.
+  See :ref:`chap_cli_ref` for more details. 
+* Added the :ref:`barebones-nodes <SimpleTopologyConfig_barebones-nodes>` option
+  to the simple topology file. This allows easy deployment of any number of "vanilla"
+  nodes.
+* Added a bash autocomplete script for the GP commands
+  (thanks to Mike Steder for contributing a first version of the script).
+  See ... for details on how to use it.
+* Bug fixes: :jira:`1`
+
+Known issues:
+
+* The ``instance_update`` API function will not add/remove Globus Online endpoints. 
+* Resuming a stopped instance still not working properly.
+
 0.3.0
 =====
 Released on *August 25, 2011*
