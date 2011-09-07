@@ -410,7 +410,7 @@ class gp_instance_stop(Command):
 
 
 def gp_instance_terminate_func():
-    return gp_terminate(sys.argv).run()     
+    return gp_instance_terminate(sys.argv).run()     
 
 class gp_instance_terminate(Command):
     """
