@@ -141,7 +141,15 @@ which will reduce the deployment time considerably.
 	the latest version of the Globus Provision "golden AMI", so you can use the 
 	configuration files shown here verbatim. 
 	
-	The latest version of the AMI is also listed on the main Globus Provision website.
+	.. ifconfig:: website == "yes"
+	
+		The AMI used in the example files is a 32-bit AMI, but we also provide a 64-bit AMI.
+		The latest versions of our AMIs are listed in the :ref:`ami` page.
+
+	.. ifconfig:: website != "yes"
+
+		The AMI used in the example files is a 32-bit AMI, but we also provide a 64-bit AMI.
+		The latest versions of our AMIs are listed on the main Globus Provision website.
 	
 We are also specifying the `EC2 instance type <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/instance-types.html>`_
 to use. We are using the `"micro-instance" <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?concepts_micro_instances.html>`_
