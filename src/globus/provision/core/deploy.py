@@ -228,7 +228,12 @@ class ConfigureThread(GPThread):
             except SSHCommandFailureException:
                 log.debug("Admin group already exists, skipping..")
                 
-
+            #temporarily add admin group
+            log.debug("Create new admin group")
+            try:
+                ssh.run("addgroup admin")
+            except SSHCommandFailureException:
+                log.debug("Admin group already exists, skipping..")
 
             # Run chef
             log.debug("Running chef", node)
