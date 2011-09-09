@@ -31,10 +31,11 @@ class EC2AMICreator(object):
     Used to create a Globus Provision AMI.
     """ 
     
-    def __init__(self, chef_dir, base_ami, ami_name, config):
+    def __init__(self, chef_dir, base_ami, ami_name, instance_type, config):
         self.chef_dir = chef_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
+        self.instance_type = instance_type
         self.config = config
 
         self.keypair = config.get("ec2-keypair")
@@ -53,7 +54,7 @@ class EC2AMICreator(object):
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='t1.micro', 
+                                         instance_type=self.instance_type, 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
