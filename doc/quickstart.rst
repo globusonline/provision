@@ -122,6 +122,7 @@ to export your Access Key ID and Secret Key as environment variables
 	export AWS_ACCESS_KEY_ID=FOOBAR123FOOBAR123
 	export AWS_SECRET_ACCESS_KEY=FoOBaZ123/FoOBaZ456FoOBaZ789FoOBaZ012FoOBaZ345
 
+.. _chap_quickstart_sec_create:
 
 Creating and launching a Globus Provision instance
 ==================================================

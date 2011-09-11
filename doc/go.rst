@@ -13,6 +13,8 @@ with GO's web interface. If this is not the case, take a look at the
 `Globus Online Quickstart Guide <https://www.globusonline.org/quickstart/>`_
 
 
+.. _chap_go_sec_identity
+
 Authorizing an SSH or X.509 Identity in GO
 ==========================================
 
