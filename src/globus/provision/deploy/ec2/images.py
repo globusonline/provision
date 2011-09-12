@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+from boto.exception import EC2ResponseError
 
 """
 EC2 images utilities.
@@ -30,10 +31,11 @@ class EC2AMICreator(object):
     Used to create a Globus Provision AMI.
     """ 
     
-    def __init__(self, chef_dir, base_ami, ami_name, config):
+    def __init__(self, chef_dir, base_ami, ami_name, instance_type, config):
         self.chef_dir = chef_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
+        self.instance_type = instance_type
         self.config = config
 
         self.keypair = config.get("ec2-keypair")
@@ -52,13 +54,24 @@ class EC2AMICreator(object):
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
-                                         instance_type='m1.small', 
+                                         instance_type=self.instance_type, 
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
         
-        while instance.update() != "running":
-            time.sleep(2)
+        while True:
+            try:
+                newstate = instance.update()
+                if newstate == "running":
+                    break
+                time.sleep(2)
+            except EC2ResponseError, ec2err:
+                if ec2err.error_code == "InvalidInstanceID.NotFound":
+                    # If the instance was just created, this is a transient error. 
+                    # We just have to wait until the instance appears.
+                    pass
+                else:
+                    raise ec2err            
         
         print "Instance running"
         print self.username, instance.public_dns_name, self.keyfile
@@ -77,7 +90,7 @@ class EC2AMICreator(object):
         # Some VMs don't include their hostname
         ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
 
-        ssh.run("sudo apt-get install lsb-release")
+        ssh.run("sudo apt-get install lsb-release wget")
         ssh.run("echo \"deb http://apt.opscode.com/ `lsb_release -cs` main\" | sudo tee /etc/apt/sources.list.d/opscode.list")
         ssh.run("wget -qO - http://apt.opscode.com/packages@opscode.com.gpg.key | sudo apt-key add -")
         ssh.run("sudo apt-get update")
@@ -95,7 +108,7 @@ class EC2AMICreator(object):
         
         print "Removing private data and authorized keys"
         ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
-        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")            
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;", exception_on_error = False)            
             
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
@@ -167,8 +180,8 @@ class EC2AMIUpdater(object):
             ssh.scp(src, dst)
                   
         print "Removing private data and authorized keys"
-        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;")
-        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")
+        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;", exception_on_error = False)
                   
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 

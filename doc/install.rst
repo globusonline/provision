@@ -45,16 +45,16 @@ This option has the following prerequisites:
 If you meet these prerequisites, you should be able to
 install Globus Provision simply by running this as ``root``::
 
-	easy_install globus-provision	
+	easy_install -U globus-provision	
 	
 If you are using Ubuntu or Mac OS X, you will likely just need to run this::
 	
-	sudo easy_install globus-provision
+	sudo easy_install -U globus-provision
 		
 If you do not have administrative privileges on your machine, you will have to install Globus
 Provision under your regular user account::
 
-	easy_install globus-provision --user
+	easy_install -U globus-provision --user
 	
 .. note::
 	Installing Globus Provision in your home directory will install the Globus Provision commands
@@ -68,7 +68,7 @@ Provision under your regular user account::
 	
 	::	
 
-		easy_install globus-provision --user -s ~/bin/
+		easy_install -U globus-provision --user -s ~/bin/
 	
 	
 .. _source_tarball:

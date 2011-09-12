@@ -99,7 +99,7 @@ class Config(object):
                     secname = "%s-%s" % (sec.name, v)
                     if self.config.has_section(secname):
                         for opt in sec.options:
-                            self.__load_option(sec, secname, opt, multiname = v)                        
+                            self.__load_option(sec, secname, opt, True, multiname = v)                        
             else:
                 has_section = self.config.has_section(sec.name)
             
@@ -119,30 +119,30 @@ class Config(object):
                                 raise ConfigException, "Section '%s' is required when %s.%s==%s" % (sec.name, condsec, condopt, condvalue)
                         
                 # Load options
-                if has_section:
-                    for opt in sec.options:
-                        self.__load_option(sec, sec.name, opt)
+                for opt in sec.options:
+                    self.__load_option(sec, sec.name, opt, has_section)
 
     
-    def __load_option(self, sec, secname, opt, multiname = None):
+    def __load_option(self, sec, secname, opt, has_section, multiname = None):
         # Load a single option
         optname = opt.name
         
         has_option = self.config.has_option(secname, optname)
         
         if not has_option:
-            if opt.required:
-                raise ConfigException, "Required option '%s.%s' not found" % (secname, optname)
-            if opt.required_if != None:
-                for req in opt.required_if:
-                    (condsec,condopt) = req[0]
-                    condvalue = req[1]
-                    
-                    if self.config.has_option(condsec,condopt) and self.config.get(condsec,condopt) == condvalue:
-                        raise ConfigException, "Option '%s.%s' is required when %s.%s==%s" % (secname, optname, condsec, condopt, condvalue)
+            if has_section:
+                if opt.required:
+                    raise ConfigException, "Required option '%s.%s' not found" % (secname, optname)
+                if opt.required_if != None:
+                    for req in opt.required_if:
+                        (condsec,condopt) = req[0]
+                        condvalue = req[1]
+                        
+                        if self.config.has_option(condsec,condopt) and self.config.get(condsec,condopt) == condvalue:
+                            raise ConfigException, "Option '%s.%s' is required when %s.%s==%s" % (secname, optname, condsec, condopt, condvalue)
             
             value = opt.default
-            if opt.type == OPTTYPE_FILE and value != None:
+            if has_section and opt.type == OPTTYPE_FILE and value != None:
                 value = os.path.expanduser(value)
                 if not os.path.exists(value):
                     raise ConfigException, "File '%s' does not exist (default for '%s.%s')" % (value, secname, optname)            

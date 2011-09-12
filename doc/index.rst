@@ -38,6 +38,7 @@ get started right away with our :ref:`Quickstart Guide <chap_quickstart>`.
 
    whatis
    download
+   ami
    support
    docs
    intro_common

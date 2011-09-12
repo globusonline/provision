@@ -59,6 +59,9 @@ class gp_ec2_create_ami(Command):
                                   action="store", type="string", dest="aminame", 
                                   help = "Name of AMI to create")
 
+        self.optparser.add_option("-t", "--instance-type", 
+                                  action="store", type="string", dest="instance_type", 
+                                  help = "EC2 instance type to use")
                 
     def run(self):    
         self.parse_options()
@@ -66,7 +69,7 @@ class gp_ec2_create_ami(Command):
         config = GPConfig(os.path.expanduser(self.opt.conf))
         chef_dir = os.path.expanduser(self.opt.chef_dir)
 
-        c = EC2AMICreator(chef_dir, self.opt.ami, self.opt.aminame, config)
+        c = EC2AMICreator(chef_dir, self.opt.ami, self.opt.aminame, self.opt.instance_type, config)
         c.run()
         
         

@@ -65,6 +65,24 @@ if ! File.exists?("/nfs")
 	  action :create
 	  recursive true
 	end
+	
+	# Create the directory where scratch directory will be mounted
+	directory "/nfs/scratch" do
+	  owner "root"
+	  group "root"
+	  mode "0755"
+	  action :create
+	  recursive true
+	end
+	
+	# Create the directory where software directory will be mounted
+	directory "/nfs/software" do
+	  owner "root"
+	  group "root"
+	  mode "0755"
+	  action :create
+	  recursive true
+	end		
 end
 
 

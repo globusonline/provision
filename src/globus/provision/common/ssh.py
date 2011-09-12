@@ -89,14 +89,10 @@ class SSH(object):
         
         log.debug("%s - Running %s" % (self.hostname,command))
         
-        if outf != None:
-            outf = open(outf, "w")
-        else:
+        if outf == None:
             outf = self.default_outf
     
-        if errf != None:
-            errf = open(errf, "w")
-        else:
+        if errf == None:
             errf = self.default_errf
             
         try:
@@ -125,13 +121,6 @@ class SSH(object):
 
                 if all_err_nbytes == 0:
                     log.debug("Command did not write to standard error.")
-            
-                if outf is not None: 
-                    if outf != sys.stdout:
-                        outf.close()
-                    
-                    if errf != sys.stderr:
-                        outf.close()
             
             log.debug("%s - Waiting for exit status: %s" % (self.hostname,command))
             rc = channel.recv_exit_status()

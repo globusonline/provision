@@ -25,18 +25,7 @@
 gp_domain = node[:topology][:domains][node[:domain_id]]
 gp_node   = gp_domain[:nodes][node[:node_id]]
 
-include_recipe "globus::repository"
-
-package "xinetd"
-package "globus-gridftp-server-progs"
-package "libglobus-xio-gsi-driver-dev"
-
-cookbook_file "/etc/gridftp.conf.default" do
-  source "gridftp.conf"
-  mode 0644
-  owner "root"
-  group "root"
-end
+include_recipe "globus::gridftp-common"
 
 template "/etc/xinetd.d/gsiftp" do
   source "xinetd.gridftp.erb"
@@ -44,7 +33,8 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :public_ip => gp_node[:public_ip]
+    :public_ip => gp_node[:public_ip],
+    :gc        => false
   )
   notifies :restart, "service[xinetd]"
 end

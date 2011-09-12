@@ -26,7 +26,7 @@ in this module.
 """
 
 from globus.provision.common.threads import GPThread
-from globus.provision.common.ssh import SSH
+from globus.provision.common.ssh import SSH, SSHCommandFailureException
 from globus.provision.common import log
 from globus.provision.core.topology import Node
 
