@@ -32,14 +32,14 @@ Installing Globus Provision
 
 You can install Globus Provision by running the following as ``root``::
 
-	easy_install globus-provision
+	easy_install -U globus-provision
 
 This will install not just Globus Provision, but also all the packages it depends on.
 	
 .. note::
 	If you are using Ubuntu or Mac OS X, you will likely just need to run this::
 	
-		sudo easy_install globus-provision
+		sudo easy_install -U globus-provision
 		
 	If you do not have administrative privileges on your machine, you will have to install Globus
 	Provision under your regular user account. You can find instructions on this in the :ref:`chap_install`
