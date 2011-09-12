@@ -108,7 +108,7 @@ class EC2AMICreator(object):
         
         print "Removing private data and authorized keys"
         ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
-        #ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")            
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;", exception_on_error = False)            
             
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 
@@ -180,8 +180,8 @@ class EC2AMIUpdater(object):
             ssh.scp(src, dst)
                   
         print "Removing private data and authorized keys"
-        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;")
-        #ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;")
+        ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
+        ssh.run("sudo find / -name authorized_keys -exec rm -f {} \;", exception_on_error = False)
                   
         # Apparently instance.stop() will terminate
         # the instance (this is a known bug), so we 

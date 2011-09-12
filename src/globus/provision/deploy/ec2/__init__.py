@@ -121,7 +121,6 @@ class Deployer(BaseDeployer):
                         gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
                 except TypeError:
                     log.debug("Cannot setup security group, so skipping...")
-                    
         
                 sgs = ["globus-provision"]
                 self.has_gp_sg = True
