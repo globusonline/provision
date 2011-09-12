@@ -556,14 +556,14 @@ In the JSON file, locate the entry corresponding to the ``simple-condor`` host:
           }
         }
 
-In the ``run_list`` array, add an entry for the ``domain-gridftp`` role:
+In the ``run_list`` array, add an entry for the ``domain-gridftp-default`` role:
 
 .. parsed-literal::
 
 	"run_list": [
             "role[domain-nfsnis-client]",
             "role[domain-condor]",
-            **"role[domain-gridftp]"**
+            **"role[domain-gridftp-default]"**
           ]	
 
 Next, we use the :ref:`cli_gp-instance-update` command to tell Globus Provision to

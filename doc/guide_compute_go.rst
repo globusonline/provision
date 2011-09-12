@@ -1,7 +1,7 @@
 .. _guide_compute_go:
 
-Launching a Condor cluster with a GO endpoint
-**********************************************
+Launching a Condor cluster with a Globus Online endpoint
+********************************************************
 
 This guide explains how to launch a Globus Provision instance with a Condor cluster and a
 Globus Online (GO) transfer endpoint. As an example, we will use Globus Online to transfer 
@@ -25,8 +25,8 @@ and make sure you have the necessary EC2 account information. Just read our main
 (although, if you have time, it doesn't hurt to work through the entire Quickstart) 
 
 This guide also assumes that you have a GO account and that you are familiar, at least,
-with GO's web interface. If this is not the case, take a look at the 
-`Globus Online Quickstart Guide <https://www.globusonline.org/quickstart/>`_
+with GO's web interface. If this is not the case, `sign up for a GO account <https://www.globusonline.org/SignUp>`_ 
+and take a look at the `Globus Online Quickstart Guide <https://www.globusonline.org/quickstart/>`_
 
 
 The topology file
@@ -107,9 +107,7 @@ Launching the instance
 ======================
 
 Ok, we're ready to actually launch this topology. The first step is to create a *Globus Provision instance*
-with that topology:
-
-::
+with that topology::
 
 	gp-instance-create -c go-condor-ec2.conf
 
@@ -142,7 +140,7 @@ This command will take a few minutes to do its job and, for a while, all you wil
    If you need any help, don't hesitate to :ref:`contact us <support>`. Make sure you
    include the error message and the part of the log related to that error.	
 	
-In a separate console, you can track the progress of the deployment using this command:	:
+In a separate console, you can track the progress of the deployment using this command::
 
 	gp-instance-describe gpi-65f00474
 	
@@ -164,7 +162,9 @@ each individual host in the topology's domains. Notice how we have a host for th
 (``simple-condor``), four Condor worker nodes (``simple-condor-wn1``, etc.), a GridFTP server
 (``simple-gridftp``), and an NFS/NIS server (``simple-server``). Since we're using EC2 micro-instance
 (notice how we specified ``instance-type: t1.micro`` in the topology file), this example will
-only cost $0.14 per hour to run.
+only cost $0.14 per hour to run. In fact, if you have a new Amazon Web Services account,
+you may be able to take advantage of their 
+`Free Usage Tier <http://aws.amazon.com/free/>`_ and get 750 hours on EC2 completely free.
 
 After a short while, the output of ``gp-instance-describe`` will look like this:
 
@@ -238,10 +238,21 @@ GO web interface or the CLI::
 	$ ssh cli.globusonline.org scp -r my-gc-endpoint:/~/ebooks/ gp-test:/nfs/scratch/
 	Task ID: 74f43426-dc8c-11e0-bc85-12313804ec2a
 	Type <CTRL-C> to cancel or bg<ENTER> to background
-	[XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX] 98/98 2.14 mbps
+	[XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX] 94/94 2.14 mbps
 
 Notice how we're transferring the entire ``ebooks`` directory into the ``/nfs/scratch`` directory. 
 This is a shared scratch directory that can be accessed from any of the hosts in the cluster. 
+
+.. note::
+	Because of the way that NFS directories are mounted on Globus Provision instances,
+	and the way Globus Online's ``scp`` commands checks if a directory exists, the above CLI
+	command may fail. If so, do the transfer using the GO web interface, which will first try
+	to list the contents of ``/nfs/scratch``, ensuring that it will be mounted before the
+	transfer. 
+	
+	Another quick workaround, in case you want to use the CLI command, is to
+	run ``ls /nfs/scratch`` on the ``simple-gridftp`` node. This will force the
+	scratch directory to be mounted before the transfer.
 
 Processing the data with Globus Online
 ======================================
@@ -364,7 +375,7 @@ can also try transferring out of the cluster using Globus Online.
 What's next?
 ============
 
-In this quickstart guide, you have launched a compute cluster on EC2 using Globus Provision,
+In this guide, you have launched a compute cluster on EC2 using Globus Provision,
 and staged data in and out with Globus Online. However, the kind of processing we've done
 is very simple, and could easily be done without the need for a Condor cluster. However,
 this guide lays the groundwork for you to experiment with other datasets, and with more

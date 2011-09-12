@@ -281,7 +281,8 @@ you may want to read the following parts of the documentation:
   Condor pool and a shared filesystem. You will also see how you can add and remove worker nodes
   from the Condor pool.
 * Globus Provision also offers integration with Globus Online. If you want to turn the GridFTP server
-  from this quickstart guide into a Globus Online endpoint, take a look at the :ref:`chap_go` chapter.
+  from this quickstart guide into a Globus Online endpoint, take a look at the :ref:`chap_go` chapter
+  or the :ref:`guide_compute_go` guide.
 * If you want to learn how to define more complex topologies, take a look at the :ref:`chap_topology`
   chapter. In it, you will see how you can customize many aspects of your topology, such as defining 
   hosts with multiple services on them, giving each user a distinct password, customizing what users

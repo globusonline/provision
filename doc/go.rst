@@ -13,7 +13,7 @@ with GO's web interface. If this is not the case, take a look at the
 `Globus Online Quickstart Guide <https://www.globusonline.org/quickstart/>`_
 
 
-.. _chap_go_sec_identity
+.. _chap_go_sec_identity:
 
 Authorizing an SSH or X.509 Identity in GO
 ==========================================
@@ -116,7 +116,7 @@ in your domain:
 	go-auth: **myproxy**
 
 In either case, Globus Provision will try to contact Globus Online using the ``go-user`` account.
-By default, it will do so through the GO CLI, using the SSH key in ``~/.ssh/id_rsa`. If you want
+By default, it will do so through the GO CLI, using the SSH key in ``~/.ssh/id_rsa``. If you want
 to specify a different SSH key, or want to use the Transfer API instead, you can do so in the
 ``[globusonline]`` section. For example, you can specify an alternate key using the
 ``ssh-key`` parameter::
@@ -140,7 +140,9 @@ different from what we've seen so far: Globus Provision will create the endpoint
 when you run ``gp-instance-start`` and will remove them when you run
 ``gp-instance-terminate``.
 
-For example, let's use this configuration file::
+For example, let's use this configuration file:
+
+.. parsed-literal::
 
 	[general]
 	deploy: ec2
@@ -183,7 +185,7 @@ If you use the GO CLI to list your endpoints, you should see ``gp-test`` one::
 Now, use ``gp-instance-describe`` to get the hostname of the GridFTP server,
 SSH into it, and create a file called ``gp-test.txt`` in it. If you now use
 the GO CLI to check the contents of your home directory on the endpoint, you
-should see that file appear:
+should see that file appear::
 
 	$ ssh cli.globusonline.org ls gp-test:/~/
 	gp-test.txt

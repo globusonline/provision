@@ -17,7 +17,9 @@ All these images were generated using the Ubuntu 11.04 AMIs in
 col_names = ["Region", "Architecture", "AMI"]
 rows = []
 for region in AMI:
-    for arch in AMI[region]:
+    archs = AMI[region].keys()
+    archs.sort()
+    for arch in archs:
         rows.append((region, arch, AMI[region][arch]))
 
 print rest_table(col_names, rows)
@@ -29,6 +31,7 @@ to use a stock Ubuntu image, but the deployment time will increase considerably,
 since those packages will have to be installed before Globus Provision can configure
 the instance). 
 
-Take into account that all sample files use the 32-bit AMI in the us-east-1 region. 
+Take into account that all the sample files in the documentation use the 
+32-bit AMI in the us-east-1 region. 
 """
         
