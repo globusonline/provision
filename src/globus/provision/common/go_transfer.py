@@ -212,11 +212,13 @@ class GlobusOnlineCLIHelper(GlobusOnlineHelper):
     def connect(self, username):
         self.ssh = SSH(username, "cli.globusonline.org", self.ssh_key, default_outf = None, default_errf = None)
         try:
-            self.ssh.open()
+            self.ssh.open(timeout=10)
         except paramiko.PasswordRequiredException, pre:
             msg = "The specified SSH key (%s) requires a password." % self.ssh_key
             msg += "Please specify a passwordless SSH key."
             raise GlobusOnlineException, msg
+        except Exception, e:
+            raise GlobusOnlineException, "Could not connect to GO CLI. Cause: %s" % e
         
     def disconnect(self):
         self.ssh.close()

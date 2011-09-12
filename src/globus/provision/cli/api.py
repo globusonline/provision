@@ -410,7 +410,7 @@ class gp_instance_stop(Command):
 
 
 def gp_instance_terminate_func():
-    return gp_terminate(sys.argv).run()     
+    return gp_instance_terminate(sys.argv).run()     
 
 class gp_instance_terminate(Command):
     """
@@ -622,7 +622,7 @@ class gp_instance_add_host(Command):
     
     The instance identifier must be specified after all other parameters. For example::
     
-        gp-instance-add-host --domain simple --id simple-gridftp --run-list role[domain-gridftp] gpi-12345678
+        gp-instance-add-host --domain simple --id simple-gridftp --run-list role[domain-gridftp-default] gpi-12345678
         
     """
         

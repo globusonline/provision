@@ -33,7 +33,7 @@ template "/etc/xinetd.d/gsiftp" do
   owner "root"
   group "root"
   variables(
-    :public_ip => gp_node[:public_ip]
+    :public_ip => gp_node[:public_ip],
     :gc        => false
   )
   notifies :restart, "service[xinetd]"

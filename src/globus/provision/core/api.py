@@ -40,7 +40,8 @@ from globus.provision.common.ssh import SSHCommandFailureException
 from globus.provision.common import log
 from globus.provision.common.config import ConfigException
 from globus.provision.common.persistence import ObjectValidationException
-from globus.provision.common.go_transfer import GlobusOnlineCLIHelper, GlobusOnlineHelper
+from globus.provision.common.go_transfer import GlobusOnlineCLIHelper, GlobusOnlineHelper,\
+    GlobusOnlineException
 
 class API(object):
     """
@@ -117,7 +118,10 @@ class API(object):
     
             inst.topology.save()
 
-            self.__globusonline_pre_start(inst)
+            try:
+                self.__globusonline_pre_start(inst)
+            except GlobusOnlineException, goe:
+                log.warning("Unable to create GO endpoint/s: %s" % goe)
                
             inst.topology.save()                            
             
@@ -160,8 +164,11 @@ class API(object):
             inst.topology.state = Topology.STATE_RUNNING
             inst.topology.save()         
             
-            log.info("Creating Globus Online endpoints")        
-            self.__globusonline_post_start(inst)            
+            log.info("Creating Globus Online endpoints")
+            try:
+                self.__globusonline_post_start(inst)            
+            except GlobusOnlineException, goe:
+                log.warning("Unable to create GO endpoint/s: %s" % goe)
             
             return (API.STATUS_SUCCESS, "Success")
         except:
@@ -370,16 +377,19 @@ class API(object):
         
             go_helper = GlobusOnlineHelper.from_instance(inst)
             
-            # Remove GO endpoints
-            for domain_name, domain in inst.topology.domains.items():
-                if domain.has_property("go_endpoints"):
-                    for ep in domain.go_endpoints:     
-                        go_helper.connect(ep.user)
-                        try:
-                            go_helper.endpoint_remove(ep)
-                        except:
-                            pass   
-                        go_helper.disconnect()
+            try:
+                # Remove GO endpoints
+                for domain_name, domain in inst.topology.domains.items():
+                    if domain.has_property("go_endpoints"):
+                        for ep in domain.go_endpoints:     
+                            go_helper.connect(ep.user)
+                            try:
+                                go_helper.endpoint_remove(ep)
+                            except:
+                                pass   
+                            go_helper.disconnect()
+            except GlobusOnlineException, goe:
+                log.warning("Unable to remove GO endpoint/s: %s" % goe)
         
             inst.topology.state = Topology.STATE_TERMINATED
             inst.topology.save()

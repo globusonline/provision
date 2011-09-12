@@ -32,14 +32,14 @@ Installing Globus Provision
 
 You can install Globus Provision by running the following as ``root``::
 
-	easy_install globus-provision
+	easy_install -U globus-provision
 
 This will install not just Globus Provision, but also all the packages it depends on.
 	
 .. note::
 	If you are using Ubuntu or Mac OS X, you will likely just need to run this::
 	
-		sudo easy_install globus-provision
+		sudo easy_install -U globus-provision
 		
 	If you do not have administrative privileges on your machine, you will have to install Globus
 	Provision under your regular user account. You can find instructions on this in the :ref:`chap_install`
@@ -122,6 +122,7 @@ to export your Access Key ID and Secret Key as environment variables
 	export AWS_ACCESS_KEY_ID=FOOBAR123FOOBAR123
 	export AWS_SECRET_ACCESS_KEY=FoOBaZ123/FoOBaZ456FoOBaZ789FoOBaZ012FoOBaZ345
 
+.. _chap_quickstart_sec_create:
 
 Creating and launching a Globus Provision instance
 ==================================================
@@ -280,7 +281,8 @@ you may want to read the following parts of the documentation:
   Condor pool and a shared filesystem. You will also see how you can add and remove worker nodes
   from the Condor pool.
 * Globus Provision also offers integration with Globus Online. If you want to turn the GridFTP server
-  from this quickstart guide into a Globus Online endpoint, take a look at the :ref:`chap_go` chapter.
+  from this quickstart guide into a Globus Online endpoint, take a look at the :ref:`chap_go` chapter
+  or the :ref:`guide_compute_go` guide.
 * If you want to learn how to define more complex topologies, take a look at the :ref:`chap_topology`
   chapter. In it, you will see how you can customize many aspects of your topology, such as defining 
   hosts with multiple services on them, giving each user a distinct password, customizing what users

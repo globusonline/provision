@@ -29,6 +29,8 @@ case node.platform
       distro_id = "natty"
     elsif node.platform_version == "10.10"
       distro_id = "maverick"
+    elsif node.platform_version == "10.04"
+      distro_id = "lenny"
     end
 
   when "debian"

@@ -55,6 +55,9 @@ def log(msg, func, node):
 
 def debug(msg, node = None):
     log(msg, logging.getLogger('globusprovision').debug, node)
+
+def warning(msg, node = None):
+    log(msg, logging.getLogger('globusprovision').warning, node)
     
 def info(msg, node = None):
     log(msg, logging.getLogger('globusprovision').info, node)
