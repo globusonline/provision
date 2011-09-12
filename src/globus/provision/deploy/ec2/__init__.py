@@ -72,7 +72,7 @@ class Deployer(BaseDeployer):
         try:
             log.debug("Connecting to EC2...")
             ec2_server_hostname = config.get("ec2-server-hostname")
-            ec2_server_port = int(config.get("ec2-server-port"))
+            ec2_server_port = config.get("ec2-server-port")
             ec2_server_path = config.get("ec2-server-path")
             
             if ec2_server_hostname != None:
@@ -98,29 +98,26 @@ class Deployer(BaseDeployer):
             if self.has_gp_sg:
                 sgs = ["globus-provision"]
             else:
-                try:
-                    gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
-                    if len(gp_sg) == 0:
-                        gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
-                    
-                        # Internal
-                        gp_sg.authorize(src_group = gp_sg)
+                gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
+                if len(gp_sg) == 0:
+                    gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
+                
+                    # Internal
+                    gp_sg.authorize(src_group = gp_sg)
 
-                        # SSH
-                        gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
-                    
-                        # GridFTP
-                        gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
-                        gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
-                        gp_sg.authorize('tcp', 50000, 51000, '0.0.0.0/0')
-                    
-                        # MyProxy
-                        gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
-    
-                        # Galaxy
-                        gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
-                except TypeError:
-                    log.debug("Cannot setup security group, so skipping...")
+                    # SSH
+                    gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
+                
+                    # GridFTP
+                    gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
+                    gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
+                    gp_sg.authorize('tcp', 50000, 51000, '0.0.0.0/0')
+                
+                    # MyProxy
+                    gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
+
+                    # Galaxy
+                    gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
         
                 sgs = ["globus-provision"]
                 self.has_gp_sg = True
