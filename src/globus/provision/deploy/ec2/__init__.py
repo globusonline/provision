@@ -86,6 +86,12 @@ class Deployer(BaseDeployer):
             if self.conn == None:
                 raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
 
+            # TODO: Move this to a get_placement_group method
+            rc = self.conn.create_placement_group(self.instance.id, strategy = "cluster")
+            if rc:
+                pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
+                self.pg = pgs[0]
+
             log.debug("Connected to EC2.")
         except BotoClientError, exc:
             raise DeploymentException, "Could not connect to EC2. %s" % exc.reason
@@ -176,6 +182,10 @@ mounts:
 - [ ephemeral2, /ephemeral/2, auto, "defaults,noexec" ]
 - [ ephemeral3, /ephemeral/3, auto, "defaults,noexec" ]
 """
+        if instance_type in ("cc1.4xlarge", "cg1.4xlarge"):
+            placement_group = self.pg.name
+        else:
+            placement_group = None
         
         log.info(" |- Launching a %s instance for %s." % (instance_type, node.id))
         reservation = image.run(min_count=1, 
@@ -185,6 +195,7 @@ mounts:
                                 key_name=self.instance.config.get("ec2-keypair"),
                                 user_data=user_data,
                                 block_device_map=map,
+                                placement_group = placement_group,
                                 placement = None)
         instance = reservation.instances[0]
         
