@@ -162,10 +162,10 @@ class Deployer(BaseDeployer):
         sdc.ephemeral_name = 'ephemeral1'
         sdd.ephemeral_name = 'ephemeral2'
         sde.ephemeral_name = 'ephemeral3'
-        map['/dev/sdb1'] = sdb
-        map['/dev/sdc1'] = sdc
-        map['/dev/sdd1'] = sdd
-        map['/dev/sde1'] = sde 
+        map['/dev/sdb'] = sdb
+        map['/dev/sdc'] = sdc
+        map['/dev/sdd'] = sdd
+        map['/dev/sde'] = sde 
                 
         # The following will only work with Ubuntu AMIs (including the AMI we provide)
         # If using a different AMI, you may need to manually mount the ephemeral partitions.
