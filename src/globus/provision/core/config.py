@@ -446,6 +446,22 @@ class SimpleTopologyConfig(Config):
             doc         = """
             The number of Condor worker nodes to create.        
             """),     
+     Option(name        = "hadoop",
+            getter      = "hadoop",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
+            required    = False,
+            doc         = """
+            Specifies whether to set up a `Hadoop <http://hadoop.apache.org/>`_ cluster
+            in this domain.   
+            """),           
+     Option(name        = "hadoop-nodes",
+            getter      = "hadoop-nodes",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            The number of Hadoop slave nodes to create.        
+            """),     
      Option(name        = "galaxy",
             getter      = "galaxy",
             type        = OPTTYPE_BOOLEAN,
@@ -664,6 +680,10 @@ class SimpleTopologyConfig(Config):
                     # If there is a Galaxy server in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
                     server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                if self.get((domain_name,"hadoop")):
+                    # If there is a Hadoop cluster in the domain, the "common"
+                    # recipe has to be installed on the NFS/NIS server
+                    server_node.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
                     
                 domain.add_node(server_node)
 
@@ -766,7 +786,16 @@ class SimpleTopologyConfig(Config):
                 worker_role = "role[domain-clusternode-condor]"
                 num_workers = self.get((domain.id,"condor-nodes"))
                 
-                self.__gen_cluster(domain, head_name, head_role, worker_name, worker_role, num_workers)
+                self.__gen_cluster(domain, None, head_name, head_role, worker_name, worker_role, num_workers)
+                
+            if self.get((domain_name,"hadoop")):
+                head_name = "%s-hadoop-master" % domain_name
+                head_role = "role[domain-hadoop-master]"
+                worker_name = "%s-hadoop-slave" % domain_name
+                worker_role = "role[domain-hadoop-slave]"
+                num_workers = self.get((domain.id,"hadoop-nodes"))
+                                
+                self.__gen_cluster(domain, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers)
                 
             if has_go_ep:
                 goep = GOEndpoint()
@@ -788,7 +817,7 @@ class SimpleTopologyConfig(Config):
         return topology
 
 
-    def __gen_cluster(self, domain, head_name, head_role, worker_name, worker_role, num_workers):
+    def __gen_cluster(self, domain, common_recipe, head_name, head_role, worker_name, worker_role, num_workers):
         head_node = Node()
         head_node.set_property("id", head_name)
         if self.get((domain.id,"nfs-nis")):  
@@ -796,13 +825,15 @@ class SimpleTopologyConfig(Config):
             head_node.add_to_array("run_list", "role[domain-nfsnis-client]")
         else:
             head_node.add_to_array("run_list", "recipe[provision::gp_node]")
-            head_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
+            head_node.add_to_array("run_list", "recipe[provision::domain_users]")  
+            if common_recipe != None:                  
+                head_node.add_to_array("run_list", common_recipe)  
         head_node.add_to_array("run_list", head_role)
         domain.add_node(head_node)
         
 
         for i in range(num_workers):
-            wn_name = "%s%i" % (worker_name.id, i+1)
+            wn_name = "%s%i" % (worker_name, i+1)
 
             wn_node = Node()
             wn_node.set_property("id", wn_name)
@@ -811,7 +842,10 @@ class SimpleTopologyConfig(Config):
                 wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
             else:
                 wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
+                wn_node.add_to_array("run_list", "recipe[provision::domain_users]")    
+                if common_recipe != None:                  
+                    head_node.add_to_array("run_list", common_recipe)  
+                                              
             wn_node.add_to_array("run_list", worker_role)
             domain.add_node(wn_node)
 

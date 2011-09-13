@@ -203,7 +203,7 @@ class API(object):
                         message = "Error in topology file: %s" % ove
                         return (API.STATUS_FAIL, message)
                 return (API.STATUS_SUCCESS, "Success")
-            elif inst.topology.state != Topology.STATE_RUNNING:
+            elif inst.topology.state not in (Topology.STATE_RUNNING, Topology.STATE_FAILED):
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
     

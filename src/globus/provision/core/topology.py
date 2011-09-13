@@ -109,6 +109,7 @@ ff02::3 ip6-allhosts
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
             topology += gen_topology_line("condor_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("hadoop_master", domain.id, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
         
         topologyfile = open(filename, "w")
         topologyfile.write(topology)
