@@ -14,5 +14,4 @@ to subscribe to the list or to check out the list's archive.
 Reporting bugs, feature requests, etc.
 ======================================
 
-We will be setting up a mechanism for reporting bugs soon. For now, please report any bugs
-or feature requests on the mailing list.
+Please report any bugs or feature requests through our Jira site: `http://jira.globus.org/browse/GP <http://jira.globus.org/browse/GP>`_

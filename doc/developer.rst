@@ -78,7 +78,7 @@ The Command-Line Interface (CLI) is currently the only frontend to the API. It p
 all the commands listed in :ref:`chap_cli_ref`. The commands are actually divided into
 three groups:
 
-* *API*: These are commands that map to an API function (e.g., :ref:`cli_gp-start`
+* *API*: These are commands that map to an API function (e.g., :ref:`cli_gp-instance-start`
   is a wrapper for the ``instance_start`` API function). The majority of commands
   fall into this category.
 * *Globus Online*: Currently only includes :ref:`cli_gp-go-register-endpoints`. This
@@ -208,13 +208,13 @@ recipe called ``server``. The ``run_list`` attribute could look something like t
 
 If you're using the Globus Provision AMI, your new recipe will obviously not
 be available there. However, you can still using the Globus Provision AMI
-and instruct ``gp-start`` to simply copy in the missing files before
+and instruct ``gp-instance-start`` to simply copy in the missing files before
 it tries to configure the hosts in your topology. This is done with the
 ``--extra-files`` option:
 
 ::
 
-		gp-start --extra-files files.txt gpi-02156188
+		gp-instance-start --extra-files files.txt gpi-02156188
 
 The value of this option is a file with a list of the files to copy in.
 Each line will contain two values: the local path (wildcards are supported)
@@ -228,7 +228,7 @@ from a ``foobar`` cookbook, the ``files.txt`` file might look like this:
 	./src/globus/provision/chef-files/cookbooks/foobar/templates/default/*	/chef/cookbooks/foobar/templates/default/
 	./src/globus/provision/chef-files/cookbooks/foobar/recipes/*		    /chef/cookbooks/foobar/recipes/
 		
-The ``--extra-files`` option is also supported by ``gp-update-topology``.		
+The ``--extra-files`` option is also supported by ``gp-instance-update``.		
 		
 Although the ``--extra-files`` option can be useful for testing, it is not a permanent solution, 
 as it requires telling other users that they need to include that option when using Globus Provision

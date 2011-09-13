@@ -119,7 +119,7 @@ property, with the list of "roles" and "recipes" to apply to that host::
 
     {
       "id": "simple-gridftp", 
-      "run_list": [ "role[domain-gridftp]" ]
+      "run_list": [ "role[domain-gridftp-default]" ]
     }
 
 We will revisit the ``run_list`` attribute soon. For now, just trust that the value shown
@@ -138,7 +138,7 @@ That is all we need for the Domain, object which will look like this::
       "nodes": [
         {
           "id": "simple-gridftp", 
-          "run_list": [ "role[domain-gridftp]" ]
+          "run_list": [ "role[domain-gridftp-default]" ]
         }
       ], 
     }
@@ -220,7 +220,7 @@ into two separate hosts (one for the GridFTP server and another for the Condor h
 If you want to specify that you want both servers in a single host, the simple
 topology format will not allow you to do this. In the topology JSON, on the other hand,
 you simply define single Node in the domain, and set its ``run_list`` to
-``[ "role[domain-condor]", "role[domain-gridftp]" ]``.
+``[ "role[domain-condor]", "role[domain-gridftp-default]" ]``.
 
 To put it another way, the JSON format allows you to specify *exactly* what you want
 your topology to look like. The simple topology format, on the other hand, will take
@@ -236,7 +236,7 @@ So, if you've written your topology in JSON, you can no longer merge it with the
 Globus Provision configuration file, as we've done in previous examples. Instead,
 you must specify the configuration file and the topology separately, like this::
 	
-	gp-create -c ec2.conf -t topology.json
+	gp-instance-create -c ec2.conf -t topology.json
 	
 In this case, ``ec2.conf`` could contain the following::
 
@@ -270,7 +270,7 @@ a GridFTP server, we would tell Chef to apply the "GridFTP recipe" to it. In thi
 we're actually selecting a "role", which is simply a convenient way of specifying
 that multiple recipes must be run (e.g., in this case, besides installing the GridFTP
 server itself, we also need to install a host certificate; the "host certificate recipe"
-is included in ``role[domain-gridftp]``, as is the "GridFTP recipe"). So, while in the simple 
+is included in ``role[domain-gridftp-default]``, as is the "GridFTP recipe"). So, while in the simple 
 topology format we could get away with using simple options like 
 ``gridftp: yes`` (which Globus Provision translated into the specific "run list" necessary 
 to set up a GridFTP server), in the JSON format we will have to specify precisely what roles
@@ -303,7 +303,7 @@ we could define the following two nodes::
   "nodes": [
     {
       "id": "simple-gridftp", 
-      "run_list": [ "role[domain-gridftp]" ],
+      "run_list": [ "role[domain-gridftp-default]" ],
       "deploy_data": { "ec2": {"instance_type": "m1.small" } }
     },
     {
@@ -338,13 +338,13 @@ the ``dummy`` deployer)::
 
 Next, we create the instance::
 
-	$ gp-create -c samples/simple-dummy.conf
+	$ gp-instance-create -c samples/simple-dummy.conf
 	Created new instance: gpi-4bb1aefa
 
-If we run ``gp-describe-instance -v``, we will get the raw JSON representation of the
+If we run ``gp-instance-describe -v``, we will get the raw JSON representation of the
 topology::
 
-	$ gp-describe-instance -v gpi-4bb1aefa
+	$ gp-instance-describe -v gpi-4bb1aefa
 	{
 	  "domains": [
 	    {
@@ -430,7 +430,7 @@ topology::
 	
 Now, let's start this instance::
 
-	$ gp-start gpi-4bb1aefa
+	$ gp-instance-start gpi-4bb1aefa
 	Starting instance gpi-4bb1aefa... done!
 	Started instance in 0 minutes and 0 seconds
 

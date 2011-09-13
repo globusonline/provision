@@ -38,5 +38,5 @@ package "globus-gridftp-server-progs"
 package "libglobus-xio-gsi-driver-dev"
 
 include_recipe "condor::condor"
-
+include_recipe "java"
 

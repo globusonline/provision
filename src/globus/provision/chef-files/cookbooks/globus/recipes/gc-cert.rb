@@ -47,21 +47,24 @@ ruby_block "get_gc_certificate" do
   key_file = "/etc/grid-security/gc-key-#{gp_node[:gc_setupkey]}.pem"
   only_if do ! File.exists?(cert_file) end
   block do
-  	ENV["X509_USER_CERT"]="/etc/grid-security/anon.cert"
-  	ENV["X509_USER_KEY"]="/etc/grid-security/anon.key"
-    cert_blob = `gsissh -F /dev/null -o "GSSApiTrustDns no" -o "ServerAliveInterval 15" -o "ServerAliveCountMax 8" relay.globusonline.org -p 2223 register #{gp_node[:gc_setupkey]}`
+    begin
+      ENV["X509_USER_CERT"]="/etc/grid-security/anon.cert"
+      ENV["X509_USER_KEY"]="/etc/grid-security/anon.key"
+      cert_blob = `gsissh -F /dev/null -o "GSSApiTrustDns no" -o "ServerAliveInterval 15" -o "ServerAliveCountMax 8" relay.globusonline.org -p 2223 register #{gp_node[:gc_setupkey]}`
 
-	# Just for testing
-	#cert_blob = `cat $X509_USER_CERT $X509_USER_KEY`
-
-    cert = OpenSSL::X509::Certificate.new(cert_blob)
-    cert_f = File.new(cert_file, 'w')
-    cert_f.write(cert.to_pem)
-    cert_f.chmod(0644)
+      cert = OpenSSL::X509::Certificate.new(cert_blob)
+      cert_f = File.new(cert_file, 'w')
+      cert_f.write(cert.to_pem)
+      cert_f.chmod(0644)
     
-    key = OpenSSL::PKey::RSA.new(cert_blob)
-    key_f = File.new(key_file, 'w')
-    key_f.write(key.to_pem)
-    key_f.chmod(0400)
+      key = OpenSSL::PKey::RSA.new(cert_blob)
+      key_f = File.new(key_file, 'w')
+      key_f.write(key.to_pem)
+      key_f.chmod(0400)
+    rescue
+      # TODO: Find a way to communicate to GP that this has happened,
+      #       so it can be reported to the user.
+      p "Unable to obtain GC certificate"
+    end
   end
 end

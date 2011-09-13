@@ -78,8 +78,8 @@ class Deployer(BaseDeployer):
             
             if ec2_server_hostname != None:
                 self.conn = create_ec2_connection(ec2_server_hostname,
-                                                  ec2_server_port,
-                                                  ec2_server_path) 
+                                                  ec2_server_path,
+                                                  ec2_server_port) 
             else:
                 self.conn = create_ec2_connection()
             
@@ -100,7 +100,7 @@ class Deployer(BaseDeployer):
         sgs = topology.get_deploy_data(node, "ec2", "security_groups")
         if sgs is None:
             sgs = []
-        
+
         if len(sgs) == 0:
             if self.has_gp_sg:
                 sgs = ["globus-provision"]
@@ -108,21 +108,21 @@ class Deployer(BaseDeployer):
                 gp_sg = self.conn.get_all_security_groups(filters={"group-name":"globus-provision"})
                 if len(gp_sg) == 0:
                     gp_sg = self.conn.create_security_group('globus-provision', 'Security group for Globus Provision instances')
-                    
+                
                     # Internal
                     gp_sg.authorize(src_group = gp_sg)
 
                     # SSH
                     gp_sg.authorize('tcp', 22, 22, '0.0.0.0/0')
-                    
+                
                     # GridFTP
                     gp_sg.authorize('tcp', 2811, 2811, '0.0.0.0/0')
                     gp_sg.authorize('udp', 2811, 2811, '0.0.0.0/0')
                     gp_sg.authorize('tcp', 50000, 51000, '0.0.0.0/0')
-                    
+                
                     # MyProxy
                     gp_sg.authorize('tcp', 7512, 7512, '0.0.0.0/0')
-    
+
                     # Galaxy
                     gp_sg.authorize('tcp', 8080, 8080, '0.0.0.0/0')
         
@@ -320,6 +320,44 @@ mounts:
             instance = self.ec2_instance
             
             log.info("Setting up instance %s. Hostname: %s" % (instance.id, instance.public_dns_name), node)
+           
+            try:
+                ssh.run("ls -l /chef")
+            except SSHCommandFailureException:
+                #The image is not properly setup, so do all pre-configuration for globus-provision
+                log.info("Image is not configured with Chef, so installing...")
+
+                ssh.run("sudo chown -R %s /chef" % self.config.get("ec2-username"))
+                ssh.scp_dir("%s" % self.chef_dir, "/chef")
+
+
+
+                ssh.run("addgroup admin", exception_on_error = False)
+                ssh.run("echo \"%s `hostname`\" | sudo tee -a /etc/hosts" % instance.private_ip_address)
+
+                ssh.run("sudo apt-get install lsb-release wget")
+                ssh.run("echo \"deb http://apt.opscode.com/ `lsb_release -cs` main\" | sudo tee /etc/apt/sources.list.d/opscode.list")
+                ssh.run("wget -qO - http://apt.opscode.com/packages@opscode.com.gpg.key | sudo apt-key add -")
+                ssh.run("sudo apt-get update")
+                ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
+                ssh.run("sudo apt-get -q=2 install chef")
+        
+                ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
+                ssh.run("echo '{ \"run_list\": \"recipe[provision::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
+
+                ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
+        
+                ssh.run("sudo update-rc.d -f nis remove")
+                ssh.run("sudo update-rc.d -f condor remove")
+                ssh.run("sudo update-rc.d -f chef-client remove")
+       
+
+                log.debug("Removing private data...")
+         
+                ssh.run("sudo find /root/.*history /home/*/.*history -exec rm -f {} \;", exception_on_error = False)
+
+
+            
                 
         def post_configure(self, ssh):
             pass

@@ -425,7 +425,7 @@ Node.properties = {
                             A unique identifier for this host. The value of this
                             property is only used for identification purposes
                             (e.g., when printing the status of an instance with
-                            ``gp-describe-instance``), and will not affect other
+                            ``gp-instance-describe``), and will not affect other
                             properties, like its hostname, etc. (except when using
                             the ``dummy`` deployer).
                             """),
