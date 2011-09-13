@@ -159,7 +159,7 @@ class GPConfig(Config):
             """),
      Option(name        = "server-port",
             getter      = "ec2-server-port",
-            type        = OPTTYPE_STRING,
+            type        = OPTTYPE_INT,
             required    = False,
             doc         = """
             The TCP port of the EC2 server. If you are using Amazon AWS, leave this option

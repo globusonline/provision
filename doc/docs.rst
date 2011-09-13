@@ -31,6 +31,7 @@ Globus Provision Documentation
    go.rst
    topology.rst
    developer.rst
+   guides.rst
    config_ref_top.rst
    stopology_ref_top.rst
    topology_ref_top.rst

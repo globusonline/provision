@@ -48,15 +48,18 @@ end
 
 brick_list =  glusterfs_servers.map{|s| s+":/ephemeral/0/glusterfs"}
 brick_list += glusterfs_servers.map{|s| s+":/ephemeral/1/glusterfs"}
+
+num_bricks = brick_list.size
+
 brick_list = brick_list.join(" ")
 
 case glusterfs_type
 when "distributed"
     opt = ""
 when "replicated"
-    opt = "replica #{glusterfs_servers.size}"
+    opt = "replica #{num_bricks}"
 when "striped"
-    opt = "stripe #{glusterfs_servers.size}"
+    opt = "stripe #{num_bricks}"
 when "distributed-striped"
     opt = "stripe #{glusterfs_setsize}"
 when "distributed-replicated"

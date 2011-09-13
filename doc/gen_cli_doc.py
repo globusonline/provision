@@ -12,10 +12,10 @@ import operator
 OPTION_LEN=50
 DESCRIPTION_LEN=100
 
-commands = [api.gp_create, api.gp_start, api.gp_describe_instance,
-            api.gp_update_topology, api.gp_stop, api.gp_terminate,
-            api.gp_add_host, api.gp_add_user, api.gp_remove_hosts,
-            api.gp_remove_users, api.gp_list_instances,
+commands = [api.gp_instance_create, api.gp_instance_start, api.gp_instance_describe,
+            api.gp_instance_update, api.gp_instance_stop, api.gp_instance_terminate,
+            api.gp_instance_add_host, api.gp_instance_add_user, api.gp_instance_remove_hosts,
+            api.gp_instance_remove_users, api.gp_instance_list,
             
             ec2.gp_ec2_create_ami, ec2.gp_ec2_update_ami,
             

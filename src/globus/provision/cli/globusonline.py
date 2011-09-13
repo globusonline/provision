@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
-from globus.provision.common.globusonline import GlobusOnlineHelper
-
 """
 Commands related to Globus Online endpoint management, but which do not require access to the API
 """
@@ -25,8 +23,8 @@ import paramiko
 from globus.provision.common.ssh import SSH
 
 from globus.provision.cli import Command
-from globus.transfer.transfer_api import TransferAPIClient, ClientError
 from globus.provision.core.instance import InstanceStore
+from globus.provision.common.go_transfer import GlobusOnlineHelper
 
 def gp_go_register_endpoints_func():
     return gp_go_register_endpoints(sys.argv).run()     

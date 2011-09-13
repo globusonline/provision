@@ -12,8 +12,8 @@ The specification of each object contains a table summarizing that object's prop
 Besides the property name and type, a property has two other attributes:
 
 * A **required** property is one that must have a value when a new Globus Provision instance
-  is created with ``gp-create``. 
-* When an updated topology is specified with ``gp-update-topology``, you are only allowed
+  is created with ``gp-instance-create``. 
+* When an updated topology is specified with ``gp-instance-update``, you are only allowed
   to modify properties that are **editable**. If a property is a list of other values, 
   then you can only add/remove items from that list if the property is editable.  
 

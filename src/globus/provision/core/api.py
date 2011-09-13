@@ -13,9 +13,6 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
-from globus.provision.common.globusonline import GlobusOnlineCLIHelper,\
-    GlobusOnlineHelper
-
 """
 The Globus Provision API
 
@@ -30,7 +27,6 @@ import sys
 import traceback
 import os.path
 
-
 from boto.exception import EC2ResponseError
 
 import globus.provision.deploy.ec2 as ec2_deploy
@@ -44,6 +40,8 @@ from globus.provision.common.ssh import SSHCommandFailureException
 from globus.provision.common import log
 from globus.provision.common.config import ConfigException
 from globus.provision.common.persistence import ObjectValidationException
+from globus.provision.common.go_transfer import GlobusOnlineCLIHelper, GlobusOnlineHelper,\
+    GlobusOnlineException
 
 class API(object):
     """
@@ -120,7 +118,10 @@ class API(object):
     
             inst.topology.save()
 
-            self.__globusonline_pre_start(inst)
+            try:
+                self.__globusonline_pre_start(inst)
+            except GlobusOnlineException, goe:
+                log.warning("Unable to create GO endpoint/s: %s" % goe)
                
             inst.topology.save()                            
             
@@ -163,8 +164,11 @@ class API(object):
             inst.topology.state = Topology.STATE_RUNNING
             inst.topology.save()         
             
-            log.info("Creating Globus Online endpoints")        
-            self.__globusonline_post_start(inst)            
+            log.info("Creating Globus Online endpoints")
+            try:
+                self.__globusonline_post_start(inst)            
+            except GlobusOnlineException, goe:
+                log.warning("Unable to create GO endpoint/s: %s" % goe)
             
             return (API.STATUS_SUCCESS, "Success")
         except:
@@ -373,16 +377,19 @@ class API(object):
         
             go_helper = GlobusOnlineHelper.from_instance(inst)
             
-            # Remove GO endpoints
-            for domain_name, domain in inst.topology.domains.items():
-                if domain.has_property("go_endpoints"):
-                    for ep in domain.go_endpoints:     
-                        go_helper.connect(ep.user)
-                        try:
-                            go_helper.endpoint_remove(ep)
-                        except:
-                            pass   
-                        go_helper.disconnect()
+            try:
+                # Remove GO endpoints
+                for domain_name, domain in inst.topology.domains.items():
+                    if domain.has_property("go_endpoints"):
+                        for ep in domain.go_endpoints:     
+                            go_helper.connect(ep.user)
+                            try:
+                                go_helper.endpoint_remove(ep)
+                            except:
+                                pass   
+                            go_helper.disconnect()
+            except GlobusOnlineException, goe:
+                log.warning("Unable to remove GO endpoint/s: %s" % goe)
         
             inst.topology.state = Topology.STATE_TERMINATED
             inst.topology.save()
@@ -403,13 +410,16 @@ class API(object):
     def instance_list(self, inst_ids):
         istore = InstanceStore(self.instances_dir)
         
-        if inst_ids == None:
-            insts = istore.get_instances()
-        else:
-            insts = [istore.get_instance(inst_id) for inst_id in inst_ids]
+        (valid, invalid) = istore.get_instances(inst_ids)
+        instances_jsons = []
+        for inst in valid:
+            instances_jsons.append(inst.topology.to_json_string())
+            
+        instances_json = "[" + ",".join(instances_jsons) + "]"
                 
-        # TODO: Return JSON
-        return insts
+        # TODO: Return invalid instances as "warnings", once we
+        # add that extra return value to the API.
+        return API.STATUS_SUCCESS, "Success", instances_json
 
         
     def __get_instance(self, inst_id):
