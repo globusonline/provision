@@ -430,23 +430,22 @@ class SimpleTopologyConfig(Config):
             doc         = """
             Specifies whether to set up a GridFTP server on this domain.             
             """),                   
-     Option(name        = "lrm",
-            getter      = "lrm",
-            type        = OPTTYPE_STRING,
-            valid       = ["none", "condor"],
-            default     = "none",
+     Option(name        = "condor",
+            getter      = "condor",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
             required    = False,
             doc         = """
-            Specifies whether to set up an LRM (Local Resource Manager) on this domain. Currently, only          
-            `Condor <http://www.cs.wisc.edu/condor/>`_ is supported.   
+            Specifies whether to set up a `Condor <http://www.cs.wisc.edu/condor/>`_ cluster
+            in this domain.   
             """),           
-     Option(name        = "cluster-nodes",
-            getter      = "cluster-nodes",
+     Option(name        = "condor-nodes",
+            getter      = "condor-nodes",
             type        = OPTTYPE_INT,
             required    = False,
             doc         = """
-            The number of worker nodes to create for the LRM.        
-            """),         
+            The number of Condor worker nodes to create.        
+            """),     
      Option(name        = "galaxy",
             getter      = "galaxy",
             type        = OPTTYPE_BOOLEAN,
@@ -743,47 +742,32 @@ class SimpleTopologyConfig(Config):
                 galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
                 domain.add_node(galaxy_node)                
             
-            
-            lrm = self.get((domain_name,"lrm"))
-            if lrm != "none":
-                gram = self.get((domain_name,"gram"))
-                if lrm == "condor":
-                    if gram:
-                        node_name = "%s-gram-condor" % domain_name
-                        role = "role[domain-gram-condor]"
-                    else:
-                        node_name = "%s-condor" % domain_name
-                        role = "role[domain-condor]"
-                    workernode_role = "role[domain-clusternode-condor]"
 
-                lrm_node = Node()
-                lrm_node.set_property("id", node_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    lrm_node.set_property("depends", "node:%s" % server_name)
-                    lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+            if self.get((domain_name,"condor")):
+                if self.get((domain_name,"gram")):
+                    head_name = "%s-gram-condor" % domain_name
+                    head_role = "role[domain-gram-condor]"
                 else:
-                    lrm_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    lrm_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
-                lrm_node.add_to_array("run_list", role)
-                domain.add_node(lrm_node)
+                    node_name = "%s-condor" % domain_name
+                    head_role = "role[domain-condor]"
+                worker_name = "%s-condor-wn" % domain_name
+                worker_role = "role[domain-clusternode-condor]"
 
-                clusternode_host = 1
-                for i in range(self.get((domain_name,"cluster-nodes"))):
-                    wn_name = "%s-condor-wn%i" % (domain_name, i+1)
+                self.__gen_cluster(head_name, head_role, worker_name, worker_role)
 
-                    wn_node = Node()
-                    wn_node.set_property("id", wn_name)
-                    wn_node.set_property("depends", "node:%s" % node_name)
-                    if self.get((domain_name,"nfs-nis")):
-                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
-                    else:
-                        wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                        wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
-                    wn_node.add_to_array("run_list", workernode_role)
-                    domain.add_node(wn_node)
-
-                    clusternode_host += 1
-            
+            if self.get((domain_name,"condor")):
+                if self.get((domain_name,"gram")):
+                    head_name = "%s-gram-condor" % domain_name
+                    head_role = "role[domain-gram-condor]"
+                else:
+                    head_name = "%s-condor" % domain_name
+                    head_role = "role[domain-condor]"
+                worker_name = "%s-condor-wn" % domain_name
+                worker_role = "role[domain-clusternode-condor]"
+                num_workers = self.get((domain.id,"condor-nodes"))
+                
+                self.__gen_cluster(domain, head_name, head_role, worker_name, worker_role, num_workers)
+                
             if has_go_ep:
                 goep = GOEndpoint()
                 gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
@@ -803,4 +787,31 @@ class SimpleTopologyConfig(Config):
                 
         return topology
 
+
+    def __gen_cluster(self, domain, head_name, head_role, worker_name, worker_role, num_workers):
+        head_node = Node()
+        head_node.set_property("id", head_name)
+        if self.get((domain.id,"nfs-nis")):  
+            head_node.set_property("depends", "node:%s-server" % domain.id)
+            head_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+        else:
+            head_node.add_to_array("run_list", "recipe[provision::gp_node]")
+            head_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
+        head_node.add_to_array("run_list", head_role)
+        domain.add_node(head_node)
+        
+
+        for i in range(num_workers):
+            wn_name = "%s%i" % (worker_name.id, i+1)
+
+            wn_node = Node()
+            wn_node.set_property("id", wn_name)
+            wn_node.set_property("depends", "node:%s" % head_name)
+            if self.get((domain.id,"nfs-nis")):
+                wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
+            else:
+                wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
+                wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
+            wn_node.add_to_array("run_list", worker_role)
+            domain.add_node(wn_node)
 
