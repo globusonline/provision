@@ -84,12 +84,8 @@ directory "/nfs/home" do
 end
 
 # Scratch directory
-# This is a kludge: it assumes that ephemeral storage will be mounted
-# on /mnt. If it is not, the recipe should still work since /mnt
-# has to be empty, but keeping the scratch directory there is not ideal. 
-# A more general-purpose solution would be preferable (ideally by
-# specifying these shared directories in the topology)
-directory "/mnt/scratch" do
+# This is still a kludge; it's a temporary fix until GP-5 is implemented.
+directory "/ephemeral/0/scratch" do
   owner "root"
   group "root"
   mode 01777
@@ -97,9 +93,6 @@ directory "/mnt/scratch" do
   action :create
 end
 
-link "/nfs/scratch" do
-  to "/mnt/scratch"
-end
 
 # Software directories
 directory "/nfs/software" do
