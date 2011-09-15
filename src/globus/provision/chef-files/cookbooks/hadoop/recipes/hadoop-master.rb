@@ -28,11 +28,24 @@ gp_domain = node[:topology][:domains][node[:domain_id]]
 # and contains the FQDN of the master node.
 server = gp_domain[:hadoop_master]
 
-directory "/var/lib/hadoop/cache/hduser" do
+directory "/mnt/hadoop" do
   owner "hduser"
   group "hadoop"
-  mode "0755"
+  mode "0750"
   recursive true
   action :create
 end
 
+# Force host key to be added to known_hosts
+execute "ssh-localhost" do
+  user "hduser"
+  command "ssh -o StrictHostKeyChecking=no `hostname --fqdn` echo"
+  action :run
+end
+
+#TODO
+#export HADOOP_CONF_DIR=/nfs/home/hduser/conf/
+#export HADOOP_HOME=/nfs/software/hadoop/
+#/nfs/software/hadoop/bin/hdfs namenode -format
+#/nfs/software/hadoop/bin/start-dfs.sh
+#/nfs/software/hadoop/bin/start-mapred.sh
