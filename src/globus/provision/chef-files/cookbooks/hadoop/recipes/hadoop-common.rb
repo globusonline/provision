@@ -39,6 +39,8 @@ end
 
 hadoop_conf_dir = "#{homedirs}/hduser/conf"
 hadoop_user = "hduser"
+hadoop_rc = "#{homedirs}/hduser/.hadooprc"
+bash_rc = "#{homedirs}/hduser/.bashrc"
 
 group "hadoop" do
   gid 4001
@@ -73,7 +75,28 @@ file auth_keys do
   action :create
 end  
     
-# Create the authorized_keys file.
+execute "add_hadoop_rc" do
+  line = "source #{hadoop_rc}"
+  only_if do
+      File.read(bash_rc).index(line).nil?
+  end  
+  user "hduser"
+  group "hadoop"
+  command "echo \"#{line}\" >> #{bash_rc}"
+  action :run
+end  
+
+template hadoop_rc do
+  source "hadooprc.erb"
+  mode 0644
+  owner "hduser"
+  group "hadoop"
+  variables(
+    :hadoop_dir => hadoop_dir,
+    :hadoop_conf_dir => hadoop_conf_dir
+  )
+end
+
 execute "add_pkey" do
   only_if do
       pkey = File.read(pkey_file)

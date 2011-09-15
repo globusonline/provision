@@ -28,7 +28,7 @@ gp_domain = node[:topology][:domains][node[:domain_id]]
 # and contains the FQDN of the master node.
 server = gp_domain[:hadoop_master]
 
-directory "/mnt/hadoop" do
+directory "/ephemeral/0/hadoop" do
   owner "hduser"
   group "hadoop"
   mode "0750"

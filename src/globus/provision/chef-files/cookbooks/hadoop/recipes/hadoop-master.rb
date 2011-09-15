@@ -28,7 +28,17 @@ gp_domain = node[:topology][:domains][node[:domain_id]]
 # and contains the FQDN of the master node.
 server = gp_domain[:hadoop_master]
 
-directory "/mnt/hadoop" do
+if gp_domain[:nfs_server]
+    hadoop_dir = "/nfs/software/hadoop"
+    homedirs = "/nfs/home"
+else
+    hadoop_dir = "/usr/local/hadoop"
+    homedirs = "/home"
+end
+
+hadoop_conf_dir = "#{homedirs}/hduser/conf/"
+
+directory "/ephemeral/0/hadoop" do
   owner "hduser"
   group "hadoop"
   mode "0750"
@@ -43,9 +53,30 @@ execute "ssh-localhost" do
   action :run
 end
 
-#TODO
-#export HADOOP_CONF_DIR=/nfs/home/hduser/conf/
-#export HADOOP_HOME=/nfs/software/hadoop/
-#/nfs/software/hadoop/bin/hdfs namenode -format
-#/nfs/software/hadoop/bin/start-dfs.sh
-#/nfs/software/hadoop/bin/start-mapred.sh
+execute "#{hadoop_dir}/bin/hdfs namenode -format" do
+  not_if do File.exists?("/ephemeral/0/hadoop/dfs") end
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end
+
+execute "#{hadoop_dir}/bin/start-dfs.sh" do
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end
+
+execute "#{hadoop_dir}/bin/start-mapred.sh" do
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end
