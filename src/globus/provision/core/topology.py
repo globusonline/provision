@@ -190,9 +190,14 @@ class Node(PersistentObject):
     STATE_RUNNING_UNCONFIGURED = 2
     STATE_CONFIGURING = 3
     STATE_RUNNING = 4
+    STATE_RECONFIGURING = 11
     STATE_STOPPING = 5
+    STATE_STOPPING_CONFIGURING = 12
+    STATE_STOPPING_CONFIGURED = 13
     STATE_STOPPED = 6
     STATE_RESUMING = 7
+    STATE_RESUMED_UNCONFIGURED = 14
+    STATE_RESUMED_RECONFIGURING = 15
     STATE_TERMINATING = 8
     STATE_TERMINATED = 9
     STATE_FAILED = 10
@@ -203,9 +208,14 @@ class Node(PersistentObject):
                  STATE_RUNNING_UNCONFIGURED : "Running (unconfigured)",
                  STATE_CONFIGURING : "Configuring",
                  STATE_RUNNING : "Running",
+                 STATE_RECONFIGURING : "Running (reconfiguring)",
                  STATE_STOPPING : "Stopping",
+                 STATE_STOPPING_CONFIGURING : "Stopping (configuring)",
+                 STATE_STOPPING_CONFIGURED : "Stopping (configured)",
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
+                 STATE_RESUMED_UNCONFIGURED : "Resumed (unconfigured)",
+                 STATE_RESUMED_RECONFIGURING : "Resumed (reconfigured)",
                  STATE_TERMINATING : "Terminating",
                  STATE_TERMINATED : "Terminated",
                  STATE_FAILED : "Failed"}   

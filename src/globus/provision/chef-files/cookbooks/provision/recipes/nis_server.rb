@@ -71,6 +71,7 @@ file "/etc/yp.conf" do
   owner "root"
   mode "0644"
   content "domain grid.example.org server #{gp_node[:hostname]}"
+  notifies :restart, "service[nis]"
   notifies :run, "execute[ypinit]"
 end  
 
@@ -96,3 +97,8 @@ execute "ypinit" do
 end
 
 service "nis"
+
+execute "update-rc.d nis defaults" do
+  user "root"
+  group "root"
+end  

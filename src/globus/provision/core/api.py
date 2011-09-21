@@ -486,8 +486,10 @@ class API(object):
         
         if not resuming:
             log.info("Allocating %i VMs." % len(nodes))
+            next_state = Node.STATE_RUNNING_UNCONFIGURED
         else:
             log.info("Resuming %i VMs" % len(nodes))
+            next_state = Node.STATE_RESUMED_UNCONFIGURED
         node_vm = {}
         for n in nodes:
             try:
@@ -506,14 +508,14 @@ class API(object):
         
             if sequential:
                 log.debug("Waiting for instance to start.")
-                wait = deployer.NodeWaitThread(None, "wait-%s" % str(vm), n, vm, deployer, state = Node.STATE_RUNNING_UNCONFIGURED)
+                wait = deployer.NodeWaitThread(None, "wait-%s" % str(vm), n, vm, deployer, state = next_state)
                 wait.run2()
                 
         if not sequential:        
             log.debug("Waiting for instances to start.")
             mt_instancewait = MultiThread()
             for node, vm in node_vm.items():
-                mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = Node.STATE_RUNNING_UNCONFIGURED))
+                mt_instancewait.add_thread(deployer.NodeWaitThread(mt_instancewait, "wait-%s" % str(vm), node, vm, deployer, state = next_state))
 
             mt_instancewait.run()
             if not mt_instancewait.all_success():
@@ -581,14 +583,37 @@ class API(object):
 
 
     def __stop_vms(self, deployer, nodes):
+        node_vm = deployer.get_node_vm(nodes)
         topology = deployer.instance.topology
+        mt_configure = MultiThread()        
         order = topology.get_launch_order(nodes)
         order.reverse()
         
+        for n in node_vm:
+            n.state = Node.STATE_STOPPING
+        topology.save()
+        
+        threads = {}
+        for nodeset in order:
+            rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
+                            "stop-configure-%s" % n.id, 
+                            n, 
+                            node_vm[n], 
+                            deployer, 
+                            depends=threads.get(topology.get_depends(n)))) for n in nodeset])
+            threads.update(rest)
+        
+        for thread in threads.values():
+            mt_configure.add_thread(thread)
+        
+        mt_configure.run()
+        if not mt_configure.all_success():
+            message = self.__mt_exceptions_to_text(mt_configure.get_exceptions(), "Globus Provision was unable to configure the instances.")
+            return (False, message)        
+        
+        
         for nodeset in order:
             deployer.stop_vms(nodeset)
-        
-        node_vm = deployer.get_node_vm(nodes)
         
         log.debug("Waiting for instances to stop.")
         mt_instancewait = MultiThread()
@@ -598,12 +623,16 @@ class API(object):
         mt_instancewait.run()
         if not mt_instancewait.all_success():
             message = self.__mt_exceptions_to_text(mt_instancewait.get_exceptions(), "Exception raised while waiting for instances.")
-            return (False, message)
+            return (False, message)     
             
         return (True, "Success")
         
     def __terminate_vms(self, deployer, nodes):
         topology = deployer.instance.topology
+
+        for n in nodes:
+            n.state = Node.STATE_TERMINATING
+        topology.save()
 
         deployer.terminate_vms(nodes)
         
