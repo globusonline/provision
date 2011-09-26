@@ -118,10 +118,11 @@ class API(object):
     
             inst.topology.save()
 
-            try:
-                self.__globusonline_pre_start(inst)
-            except GlobusOnlineException, goe:
-                log.warning("Unable to create GO endpoint/s: %s" % goe)
+            if not resuming:
+                try:
+                    self.__globusonline_pre_start(inst)
+                except GlobusOnlineException, goe:
+                    log.warning("Unable to create GO endpoint/s: %s" % goe)
                
             inst.topology.save()                            
             
@@ -165,10 +166,18 @@ class API(object):
             inst.topology.save()         
             
             log.info("Creating Globus Online endpoints")
-            try:
-                self.__globusonline_post_start(inst)            
-            except GlobusOnlineException, goe:
-                log.warning("Unable to create GO endpoint/s: %s" % goe)
+            if not resuming:
+                try:
+                    self.__globusonline_post_start(inst)
+                except GlobusOnlineException, goe:
+                    log.warning("Unable to create GO endpoint/s: %s" % goe)
+            else:        
+                try:
+                    self.__globusonline_resume(inst)
+                except GlobusOnlineException, goe:
+                    log.warning("Unable to resume GO endpoint/s: %s" % goe)            
+
+            inst.topology.save()       
             
             return (API.STATUS_SUCCESS, "Success")
         except:
@@ -197,11 +206,11 @@ class API(object):
                 # the old topology. We don't need to deploy or
                 # configure any hosts..
                 if topology_json != None:
-                    try:
-                        (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
-                    except ObjectValidationException, ove:
-                        message = "Error in topology file: %s" % ove
+                    (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
+                    if not success:
+                        message = "Error in topology file: %s" % message
                         return (API.STATUS_FAIL, message)
+                        
                 return (API.STATUS_SUCCESS, "Success")
             elif inst.topology.state != Topology.STATE_RUNNING:
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
@@ -328,10 +337,17 @@ class API(object):
             inst.topology.state = Topology.STATE_STOPPED
             inst.topology.save()
               
-            log.info("Instances have been stopped running.")
+            log.info("Stopping Globus Online endpoints")
+            try:
+                self.__globusonline_stop(inst)     
+                inst.topology.save()       
+            except GlobusOnlineException, goe:
+                log.warning("Unable to stop GO endpoint/s: %s" % goe)              
+              
+            log.info("Instance has stopped successfully.")
             return (API.STATUS_SUCCESS, "Success")
         except:
-            message = self.__unexpected_exception_to_text(what = "starting the instance.")
+            message = self.__unexpected_exception_to_text(what = "stopping the instance.")
             try:
                 if inst != None:
                     inst.topology.state = Topology.STATE_FAILED
@@ -478,6 +494,28 @@ class API(object):
                         go_helper.create_endpoint(ep, replace=True)
                     go_helper.disconnect()
                     
+    def __globusonline_stop(self, inst):
+        go_helper = GlobusOnlineHelper.from_instance(inst)
+        
+        # Globus Online
+        for domain_name, domain in inst.topology.domains.items():
+            if domain.has_property("go_endpoints"):
+                for ep in domain.go_endpoints:
+                    go_helper.connect(ep.user)
+                    go_helper.endpoint_stop(ep)
+                    go_helper.disconnect()                    
+
+    def __globusonline_resume(self, inst):
+        go_helper = GlobusOnlineHelper.from_instance(inst)
+        
+        # Globus Online
+        for domain_name, domain in inst.topology.domains.items():
+            if domain.has_property("go_endpoints"):
+                for ep in domain.go_endpoints:
+                    go_helper.connect(ep.user)
+                    go_helper.endpoint_resume(ep)
+                    go_helper.disconnect()                 
+
         
     def __allocate_vms(self, deployer, nodes, resuming):
         # TODO: Make this an option

@@ -663,6 +663,14 @@ GOEndpoint.properties = {
                                     Globus Online, it must use a certificate trusted by Globus Online.
                                     Unless you used a CA trusted by Globus Online to generate the certificates
                                     for the topology, you must use a Globus Connect certificate.
-                                    """)                               
+                                    """),
+                         
+                           "globus_connect_cert_dn":
+                           Property(name="globus_connect_cert",
+                                    proptype = PropertyTypes.STRING,
+                                    required = False,
+                                    description = """
+                                    The DN of the Globus Connect certificate for this endpoint.
+                                    """)                                                               
                            
                         }                                                                                                                 
