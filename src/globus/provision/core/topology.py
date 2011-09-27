@@ -150,6 +150,13 @@ ff02::3 ip6-allhosts
             
         return None
     
+    def get_go_endpoints(self):    
+        eps = []
+        for domain_name, domain in self.domains.items():
+            if domain.has_property("go_endpoints"):
+                eps += domain.go_endpoints
+        return eps   
+    
     def add_domain(self, domain):
         self.add_to_array("domains", domain)
         
