@@ -15,6 +15,7 @@
 # -------------------------------------------------------------------------- #
 from globus.provision.core.topology import Topology, Node
 import tempfile
+from globus.provision.common.threads import SIGINTWatcher
 
 """
 The CLI: A console frontend to Globus Provision that allows a user to request instances, 
@@ -35,7 +36,7 @@ from globus.provision import RELEASE
 class Command(object):
     """Base class for all Globus Provisioning commands"""
     
-    def __init__(self, argv, root = False):
+    def __init__(self, argv, root = False, disable_sigintwatch = False):
         
         if root:
             if getpass.getuser() != "root":
@@ -65,6 +66,9 @@ class Command(object):
                                          "(instead of the default ~/.globusprovision/instances/)")
         
         colorama.init(autoreset = True)
+        
+        if not disable_sigintwatch:
+            SIGINTWatcher(self.cleanup_after_kill)
                 
 
     def parse_options(self):

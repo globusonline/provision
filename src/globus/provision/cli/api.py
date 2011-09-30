@@ -48,7 +48,7 @@ class gp_instance_create(Command):
     name = "gp-instance-create"
 
     def __init__(self, argv):
-        Command.__init__(self, argv)
+        Command.__init__(self, argv, disable_sigintwatch=True)
         
         self.optparser.add_option("-c", "--conf", 
                                   action="store", type="string", dest="conf", 
@@ -65,7 +65,7 @@ class gp_instance_create(Command):
 
         if self.opt.conf is None:
             print "You must specify a configuration file using the -c/--conf option."
-            exit(1)
+            return 1
 
         self._check_exists_file(self.opt.conf)
 
@@ -86,10 +86,10 @@ class gp_instance_create(Command):
                 topology_json = topology.to_json_string()
             except ConfigException, cfge:
                 self._print_error("Error in topology configuration file.", cfge)
-                exit(1)         
+                return 1         
         else:   
             self._print_error("Unrecognized topology file format.", "File must be either a JSON (.json) or configuration (.conf) file.")
-            exit(1)         
+            return 1         
 
         configf = open(self.opt.conf)
         config_txt = configf.read()
@@ -100,12 +100,12 @@ class gp_instance_create(Command):
 
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not create instance.", message)
-            exit(1) 
+            return 1
         else:
             print "Created new instance:",
             print Fore.WHITE + Style.BRIGHT + inst_id
             self._set_last_gpi(inst_id)
-            
+            return 0
             
 def gp_instance_describe_func():
     return gp_instance_describe(sys.argv).run()            
@@ -126,7 +126,7 @@ class gp_instance_describe(Command):
     name = "gp-instance-describe"
     
     def __init__(self, argv):
-        Command.__init__(self, argv)
+        Command.__init__(self, argv, disable_sigintwatch=True)
                 
     def run(self):    
         self.parse_options()
@@ -134,7 +134,7 @@ class gp_instance_describe(Command):
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)
+            return 1
          
         inst_id = self.args[1]
         
@@ -143,7 +143,7 @@ class gp_instance_describe(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not access instance.", message)
-            exit(1) 
+            return 1 
         else:
             self._set_last_gpi(inst_id)
             
@@ -198,6 +198,8 @@ class gp_instance_describe(Command):
                         ip_pad = self._pad(ip, "", ip_width)
                         print "    " + node_id_pad + state_pad + hostname_pad + ip_pad
                     print
+            
+            return 0
                     
 def gp_instance_start_func():
     return gp_instance_start(sys.argv).run()  
@@ -217,8 +219,8 @@ class gp_instance_start(Command):
         
     name = "gp-instance-start"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
 
         self.optparser.add_option("-x", "--extra-files", 
                                   action="store", type="string", dest="extra_files", 
@@ -228,16 +230,15 @@ class gp_instance_start(Command):
                                   action="store", type="string", dest="run", 
                                   help = "File with list of commands to run on each host after configuring the instance.")
                         
-    def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill)
-        
+    def run(self):        
         t_start = time.time()        
         self.parse_options()
         
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)
+            return 1
+        
         inst_id = self.args[1]
             
         if self.opt.extra_files != None:
@@ -268,10 +269,11 @@ class gp_instance_start(Command):
             minutes = int(delta / 60)
             seconds = int(delta - (minutes * 60))
             print "Started instance in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+            return 0
         elif status_code == API.STATUS_FAIL:
             print
             self._print_error("Could not start instance.", message)
-            exit(1) 
+            return 1 
 
 def gp_instance_update_func():
     return gp_instance_update(sys.argv).run()  
@@ -291,9 +293,9 @@ class gp_instance_update(Command):
     """
         
     name = "gp-instance-update"
-    
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
 
         self.optparser.add_option("-t", "--topology", 
                                   action="store", type="string", dest="topology",
@@ -307,16 +309,15 @@ class gp_instance_update(Command):
                                   action="store", type="string", dest="run", 
                                   help = "File with list of commands to run on each host after configuring the instance.")        
                 
-    def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill) 
-                
+    def run(self):                
         t_start = time.time()        
         self.parse_options()
 
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)
+            return 1
+        
         inst_id = self.args[1]
 
         if self.opt.topology != None:
@@ -358,9 +359,10 @@ class gp_instance_update(Command):
             minutes = int(delta / 60)
             seconds = int(delta - (minutes * 60))
             print "Updated topology in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+            return 0
         elif status_code == API.STATUS_FAIL:
             self._print_error("Could not update topology.", message)
-            exit(1)
+            return 1
 
 
 def gp_instance_stop_func():
@@ -381,18 +383,17 @@ class gp_instance_stop(Command):
         
     name = "gp-instance-stop"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
                 
-    def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill)        
-        
+    def run(self):       
         self.parse_options()
         
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)
+            return 1
+        
         inst_id = self.args[1]            
 
         print "Stopping instance",
@@ -403,10 +404,11 @@ class gp_instance_stop(Command):
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
             self._set_last_gpi(inst_id)
+            return 0
         elif status_code == API.STATUS_FAIL:
             self._print_error("Could not stop instance.", message)
             print
-            exit(1)       
+            return 1 
 
 
 def gp_instance_terminate_func():
@@ -431,18 +433,17 @@ class gp_instance_terminate(Command):
     
     name = "gp-instance-terminate"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
                 
-    def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill)        
-        
+    def run(self):        
         self.parse_options()
 
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)        
+            return 1
+                
         inst_id = self.args[1]
 
         print "Terminating instance",
@@ -453,10 +454,11 @@ class gp_instance_terminate(Command):
         if status_code == API.STATUS_SUCCESS:
             print Fore.GREEN + Style.BRIGHT + "done!"
             self._set_last_gpi(inst_id)
+            return 0
         elif status_code == API.STATUS_FAIL:
             print
             self._print_error("Could not terminate instance.", message)
-            exit(1)  
+            return 1  
 
 
 def gp_instance_list_func():
@@ -476,7 +478,7 @@ class gp_instance_list(Command):
     name = "gp-instance-list"
     
     def __init__(self, argv):
-        Command.__init__(self, argv)
+        Command.__init__(self, argv, disable_sigintwatch=True)
                 
     def run(self):    
         self.parse_options()
@@ -492,7 +494,7 @@ class gp_instance_list(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Unable to list instances.", message)
-            exit(1) 
+            return 1
         else:        
             insts = json.loads(topologies_json)
             
@@ -504,7 +506,8 @@ class gp_instance_list(Command):
                     
                     reset = Fore.RESET + Style.RESET_ALL
                     print Fore.WHITE + Style.BRIGHT + topology.id + reset + ": " + self._colorize_topology_state(topology.state)
-
+            
+            return 0
 
 def gp_instance_add_user_func():
     return gp_instance_add_user(sys.argv).run()     
@@ -521,8 +524,8 @@ class gp_instance_add_user(Command):
         
     name = "gp-instance-add-user"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)    
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
@@ -553,15 +556,14 @@ class gp_instance_add_user(Command):
 
                 
     def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill) 
-                
         t_start = time.time()        
         self.parse_options()
                 
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)        
+            return 1
+          
         inst_id = self.args[1]
 
         api = API(self.opt.dir)
@@ -569,13 +571,13 @@ class gp_instance_add_user(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not access instance.", message)
-            exit(1) 
+            return 1 
         else:
             t = Topology.from_json_string(topology_json)
             
             if not t.domains.has_key(self.opt.domain):
                 self._print_error("Could not add user", "Domain '%s' does not exist" % self.opt.domain)
-                exit(1) 
+                return 1
             
             domain = t.domains[self.opt.domain]
             
@@ -608,9 +610,10 @@ class gp_instance_add_user(Command):
                 minutes = int(delta / 60)
                 seconds = int(delta - (minutes * 60))
                 print "Added user in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+                return 0
             elif status_code == API.STATUS_FAIL:
                 self._print_error("Could not update topology.", message)
-                exit(1)
+                return 1
         
         
 def gp_instance_add_host_func():
@@ -628,8 +631,8 @@ class gp_instance_add_host(Command):
         
     name = "gp-instance-add-host"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
@@ -649,15 +652,14 @@ class gp_instance_add_host(Command):
                                   help = "List of Chef recipes or roles to apply to this host.")     
                 
     def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill) 
-                
         t_start = time.time()        
         self.parse_options()
                 
         if len(self.args) != 2:
             print "You must specify an instance id."
             print "For example: %s [options] gpi-37a8bf17" % self.name
-            exit(1)        
+            return 1
+        
         inst_id = self.args[1]
 
         api = API(self.opt.dir)
@@ -665,13 +667,13 @@ class gp_instance_add_host(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not access instance.", message)
-            exit(1) 
+            return 1
         else:
             t = Topology.from_json_string(topology_json)
             
             if not t.domains.has_key(self.opt.domain):
                 self._print_error("Could not add host", "Domain '%s' does not exist" % self.opt.domain)
-                exit(1) 
+                return 1
             
             domain = t.domains[self.opt.domain]
             
@@ -700,9 +702,10 @@ class gp_instance_add_host(Command):
                 minutes = int(delta / 60)
                 seconds = int(delta - (minutes * 60))
                 print "Added host in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+                return 0
             elif status_code == API.STATUS_FAIL:
                 self._print_error("Could not update topology.", message)
-                exit(1) 
+                return 1
         
         
 def gp_instance_remove_users_func():
@@ -721,23 +724,22 @@ class gp_instance_remove_users(Command):
         
     name = "gp-instance-remove-users"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
                 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
                                   help = "Removes users from this domain")  
                 
     def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill) 
-                
         t_start = time.time()        
         self.parse_options()
                 
         if len(self.args) <= 2:
             print "You must specify an instance id and at least one host."
             print "For example: %s [options] gpi-37a8bf17 simple-wn3" % self.name
-            exit(1)        
+            return 1
+        
         inst_id = self.args[1]
         users = self.args[2:]
         
@@ -746,13 +748,13 @@ class gp_instance_remove_users(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not access instance.", message)
-            exit(1) 
+            return 1
         else:
             t = Topology.from_json_string(topology_json)
             
             if not t.domains.has_key(self.opt.domain):
                 self._print_error("Could not remove users", "Domain '%s' does not exist" % self.opt.domain)
-                exit(1) 
+                return 1
                             
             removed = []
             domain_users = t.domains[self.opt.domain].users
@@ -785,12 +787,12 @@ class gp_instance_remove_users(Command):
                     minutes = int(delta / 60)
                     seconds = int(delta - (minutes * 60))
                     print "Removed users in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
+                    return 0
                 elif status_code == API.STATUS_FAIL:
                     self._print_error("Could not update topology.", message)
-                    exit(1) 
+                    return 1
 
-        
-        
+              
 def gp_instance_remove_hosts_func():
     return gp_instance_remove_hosts(sys.argv).run()             
         
@@ -807,23 +809,22 @@ class gp_instance_remove_hosts(Command):
         
     name = "gp-instance-remove-hosts"
     
-    def __init__(self, argv):
-        Command.__init__(self, argv)
+    def __init__(self, argv, disable_sigintwatch=False):
+        Command.__init__(self, argv, disable_sigintwatch=disable_sigintwatch)
 
         self.optparser.add_option("-m", "--domain", 
                                   action="store", type="string", dest="domain",
                                   help = "Remove hosts from this domain")  
                 
     def run(self):    
-        SIGINTWatcher(self.cleanup_after_kill) 
-                
         t_start = time.time()        
         self.parse_options()
                 
         if len(self.args) <= 2:
             print "You must specify an instance id and at least one host."
             print "For example: %s [options] gpi-37a8bf17 simple-wn3" % self.name
-            exit(1)        
+            return 1
+        
         inst_id = self.args[1]
         hosts = self.args[2:]
         
@@ -832,13 +833,13 @@ class gp_instance_remove_hosts(Command):
         
         if status_code != API.STATUS_SUCCESS:
             self._print_error("Could not access instance.", message)
-            exit(1) 
+            return 1 
         else:
             t = Topology.from_json_string(topology_json)
             
             if not t.domains.has_key(self.opt.domain):
                 self._print_error("Could not remove hosts", "Domain '%s' does not exist" % self.opt.domain)
-                exit(1) 
+                return 1
                             
             removed = []
             nodes = t.domains[self.opt.domain].nodes
@@ -873,5 +874,5 @@ class gp_instance_remove_hosts(Command):
                     print "Removed hosts in " + Fore.WHITE + Style.BRIGHT + "%i minutes and %s seconds" % (minutes, seconds)
                 elif status_code == API.STATUS_FAIL:
                     self._print_error("Could not update topology.", message)
-                    exit(1) 
+                    return 1
                 
