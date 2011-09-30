@@ -42,7 +42,7 @@ def init_logging(level):
 
 def set_logging_instance(instance):
     l = logging.getLogger("globusprovision")
-    fh = logging.FileHandler(os.path.expanduser('~/.globusprovision/instances/%s/deploy.log' % instance))
+    fh = logging.FileHandler(os.path.expanduser('%s/deploy.log' % instance.instance_dir))
     fh.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(message)s')
     fh.setFormatter(formatter)

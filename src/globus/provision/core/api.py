@@ -92,7 +92,7 @@ class API(object):
         if not success:
             return (API.STATUS_FAIL, message)
 
-        log.set_logging_instance(inst_id)
+        log.set_logging_instance(inst)
             
         try:
             deployer_class = self.__get_deployer_class(inst)
@@ -201,7 +201,7 @@ class API(object):
             if not success:
                 return (API.STATUS_FAIL, message)
     
-            log.set_logging_instance(inst_id)
+            log.set_logging_instance(inst)
                             
             if inst.topology.state == Topology.STATE_NEW:
                 # If the topology is still in a New state, we simply
@@ -243,8 +243,6 @@ class API(object):
                 
                 create_endpoints = []
                 remove_endpoints = []
-    
-                print topology_changes
     
                 if topology_changes.changes.has_key("domains"):
                     for domain in topology_changes.changes["domains"].add:
@@ -329,13 +327,14 @@ class API(object):
                 inst.topology.save()
                 return (API.STATUS_FAIL, message)
     
-            self.__globusonline_remove(inst, remove_endpoints)
-
-            if len(create_endpoints) > 0:
-                try:      
-                    self.__globusonline_post_start(inst, create_endpoints)
-                except GlobusOnlineException, goe:
-                    log.warning("Unable to create GO endpoint/s: %s" % goe)    
+            if topology_json != None:
+                self.__globusonline_remove(inst, remove_endpoints)
+    
+                if len(create_endpoints) > 0:
+                    try:      
+                        self.__globusonline_post_start(inst, create_endpoints)
+                    except GlobusOnlineException, goe:
+                        log.warning("Unable to create GO endpoint/s: %s" % goe)    
     
             inst.topology.state = Topology.STATE_RUNNING
             inst.topology.save()
@@ -358,7 +357,7 @@ class API(object):
         if not success:
             return (API.STATUS_FAIL, message)
 
-        log.set_logging_instance(inst_id)
+        log.set_logging_instance(inst)
         
         try:
             if inst.topology.state != Topology.STATE_RUNNING:
@@ -416,7 +415,7 @@ class API(object):
         if not success:
             return (API.STATUS_FAIL, message)
 
-        log.set_logging_instance(inst_id)
+        log.set_logging_instance(inst)
         
         try:
             if inst.topology.state in [Topology.STATE_NEW]:
