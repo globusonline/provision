@@ -3,6 +3,17 @@
 Changelog and Release Notes
 ***************************
 
+0.3.2
+=====
+Released on *October 4, 2011*
+
+* :jira:`7`: Instance stop/resume has been fixed.
+* :jira:`8`: Related to the previous issue, Globus Online endpoints are now properly managed in the the stop/resume lifecycle.
+  When an instance is stopped, the endpoint is associated with the "relay-disconnected.globusonline.org" server. When the
+  instance is resumed, the new GridFTP server is associated with the endpoint.
+* :jira:`9`: `instance_update` will now add new Globus Online endpoints.
+* :jira:`11`: Updated Chef recipes so they will use the Opscode "apt" cookbook.
+
 0.3.1
 =====
 Released on *September 12, 2011*

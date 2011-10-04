@@ -54,8 +54,8 @@ format too. More specifically, this will be our topology file:
 	[domain-simple]
 	users: user1 user2
 	nfs-nis: yes
-	lrm: condor
-	cluster-nodes: 2
+	condor: yes
+	condor-nodes: 2
 	
 	[ec2]
 	ami: |ami|
@@ -117,11 +117,11 @@ in all the hosts in the domain).
 
 ::
 
-	lrm: condor
-	cluster-nodes: 2
+	condor: yes
+	condor-nodes: 2
 	
-This option specifies what LRM (Local Resource Manager) should be installed on this domain, and
-how many worker nodes that LRM will have.	
+This option specifies that a `Condor <http://www.cs.wisc.edu/condor/>`_ cluster should be installed 
+in this domain, and how many worker nodes the Condor cluster will have.	
 
 Finally, because we've selected the ``ec2`` deployer, there is also an ``[ec2]`` section where we have
 to specify some EC2-specific options:
@@ -218,8 +218,8 @@ merge both files. The finished file would look like this:
 	[domain-simple]
 	users: user1 user2
 	nfs-nis: yes
-	lrm: condor
-	cluster-nodes: 2
+	condor: yes
+	condor-nodes: 2
 	
 	[ec2]
 	ami: |ami|

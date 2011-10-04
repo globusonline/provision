@@ -110,54 +110,82 @@ class Property(object):
         self.description = description
         self.items = items
         
+        
 class PropertyChange(object):
-    pass
+    ADD = 0
+    REMOVE = 1
+    EDIT = 2    
+    
+    def __init__(self, change_type):
+        self.change_type = change_type
 
-class PrimitivePropertyChange(object):
-    def __init__(self, old_value, new_value):
+
+class PrimitivePropertyChange(PropertyChange):
+
+    def __init__(self, change_type, old_value, new_value):
+        PropertyChange.__init__(self, change_type)
         self.old_value = old_value
         self.new_value = new_value
         
     def to_dict(self):
-        d = {}        
-        d["old"] = self.old_value
-        d["new"] = self.new_value
-        return d
+        if self.change_type == PropertyChange.ADD:
+            return {"__action__": "add"}
+        elif self.change_type == PropertyChange.REMOVE:
+            return {"__action__": "remove"}
+        elif self.change_type == PropertyChange.EDIT:
+            d = {}        
+            d["old"] = self.old_value
+            d["new"] = self.new_value
+            return d
         
-class ArrayPropertyChange(object):
-    def __init__(self, add, remove, edit):
+        
+class ArrayPropertyChange(PropertyChange):
+    
+    def __init__(self, change_type, add, remove, edit):
+        PropertyChange.__init__(self, change_type)
         self.add = add
         self.remove = remove
         self.edit = edit
         
     def to_dict(self):
-        d = {}
+        if self.change_type == PropertyChange.ADD:
+            return {"__action__": "add"}
+        elif self.change_type == PropertyChange.REMOVE:
+            return {"__action__": "remove"}
+        elif self.change_type == PropertyChange.EDIT:
+            d = {}
         
-        if len(self.add) > 0:
-            d["ADD"] = self.add
+            if len(self.add) > 0:
+                d["ADD"] = self.add
+                
+            if len(self.remove) > 0:
+                d["REMOVE"] = self.remove
             
-        if len(self.remove) > 0:
-            d["REMOVE"] = self.remove
-        
-        if len(self.edit) > 0:
-            editd = {}
-            for property in self.edit:
-                editd[property] = self.edit[property].to_dict()
-            d["EDIT"] = editd
-            
-        return d
+            if len(self.edit) > 0:
+                editd = {}
+                for property in self.edit:
+                    editd[property] = self.edit[property].to_dict()
+                d["EDIT"] = editd
+                
+            return d
         
         
-        
-class ObjectPropertyChange(object):
-    def __init__(self, changes):
+class ObjectPropertyChange(PropertyChange):
+    
+    def __init__(self, change_type, changes):
+        PropertyChange.__init__(self, change_type)
         self.changes = changes
         
     def to_dict(self):
-        d = {}
-        for property in self.changes:
-            d[property] = self.changes[property].to_dict()
-        return d
+        if self.change_type == PropertyChange.ADD:
+            return {"__action__": "add"}
+        elif self.change_type == PropertyChange.REMOVE:
+            return {"__action__": "remove"}
+        elif self.change_type == PropertyChange.EDIT:
+            d = {}
+            for property in self.changes:
+                d[property] = self.changes[property].to_dict()
+            return d
         
 
 class PersistentObject(object):
@@ -222,20 +250,46 @@ class PersistentObject(object):
         
         changes = {}
         for name, property in self.properties.items():
-            if hasattr(self, name) and hasattr(pobj, name):
-                # Both objects have the same property.
+            self_hasattr = hasattr(self, name)
+            pobj_hasattr = hasattr(pobj, name)
+            
+            if self_hasattr:
                 self_value = getattr(self, name)
+
+            if pobj_hasattr:
                 pobj_value = getattr(pobj, name)
-                
-                if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
+            
+            if property.type in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
+                if not self_hasattr and pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to add a property, but it is non-editable (setting '%s' to %s)""" % (name, pobj_value))
+                    else:
+                        changes[name] = PrimitivePropertyChange(PropertyChange.ADD, None, pobj_value)
+                elif self_hasattr and not pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to remove a property, but it is non-editable (removing '%s' = %s)""" % (name, self_value))
+                    else:
+                        changes[name] = PrimitivePropertyChange(PropertyChange.REMOVE, self_value, None)
+                elif self_hasattr and pobj_hasattr:
                     # If this is a primitive type, check if the value has changed and, if so,
                     # whether the change is allowed.
                     if self_value != pobj_value:
                         if not property.editable:
                             raise ObjectValidationException("Tried to change the value of non-editable property '%s' (from %s to %s)""" % (name, self_value, pobj_value))
                         else:
-                            changes[name] = PrimitivePropertyChange(self_value, pobj_value)
-                elif property.type == PropertyTypes.ARRAY:
+                            changes[name] = PrimitivePropertyChange(PropertyChange.EDIT, self_value, pobj_value)
+            elif property.type == PropertyTypes.ARRAY:
+                if not self_hasattr and pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to add a property, but it is non-editable (setting '%s' to %s)""" % (name, pobj_value))
+                    else:
+                        changes[name] = ArrayPropertyChange(PropertyChange.ADD, None, None, None)
+                elif self_hasattr and not pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to remove a property, but it is non-editable (removing '%s' = %s)""" % (name, self_value))
+                    else:
+                        changes[name] = ArrayPropertyChange(PropertyChange.REMOVE, None, None, None)
+                elif self_hasattr and pobj_hasattr:
                     if property.items in (PropertyTypes.STRING, PropertyTypes.INTEGER, PropertyTypes.NUMBER, PropertyTypes.BOOLEAN, PropertyTypes.NULL):
                         self_set = set(self_value)
                         pobj_set = set(pobj_value)
@@ -245,7 +299,7 @@ class PersistentObject(object):
                         
                         if len(add) + len(remove) > 0:
                             if property.editable: 
-                                changes[name] = ArrayPropertyChange(add, remove, {})
+                                changes[name] = ArrayPropertyChange(PropertyChange.EDIT, add, remove, {})
                             else:                        
                                 raise ObjectValidationException("Tried to add/remove items from non-editable array '%s' (Add: %s  Remove: %s)""" % (name, add, remove))
                     elif inspect.isclass(property.items) and issubclass(property.items, PersistentObject):
@@ -260,7 +314,7 @@ class PersistentObject(object):
                                 raise ObjectValidationException("Tried to add/remove items from non-editable array '%s' (Add: %s  Remove: %s)""" % (name, add, remove))                            
                             
                             common = list(self_set & pobj_set)
-
+    
                             self_items_value = dict([(k, v) for k, v in self_value.items() if k in common])
                             pobj_items_value = dict([(k, v) for k, v in pobj_value.items() if k in common])
                             
@@ -273,9 +327,9 @@ class PersistentObject(object):
                                         raise ObjectValidationException("Tried to edit an item in an non-editable array '%s' (Item with id '%s')""" % (name, s.id))
                                     else:
                                         edit[s.id] = item_changes
-
+    
                             if len(add) + len(remove) + len(edit) > 0:
-                                changes[name] = ArrayPropertyChange(add, remove, edit)
+                                changes[name] = ArrayPropertyChange(PropertyChange.EDIT, add, remove, edit)
                         else:
                             # We have no way of telling if individual entries have been edited,
                             # or even if entries have been added/removed, since we don't have
@@ -285,17 +339,28 @@ class PersistentObject(object):
                         raise ObjectValidationException("ARRAYs of ARRAYs not supported.")                            
                     elif property.items in (PropertyTypes.OBJECT, PropertyTypes.ANY):
                         raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.")                                                
-                elif issubclass(property.type, PersistentObject):
+            elif issubclass(property.type, PersistentObject):
+                if not self_hasattr and pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to add a property, but it is non-editable (setting '%s' to %s)""" % (name, pobj_value))
+                    else:
+                        changes[name] = ObjectPropertyChange(PropertyChange.ADD, None)
+                elif self_hasattr and not pobj_hasattr:
+                    if not property.editable:
+                        raise ObjectValidationException("Tried to remove a property, but it is non-editable (removing '%s' = %s)""" % (name, self_value))
+                    else:
+                        changes[name] = ObjectPropertyChange(PropertyChange.REMOVE, None)
+                elif self_hasattr and pobj_hasattr:                 
                     property_changes = self_value.validate_update(pobj_value)
                     if len(property_changes.changes) > 0:
                         if not property.editable:
                             raise ObjectValidationException("Tried to to change the value of non-editable property '%s' (Changes: '%s')""" % (name, property_changes.to_dict()))
                         else:
                             changes[name] = property_changes
-                elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
-                    raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.") 
+            elif property.type in (PropertyTypes.OBJECT, PropertyTypes.ANY):
+                raise ObjectValidationException("Arbitrary types (OBJECT, ANY) not supported.") 
                 
-        return ObjectPropertyChange(changes)               
+        return ObjectPropertyChange(PropertyChange.EDIT, changes)               
 
     def to_json_dict(self):
         json = {}

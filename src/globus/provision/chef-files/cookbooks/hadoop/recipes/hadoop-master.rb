@@ -16,42 +16,67 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Condor worker node
+## RECIPE: Hadoop master node
 ##
-## Set up a Condor worker node.
+## Set up a Hadoop master node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
 
-# The "condor" recipe handles actions that are common to
-# both head and worker nodes.
-include_recipe "condor::condor"
+# The hadoop_master attribute is part of the generated topology.rb file,
+# and contains the FQDN of the master node.
+server = gp_domain[:hadoop_master]
 
-
-# The condor_head attribute is part of the generated topology.rb file,
-# and contains the FQDN of the head node.
-server = gp_domain[:condor_head]
-
-
-# Domain (used by Condor for authorization). 
-# This should eventually be included in the topology.
-domain = server[server.index(".")+1, server.length]
-
-
-# Create the local configuration file.
-template "/etc/condor/condor_config.local" do
-  source "condor_config.erb"
-  mode 0644
-  owner "condor"
-  group "condor"
-  variables(
-    :server => server,
-    :domain => domain,    
-    :daemons => "MASTER, STARTD"
-  )
-  notifies :restart, "service[condor]"
+if gp_domain[:nfs_server]
+    hadoop_dir = "/nfs/software/hadoop"
+    homedirs = "/nfs/home"
+else
+    hadoop_dir = "/usr/local/hadoop"
+    homedirs = "/home"
 end
 
-service "condor" 
+hadoop_conf_dir = "#{homedirs}/hduser/conf/"
 
+directory "/ephemeral/0/hadoop" do
+  owner "hduser"
+  group "hadoop"
+  mode "0750"
+  recursive true
+  action :create
+end
+
+# Force host key to be added to known_hosts
+execute "ssh-localhost" do
+  user "hduser"
+  command "ssh -o StrictHostKeyChecking=no `hostname --fqdn` echo"
+  action :run
+end
+
+execute "#{hadoop_dir}/bin/hdfs namenode -format" do
+  not_if do File.exists?("/ephemeral/0/hadoop/dfs") end
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end
+
+execute "#{hadoop_dir}/bin/start-dfs.sh" do
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end
+
+execute "#{hadoop_dir}/bin/start-mapred.sh" do
+  user "hduser"
+  environment ({
+  	'HADOOP_CONF_DIR' => hadoop_conf_dir,
+  	'HADOOP_HOME' => hadoop_dir
+  })
+  action :run
+end

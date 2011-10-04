@@ -18,8 +18,8 @@ so deploying the above cluster would basically involve writing the following fil
 	nfs-nis: yes
 	gridftp: yes
 	gram: yes
-	lrm: condor
-	cluster-nodes: 3
+	condor: yes
+	condor-nodes: 3
 
 Next, you would just have to run a few simple commands to instruct Globus Provision to
 deploy this cluster on EC2 (you will need an Amazon EC2 account for this; we provide

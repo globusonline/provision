@@ -155,36 +155,18 @@ class Instance(object):
             new_topology._json_file = topology_file
         except ObjectValidationException, ove:
             message = "Error in topology file: %s" % ove 
-            return (False, message, [], [])
-        
+            return (False, message, None)
+
         try:
             topology_changes = self.topology.validate_update(new_topology)
         except ObjectValidationException, ove:
             message = "Could not update topology: %s" % ove 
-            return (False, message, [], [])
-
-        add_hosts = []
-        remove_hosts = []
-
-        if topology_changes.changes.has_key("domains"):
-            for domain in topology_changes.changes["domains"].add:
-                d = new_topology.domains[domain]
-                add_hosts += [n.id for n in d.nodes.values()] 
-
-            for domain in topology_changes.changes["domains"].remove:
-                d = self.topology.domains[domain].keys()
-                remove_hosts += [n.id for n in d.nodes.values()] 
-            
-            for domain in topology_changes.changes["domains"].edit:
-                if topology_changes.changes["domains"].edit[domain].changes.has_key("nodes"):
-                    nodes_changes = topology_changes.changes["domains"].edit[domain].changes["nodes"]
-                    add_hosts += nodes_changes.add
-                    remove_hosts += nodes_changes.remove
+            return (False, message, None)
 
         self.topology = new_topology
         self.topology.save()
         
-        return (True, "Success", add_hosts, remove_hosts)
+        return (True, "Success", topology_changes)
 
     def gen_certificates(self, force_hosts = False, force_users = False, force_ca = False):
         certs_dir = self.instance_dir + self.CERTS_DIR

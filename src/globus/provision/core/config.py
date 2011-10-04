@@ -469,23 +469,38 @@ class SimpleTopologyConfig(Config):
             doc         = """
             Specifies whether to set up a GridFTP server on this domain.             
             """),                   
-     Option(name        = "lrm",
-            getter      = "lrm",
-            type        = OPTTYPE_STRING,
-            valid       = ["none", "condor"],
-            default     = "none",
+     Option(name        = "condor",
+            getter      = "condor",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
             required    = False,
             doc         = """
-            Specifies whether to set up an LRM (Local Resource Manager) on this domain. Currently, only          
-            `Condor <http://www.cs.wisc.edu/condor/>`_ is supported.   
+            Specifies whether to set up a `Condor <http://www.cs.wisc.edu/condor/>`_ cluster
+            in this domain.   
             """),           
-     Option(name        = "cluster-nodes",
-            getter      = "cluster-nodes",
+     Option(name        = "condor-nodes",
+            getter      = "condor-nodes",
             type        = OPTTYPE_INT,
             required    = False,
             doc         = """
-            The number of worker nodes to create for the LRM.        
-            """),         
+            The number of Condor worker nodes to create.        
+            """),     
+     Option(name        = "hadoop",
+            getter      = "hadoop",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
+            required    = False,
+            doc         = """
+            Specifies whether to set up a `Hadoop <http://hadoop.apache.org/>`_ cluster
+            in this domain.   
+            """),           
+     Option(name        = "hadoop-nodes",
+            getter      = "hadoop-nodes",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            The number of Hadoop slave nodes to create.        
+            """),     
      Option(name        = "galaxy",
             getter      = "galaxy",
             type        = OPTTYPE_BOOLEAN,
@@ -616,9 +631,8 @@ class SimpleTopologyConfig(Config):
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
 
-            nfs = False
-            nis = False
-            glusterfs = False
+            nfs_server = nis_server = None
+            glusterfs_servers = []
 
             has_go_ep = self.get((domain_name,"go-endpoint")) != None
 
@@ -709,6 +723,10 @@ class SimpleTopologyConfig(Config):
                     # If there is a Galaxy server in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
                     server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                if self.get((domain_name,"hadoop")):
+                    # If there is a Hadoop cluster in the domain, the "common"
+                    # recipe has to be installed on the NFS/NIS server
+                    server_node.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
                     
                 domain.add_node(server_node)
                 
@@ -771,32 +789,31 @@ class SimpleTopologyConfig(Config):
 
                 if self.get((domain_name,"go-endpoint")) != None:
                     node.add_to_array("run_list", "recipe[globus::go_cert]")
-                    
+
                 node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
-            
-            lrm = self.get((domain_name,"lrm"))
-            if lrm != "none":
-                gram = self.get((domain_name,"gram"))
-                if lrm == "condor":
-                    if gram:
-                        node_name = "gram-condor"
-                        role = "role[domain-gram-condor]"
-                    else:
-                        node_name = "condor"
-                        role = "role[domain-condor]"
-                    workernode_role = "role[domain-clusternode-condor]"
 
-                node = self.__create_node(domain, node_name, nis_server, nfs_server, glusterfs_servers)                 
-                node.add_to_array("run_list", role)
+            if self.get((domain_name,"condor")):
+                if self.get((domain_name,"gram")):
+                    head_name = "gram-condor"
+                    head_role = "role[domain-gram-condor]"
+                else:
+                    head_name = "condor"
+                    head_role = "role[domain-condor]"
+                worker_name = "condor-wn"
+                worker_role = "role[domain-clusternode-condor]"
+                num_workers = self.get((domain.id,"condor-nodes"))
+                
+                self.__gen_cluster(domain, nis_server, nfs_server, glusterfs_servers, None, head_name, head_role, worker_name, worker_role, num_workers)
+                
+            if self.get((domain_name,"hadoop")):
+                head_name = "hadoop-master"
+                head_role = "role[domain-hadoop-master]"
+                worker_name = "hadoop-slave"
+                worker_role = "role[domain-hadoop-slave]"
+                num_workers = self.get((domain.id,"hadoop-nodes"))
+                                
+                self.__gen_cluster(domain, nis_server, nfs_server, glusterfs_servers, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
 
-                for i in range(self.get((domain_name,"cluster-nodes"))):
-                    wn_name = "condor-wn%i" % (i+1)
-
-                    node = self.__create_node(domain, wn_name, nis_server, nfs_server, glusterfs_servers)
-                    node.add_to_array("depends", "node:%s" % node_name)
-                    node.add_to_array("run_list", workernode_role)
-
-            
             if has_go_ep:
                 goep = GOEndpoint()
                 gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
@@ -816,6 +833,23 @@ class SimpleTopologyConfig(Config):
                 
         return topology
 
+    def __gen_cluster(self, domain, nis_server, nfs_server, glusterfs_servers, common_recipe, head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers = False):
+        head_node = self.__create_node(domain, head_name, nis_server, nfs_server, glusterfs_servers)
+        if not nfs_server and common_recipe != None:                  
+            head_node.add_to_array("run_list", common_recipe)  
+        head_node.add_to_array("run_list", head_role)
+
+        for i in range(num_workers):
+            wn_name = "%s%i" % (worker_name, i+1)
+            wn_node = self.__create_node(domain, wn_name, nis_server, nfs_server, glusterfs_servers)
+            if head_depends_on_workers:
+                head_node.add_to_array("depends", "node:%s" % wn_node.id)
+            else:
+                wn_node.add_to_array("depends", "node:%s" % head_node.id)
+            
+            if not nfs_server and common_recipe != None:                  
+                head_node.add_to_array("run_list", common_recipe)  
+            wn_node.add_to_array("run_list", worker_role)
 
     def __create_node(self, domain, name, nis_server, nfs_server, glusterfs_servers):
         domain_name = domain.id
@@ -846,4 +880,4 @@ class SimpleTopologyConfig(Config):
         domain.add_node(node)
         
         return node
-            
+

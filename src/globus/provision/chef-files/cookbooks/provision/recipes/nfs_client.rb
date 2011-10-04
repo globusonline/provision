@@ -91,18 +91,6 @@ cookbook_file "/etc/auto.master" do
   mode 0644
   owner "root"
   group "root"
-  notifies :restart, "service[autofs]", :immediately
-end
-
-template "/etc/auto.home" do
-  source "auto.home.erb"
-  mode 0644
-  owner "root"
-  group "root"
-  variables(
-    :server => server
-  )
-  notifies :restart, "service[autofs]", :immediately  
 end
 
 template "/etc/auto.nfs" do

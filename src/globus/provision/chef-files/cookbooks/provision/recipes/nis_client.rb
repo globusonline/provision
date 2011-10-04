@@ -81,3 +81,8 @@ end
 
 # Restart NIS
 service "nis"
+
+execute "update-rc.d nis defaults" do
+  user "root"
+  group "root"
+end  

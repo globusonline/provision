@@ -87,19 +87,8 @@ class Deployer(BaseDeployer):
             log.info("Waiting for state %s" % Node.state_str[self.state])
             
     class NodeConfigureThread(ConfigureThread):
-        def __init__(self, multi, name, node, vm, deployer, depends = [], basic = True, chef = True):
-            ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
-            
-        def run2(self):
-            topology = self.deployer.instance.topology
-            
-            self.node.state = Node.STATE_CONFIGURING
-            topology.save()
-    
-            self.node.state = Node.STATE_RUNNING
-            topology.save()            
-            log.info("Dummy configure done")
-            
+        def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+            ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef, dryrun = True)            
 
         def connect(self): pass
     

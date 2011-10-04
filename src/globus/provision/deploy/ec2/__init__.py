@@ -176,12 +176,14 @@ class Deployer(BaseDeployer):
         # The following will only work with Ubuntu AMIs (including the AMI we provide)
         # If using a different AMI, you may need to manually mount the ephemeral partitions.
         user_data = """#cloud-config
+manage_etc_hosts: true        
 mounts:
 - [ ephemeral0, /ephemeral/0, auto, "defaults,noexec" ]
 - [ ephemeral1, /ephemeral/1, auto, "defaults,noexec" ]
 - [ ephemeral2, /ephemeral/2, auto, "defaults,noexec" ]
 - [ ephemeral3, /ephemeral/3, auto, "defaults,noexec" ]
 """
+
         if instance_type in ("cc1.4xlarge", "cg1.4xlarge"):
             placement_group = self.pg.name
         else:
@@ -191,7 +193,7 @@ mounts:
         reservation = image.run(min_count=1, 
                                 max_count=1,
                                 instance_type=instance_type,
-                                security_groups= security_groups,
+                                security_groups=security_groups,
                                 key_name=self.instance.config.get("ec2-keypair"),
                                 user_data=user_data,
                                 block_device_map=map,
@@ -204,7 +206,7 @@ mounts:
     def resume_vm(self, node):
         ec2_instance_id = node.deploy_data.ec2.instance_id
 
-        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))
+        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))        
         started = self.conn.start_instances([ec2_instance_id])            
         log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
         
@@ -223,7 +225,7 @@ mounts:
             node.ip = ec2_instance.private_dns_name
 
         node.hostname = ec2_instance.public_dns_name
-        
+
         # TODO: The following won't work on EC2-ish systems behind a firewall.
         node.public_ip = ".".join(ec2_instance.public_dns_name.split(".")[0].split("-")[1:])
 
@@ -296,7 +298,7 @@ mounts:
             self.ec2_instance = vm.ec2_instance
                         
         def wait(self):
-            if self.state == Node.STATE_RUNNING_UNCONFIGURED:
+            if self.state in (Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_RESUMED_UNCONFIGURED):
                 self.deployer.wait_state(self.ec2_instance, "running")
                 log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
             elif self.state == Node.STATE_STOPPED:

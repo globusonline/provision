@@ -116,7 +116,8 @@ ff02::3 ip6-allhosts
             topology += gen_topology_line("nfs_server", domain.id, ["recipe[provision::nfs_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
-            topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("condor_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("hadoop_master", domain.id, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
             topology += gen_topology_line("glusterfs_head", domain.id, ["recipe[glusterfs::glusterfs-server-head]"])
             topology += gen_topology_line("glusterfs_servers", domain.id, ["recipe[glusterfs::glusterfs-server]"], multi=True)
         
@@ -171,6 +172,13 @@ ff02::3 ip6-allhosts
             
         return None
     
+    def get_go_endpoints(self):    
+        eps = []
+        for domain_name, domain in self.domains.items():
+            if domain.has_property("go_endpoints"):
+                eps += domain.go_endpoints
+        return eps   
+    
     def add_domain(self, domain):
         self.add_to_array("domains", domain)
         
@@ -211,9 +219,14 @@ class Node(PersistentObject):
     STATE_RUNNING_UNCONFIGURED = 2
     STATE_CONFIGURING = 3
     STATE_RUNNING = 4
+    STATE_RECONFIGURING = 11
     STATE_STOPPING = 5
+    STATE_STOPPING_CONFIGURING = 12
+    STATE_STOPPING_CONFIGURED = 13
     STATE_STOPPED = 6
     STATE_RESUMING = 7
+    STATE_RESUMED_UNCONFIGURED = 14
+    STATE_RESUMED_RECONFIGURING = 15
     STATE_TERMINATING = 8
     STATE_TERMINATED = 9
     STATE_FAILED = 10
@@ -224,9 +237,14 @@ class Node(PersistentObject):
                  STATE_RUNNING_UNCONFIGURED : "Running (unconfigured)",
                  STATE_CONFIGURING : "Configuring",
                  STATE_RUNNING : "Running",
+                 STATE_RECONFIGURING : "Running (reconfiguring)",
                  STATE_STOPPING : "Stopping",
+                 STATE_STOPPING_CONFIGURING : "Stopping (configuring)",
+                 STATE_STOPPING_CONFIGURED : "Stopping (configured)",
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
+                 STATE_RESUMED_UNCONFIGURED : "Resumed (unconfigured)",
+                 STATE_RESUMED_RECONFIGURING : "Resumed (reconfiguring)",
                  STATE_TERMINATING : "Terminating",
                  STATE_TERMINATED : "Terminated",
                  STATE_FAILED : "Failed"}   
@@ -693,6 +711,14 @@ GOEndpoint.properties = {
                                     Globus Online, it must use a certificate trusted by Globus Online.
                                     Unless you used a CA trusted by Globus Online to generate the certificates
                                     for the topology, you must use a Globus Connect certificate.
-                                    """)                               
+                                    """),
+                         
+                           "globus_connect_cert_dn":
+                           Property(name="globus_connect_cert",
+                                    proptype = PropertyTypes.STRING,
+                                    required = False,
+                                    description = """
+                                    The DN of the Globus Connect certificate for this endpoint.
+                                    """)                                                               
                            
                         }                                                                                                                 

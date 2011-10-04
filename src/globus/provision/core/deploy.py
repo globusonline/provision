@@ -134,7 +134,7 @@ class ConfigureThread(GPThread):
     
     __metaclass__ = ABCMeta
         
-    def __init__(self, multi, name, node, vm, deployer, depends = [], basic = True, chef = True):
+    def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True, dryrun=False):
         GPThread.__init__(self, multi, name, depends)
         self.domain = node.parent_Domain
         self.node = node
@@ -143,24 +143,52 @@ class ConfigureThread(GPThread):
         self.config = deployer.instance.config
         self.basic = basic
         self.chef = chef
+        self.dryrun = dryrun
 
     def run2(self):
         topology = self.deployer.instance.topology
         
-        self.node.state = Node.STATE_CONFIGURING
-        topology.save()
-        
-        ssh = self.connect()
-        self.check_continue()
-        self.pre_configure(ssh)
-        self.check_continue()
-        self.configure(ssh)
-        self.check_continue()
-        self.post_configure(ssh)
-        self.check_continue()
-
-        self.node.state = Node.STATE_RUNNING
-        topology.save()
+        if self.node.state in (Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_RUNNING, Node.STATE_RESUMED_UNCONFIGURED):
+            if self.node.state == Node.STATE_RUNNING_UNCONFIGURED:
+                log.debug("Configuring node for the first time", self.node)
+                self.node.state = Node.STATE_CONFIGURING
+                next_state = Node.STATE_RUNNING
+            elif self.node.state == Node.STATE_RUNNING:
+                log.debug("Reconfiguring already-running node", self.node)
+                self.node.state = Node.STATE_RECONFIGURING
+                next_state = Node.STATE_RUNNING
+            elif self.node.state == Node.STATE_RESUMED_UNCONFIGURED:
+                log.debug("Reconfiguring resumed node", self.node)
+                self.node.state = Node.STATE_RESUMED_RECONFIGURING
+                next_state = Node.STATE_RUNNING
+            
+            topology.save()
+            
+            if not self.dryrun:
+                ssh = self.connect()
+                self.check_continue()
+                self.pre_configure(ssh)
+                self.check_continue()
+                self.configure(ssh)
+                self.check_continue()
+                self.post_configure(ssh)
+                self.check_continue()
+    
+            self.node.state = next_state
+            topology.save()
+        elif self.node.state == Node.STATE_STOPPING:
+            log.debug("Doing pre-shutdown configuration", self.node)
+            self.node.state = Node.STATE_STOPPING_CONFIGURING
+            topology.save()
+            
+            if not self.dryrun:
+                ssh = self.connect()
+                self.check_continue()
+                self.configure_stop(ssh)
+                self.check_continue()
+    
+            self.node.state = Node.STATE_STOPPING_CONFIGURED
+            topology.save()            
 
     @abstractmethod
     def connect(self): pass
@@ -192,6 +220,11 @@ class ConfigureThread(GPThread):
         instance_dir = self.deployer.instance.instance_dir        
         
         if self.basic:
+            # Make backup copies of hostname and /etc/hosts
+            if node.state in (Node.STATE_CONFIGURING, Node.STATE_RESUMED_RECONFIGURING):
+                ssh.run("sudo cp /etc/hosts /etc/hosts.gp-bak", expectnooutput=True)
+                ssh.run("sudo cp /etc/hostname /etc/hostname.gp-bak", expectnooutput=True)
+            
             # Upload host file and update hostname
             log.debug("Uploading host file and updating hostname", node)
             ssh.scp("%s/hosts" % instance_dir,
@@ -244,12 +277,24 @@ class ConfigureThread(GPThread):
             if chef_tries == 0:
                 raise DeploymentException, "Failed to configure node %s" % node.id
                     
-            self.check_continue()
-
-        if self.basic:
-            ssh.run("sudo update-rc.d nis defaults")     
+            self.check_continue() 
 
         for cmd in self.deployer.run_cmds:
             ssh.run(cmd)
 
         log.info("Configuration done.", node)
+        
+    def configure_stop(self, ssh):      
+        node = self.node
+  
+        log.info("Configuring node for shutdown", node)
+        ssh.run("sudo cp /etc/hosts.gp-bak /etc/hosts", expectnooutput=True)
+        ssh.run("sudo cp /etc/hostname.gp-bak /etc/hostname", expectnooutput=True)
+        ssh.run("sudo /etc/init.d/hostname.sh || sudo /etc/init.d/hostname restart", expectnooutput=True)
+        ssh.run("sudo bash -c \"echo +auto.master > /etc/auto.master\"", exception_on_error = False)
+        ssh.run("sudo bash -c \"echo > /etc/yp.conf\"", exception_on_error = False)
+        ssh.run("sudo bash -c \"echo > /etc/default/nfs-common\"", exception_on_error = False)
+
+        ssh.run("sudo update-rc.d -f nis remove", exception_on_error = False)
+        log.info("Configuration done.", node)
+        

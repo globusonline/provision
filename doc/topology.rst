@@ -215,7 +215,7 @@ The above is essentially the same as the following in the simple topology format
 So, why would we want to use the much more verbose JSON format instead of this simple,
 much more human-readable, format? The main reason is that the JSON format gives you
 a lot more control over the topology. For example, the simple topology format
-allows you to say ``gridftp: yes`` and ``lrm: condor``, but that will get translated
+allows you to say ``gridftp: yes`` and ``condor: yes``, but that will get translated
 into two separate hosts (one for the GridFTP server and another for the Condor head node).
 If you want to specify that you want both servers in a single host, the simple
 topology format will not allow you to do this. In the topology JSON, on the other hand,
@@ -333,8 +333,8 @@ the ``dummy`` deployer)::
 	[domain-simple]
 	users: user1 user2
 	nfs-nis: yes
-	lrm: condor
-	cluster-nodes: 2
+	condor: yes
+	condor-nodes: 2
 
 Next, we create the instance::
 

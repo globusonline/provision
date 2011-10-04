@@ -124,7 +124,7 @@ class SSH(object):
             
             log.debug("%s - Waiting for exit status: %s" % (self.hostname,command))
             rc = channel.recv_exit_status()
-            log.debug("%s - Ran %s" % (self.hostname,command))
+            log.debug("%s - Ran %s (exit status: %i)" % (self.hostname,command,rc))
             channel.close()
         except Exception, e:
             raise # Replace by something more meaningful
