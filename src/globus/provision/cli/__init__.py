@@ -135,7 +135,7 @@ class Command(object):
             return Fore.BLUE + Style.BRIGHT + state_str + reset
         elif state == Node.STATE_RUNNING:
             return Fore.GREEN + Style.BRIGHT + state_str + reset
-        elif state in (Node.STATE_STARTING, Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_CONFIGURING, Node.STATE_STOPPING, Node.STATE_RESUMING, Node.STATE_TERMINATING):
+        elif state in (Node.STATE_STARTING, Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_CONFIGURING, Node.STATE_RECONFIGURING, Node.STATE_STOPPING, Node.STATE_STOPPING_CONFIGURING, Node.STATE_STOPPING_CONFIGURED, Node.STATE_RESUMING, Node.STATE_RESUMED_UNCONFIGURED, Node.STATE_RESUMED_RECONFIGURING, Node.STATE_TERMINATING):
             return Fore.YELLOW + Style.BRIGHT + state_str + reset
         elif state in (Node.STATE_TERMINATED, Node.STATE_FAILED):
             return Fore.RED + Style.BRIGHT + state_str + reset

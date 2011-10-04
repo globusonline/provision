@@ -222,7 +222,7 @@ class Node(PersistentObject):
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
                  STATE_RESUMED_UNCONFIGURED : "Resumed (unconfigured)",
-                 STATE_RESUMED_RECONFIGURING : "Resumed (reconfigured)",
+                 STATE_RESUMED_RECONFIGURING : "Resumed (reconfiguring)",
                  STATE_TERMINATING : "Terminating",
                  STATE_TERMINATED : "Terminated",
                  STATE_FAILED : "Failed"}   
