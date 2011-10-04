@@ -80,7 +80,7 @@ class Deployer(BaseDeployer):
         return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
-        def __init__(self, multi, name, node, vm, deployer, state, depends = None):
+        def __init__(self, multi, name, node, vm, deployer, state, depends = []):
             WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
                         
         def wait(self):

@@ -430,23 +430,38 @@ class SimpleTopologyConfig(Config):
             doc         = """
             Specifies whether to set up a GridFTP server on this domain.             
             """),                   
-     Option(name        = "lrm",
-            getter      = "lrm",
-            type        = OPTTYPE_STRING,
-            valid       = ["none", "condor"],
-            default     = "none",
+     Option(name        = "condor",
+            getter      = "condor",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
             required    = False,
             doc         = """
-            Specifies whether to set up an LRM (Local Resource Manager) on this domain. Currently, only          
-            `Condor <http://www.cs.wisc.edu/condor/>`_ is supported.   
+            Specifies whether to set up a `Condor <http://www.cs.wisc.edu/condor/>`_ cluster
+            in this domain.   
             """),           
-     Option(name        = "cluster-nodes",
-            getter      = "cluster-nodes",
+     Option(name        = "condor-nodes",
+            getter      = "condor-nodes",
             type        = OPTTYPE_INT,
             required    = False,
             doc         = """
-            The number of worker nodes to create for the LRM.        
-            """),         
+            The number of Condor worker nodes to create.        
+            """),     
+     Option(name        = "hadoop",
+            getter      = "hadoop",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
+            required    = False,
+            doc         = """
+            Specifies whether to set up a `Hadoop <http://hadoop.apache.org/>`_ cluster
+            in this domain.   
+            """),           
+     Option(name        = "hadoop-nodes",
+            getter      = "hadoop-nodes",
+            type        = OPTTYPE_INT,
+            required    = False,
+            doc         = """
+            The number of Hadoop slave nodes to create.        
+            """),     
      Option(name        = "galaxy",
             getter      = "galaxy",
             type        = OPTTYPE_BOOLEAN,
@@ -577,6 +592,8 @@ class SimpleTopologyConfig(Config):
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
 
+            nfs_server = nis_server = None
+
             has_go_ep = self.get((domain_name,"go-endpoint")) != None
 
             user = User()
@@ -653,6 +670,7 @@ class SimpleTopologyConfig(Config):
                                   
             
             if self.get((domain_name,"nfs-nis")):  
+                nfs = nis = True
                 server_node = Node()
                 server_name = "%s-server" % domain_name
                 server_node.set_property("id", server_name)
@@ -665,125 +683,70 @@ class SimpleTopologyConfig(Config):
                     # If there is a Galaxy server in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
                     server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                if self.get((domain_name,"hadoop")):
+                    # If there is a Hadoop cluster in the domain, the "common"
+                    # recipe has to be installed on the NFS/NIS server
+                    server_node.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
                     
                 domain.add_node(server_node)
+                
+                nfs_server = nis_server = server_name
 
             for i in range(self.get((domain_name,"barebones-nodes"))):
-                bb_name = "%s-blank-%i" % (domain_name, i+1)
+                self.__create_node(domain, "blank-%i" % (i+1), nis_server, nfs_server)
 
-                bb_node = Node()
-                bb_node.set_property("id", bb_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    bb_node.set_property("depends", "node:%s" % server_name)
-                    bb_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    bb_node.add_to_array("run_list", "recipe[provision::gp_node]")  
-                    bb_node.add_to_array("run_list", "recipe[provision::domain_users]")              
-                               
-                domain.add_node(bb_node)
-
-            if self.get((domain_name,"login")):            
-                login_node = Node()
-                login_node.set_property("id", "%s-login" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    login_node.set_property("depends", "node:%s" % server_name)
-                    login_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    login_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    login_node.add_to_array("run_list", "recipe[provision::domain_users]")
-                login_node.add_to_array("run_list", "role[globus]")
-                domain.add_node(login_node)                
+            if self.get((domain_name,"login")): 
+                node = self.__create_node(domain, "login", nis_server, nfs_server)
+                node.add_to_array("run_list", "role[globus]")
 
             if self.get((domain_name,"myproxy")):
-                myproxy_node = Node()
-                myproxy_node.set_property("id", "%s-myproxy" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    myproxy_node.set_property("depends", "node:%s" % server_name)
-                    myproxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    myproxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    myproxy_node.add_to_array("run_list", "recipe[provision::domain_users]")
-                myproxy_node.add_to_array("run_list", "role[domain-myproxy]")
-                domain.add_node(myproxy_node)
+                node = self.__create_node(domain, "myproxy", nis_server, nfs_server)
+                node.add_to_array("run_list", "role[domain-myproxy]")
 
             if self.get((domain_name,"gridftp")):
-                gridftp_node = Node()
-                gridftp_node.set_property("id", "%s-gridftp" % domain_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    gridftp_node.set_property("depends", "node:%s" % server_name)
-                    gridftp_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    gridftp_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    gridftp_node.add_to_array("run_list", "recipe[provision::domain_users]")     
-                    
+                node = self.__create_node(domain, "gridftp", nis_server, nfs_server)
+       
                 if has_go_ep:
                     if self.get((domain_name,"go-gc")):
-                        gridftp_node.add_to_array("run_list", "role[domain-gridftp-gc]")
+                        node.add_to_array("run_list", "role[domain-gridftp-gc]")
                     else:
-                        gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
-                        gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")
+                        node.add_to_array("run_list", "recipe[globus::go_cert]")
+                        node.add_to_array("run_list", "role[domain-gridftp-default]")
                 else:                
-                    gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")
-                domain.add_node(gridftp_node)                
+                    node.add_to_array("run_list", "role[domain-gridftp-default]")              
             
             if self.get((domain_name,"galaxy")):
-                galaxy_node = Node()
-                galaxy_node.set_property("id", "%s-galaxy" % domain_name)
+                node = self.__create_node(domain, "galaxy", nis_server, nfs_server)
 
-                if self.get((domain_name,"nfs-nis")):  
-                    galaxy_node.set_property("depends", "node:%s" % server_name)
-                    galaxy_node.add_to_array("run_list", "role[domain-nfsnis-client]")
-                else:
-                    galaxy_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    galaxy_node.add_to_array("run_list", "recipe[provision::domain_users]")     
-                    galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
+                if not nfs:  
+                    node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
 
                 if self.get((domain_name,"go-endpoint")) != None:
-                    galaxy_node.add_to_array("run_list", "recipe[globus::go_cert]")
-                galaxy_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
-                domain.add_node(galaxy_node)                
-            
-            
-            lrm = self.get((domain_name,"lrm"))
-            if lrm != "none":
-                gram = self.get((domain_name,"gram"))
-                if lrm == "condor":
-                    if gram:
-                        node_name = "%s-gram-condor" % domain_name
-                        role = "role[domain-gram-condor]"
-                    else:
-                        node_name = "%s-condor" % domain_name
-                        role = "role[domain-condor]"
-                    workernode_role = "role[domain-clusternode-condor]"
+                    node.add_to_array("run_list", "recipe[globus::go_cert]")
+                node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
 
-                lrm_node = Node()
-                lrm_node.set_property("id", node_name)
-                if self.get((domain_name,"nfs-nis")):  
-                    lrm_node.set_property("depends", "node:%s" % server_name)
-                    lrm_node.add_to_array("run_list", "role[domain-nfsnis-client]")
+            if self.get((domain_name,"condor")):
+                if self.get((domain_name,"gram")):
+                    head_name = "gram-condor"
+                    head_role = "role[domain-gram-condor]"
                 else:
-                    lrm_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                    lrm_node.add_to_array("run_list", "recipe[provision::domain_users]")                    
-                lrm_node.add_to_array("run_list", role)
-                domain.add_node(lrm_node)
+                    head_name = "condor"
+                    head_role = "role[domain-condor]"
+                worker_name = "condor-wn"
+                worker_role = "role[domain-clusternode-condor]"
+                num_workers = self.get((domain.id,"condor-nodes"))
+                
+                self.__gen_cluster(domain, nis_server, nfs_server, None, head_name, head_role, worker_name, worker_role, num_workers)
+                
+            if self.get((domain_name,"hadoop")):
+                head_name = "hadoop-master"
+                head_role = "role[domain-hadoop-master]"
+                worker_name = "hadoop-slave"
+                worker_role = "role[domain-hadoop-slave]"
+                num_workers = self.get((domain.id,"hadoop-nodes"))
+                                
+                self.__gen_cluster(domain, nis_server, nfs_server, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
 
-                clusternode_host = 1
-                for i in range(self.get((domain_name,"cluster-nodes"))):
-                    wn_name = "%s-condor-wn%i" % (domain_name, i+1)
-
-                    wn_node = Node()
-                    wn_node.set_property("id", wn_name)
-                    wn_node.set_property("depends", "node:%s" % node_name)
-                    if self.get((domain_name,"nfs-nis")):
-                        wn_node.add_to_array("run_list", "role[domain-nfsnis-client]")          
-                    else:
-                        wn_node.add_to_array("run_list", "recipe[provision::gp_node]")
-                        wn_node.add_to_array("run_list", "recipe[provision::domain_users]")                                  
-                    wn_node.add_to_array("run_list", workernode_role)
-                    domain.add_node(wn_node)
-
-                    clusternode_host += 1
-            
             if has_go_ep:
                 goep = GOEndpoint()
                 gouser, goname = self.get((domain_name,"go-endpoint")).split("#")
@@ -803,4 +766,45 @@ class SimpleTopologyConfig(Config):
                 
         return topology
 
+    def __gen_cluster(self, domain, nis_server, nfs_server, common_recipe, head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers = False):
+        head_node = self.__create_node(domain, head_name, nis_server, nfs_server)
+        if not nfs_server and common_recipe != None:                  
+            head_node.add_to_array("run_list", common_recipe)  
+        head_node.add_to_array("run_list", head_role)
 
+        for i in range(num_workers):
+            wn_name = "%s%i" % (worker_name, i+1)
+            wn_node = self.__create_node(domain, wn_name, nis_server, nfs_server)
+            if head_depends_on_workers:
+                head_node.add_to_array("depends", "node:%s" % wn_node.id)
+            else:
+                wn_node.add_to_array("depends", "node:%s" % head_node.id)
+            
+            if not nfs_server and common_recipe != None:                  
+                head_node.add_to_array("run_list", common_recipe)  
+            wn_node.add_to_array("run_list", worker_role)
+
+    def __create_node(self, domain, name, nis_server, nfs_server):
+        domain_name = domain.id
+        node = Node()
+        node.set_property("id", "%s-%s" % (domain_name, name))
+
+        node.add_to_array("run_list", "recipe[provision::gp_node]")
+        depends = set()
+
+        if nis_server != None:
+            depends.add("node:%s" % nis_server)
+            node.add_to_array("run_list", "recipe[provision::nis_client]")
+        else:
+            node.add_to_array("run_list", "recipe[provision::domain_users]")
+
+        if nfs_server != None:
+            depends.add("node:%s" % nfs_server)
+            node.add_to_array("run_list", "recipe[provision::nfs_client]")
+            
+        for d in depends:
+            node.add_to_array("depends", d)
+            
+        domain.add_node(node)
+        
+        return node

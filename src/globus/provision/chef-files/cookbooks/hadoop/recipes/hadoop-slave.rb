@@ -16,42 +16,29 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Condor worker node
+## RECIPE: Hadoop slave node
 ##
-## Set up a Condor worker node.
+## Set up a Hadoop slave node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
 
-# The "condor" recipe handles actions that are common to
-# both head and worker nodes.
-include_recipe "condor::condor"
+# The hadoop_master attribute is part of the generated topology.rb file,
+# and contains the FQDN of the master node.
+server = gp_domain[:hadoop_master]
 
-
-# The condor_head attribute is part of the generated topology.rb file,
-# and contains the FQDN of the head node.
-server = gp_domain[:condor_head]
-
-
-# Domain (used by Condor for authorization). 
-# This should eventually be included in the topology.
-domain = server[server.index(".")+1, server.length]
-
-
-# Create the local configuration file.
-template "/etc/condor/condor_config.local" do
-  source "condor_config.erb"
-  mode 0644
-  owner "condor"
-  group "condor"
-  variables(
-    :server => server,
-    :domain => domain,    
-    :daemons => "MASTER, STARTD"
-  )
-  notifies :restart, "service[condor]"
+directory "/ephemeral/0/hadoop" do
+  owner "hduser"
+  group "hadoop"
+  mode "0750"
+  recursive true
+  action :create
 end
 
-service "condor" 
-
+# Force host key to be added to known_hosts
+execute "ssh-localhost" do
+  user "hduser"
+  command "ssh -o StrictHostKeyChecking=no `hostname --fqdn` echo"
+  action :run
+end

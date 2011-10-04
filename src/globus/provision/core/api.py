@@ -215,7 +215,7 @@ class API(object):
                         return (API.STATUS_FAIL, message)
                         
                 return (API.STATUS_SUCCESS, "Success")
-            elif inst.topology.state != Topology.STATE_RUNNING:
+            elif inst.topology.state not in (Topology.STATE_RUNNING, Topology.STATE_FAILED):
                 message = "Cannot update the topology of an instance that is in state '%s'" % (Topology.state_str[inst.topology.state])
                 return (API.STATUS_FAIL, message)        
     
@@ -614,16 +614,15 @@ class API(object):
         order = topology.get_launch_order(nodes)
         
         threads = {}
-        for nodeset in order:
-            rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
-                            "configure-%s" % n.id, 
-                            n, 
-                            node_vm[n], 
-                            deployer, 
-                            depends=threads.get(topology.get_depends(n)),
-                            basic = basic,
-                            chef = chef)) for n in nodeset])
-            threads.update(rest)
+        for node in order:
+            threads[node] = deployer.NodeConfigureThread(mt_configure, 
+                                                         "configure-%s" % node.id, 
+                                                         node, 
+                                                         node_vm[node], 
+                                                         deployer, 
+                                                         depends=[threads[t] for t in topology.get_depends(node)],
+                                                         basic = basic,
+                                                         chef = chef)
         
         for thread in threads.values():
             mt_configure.add_thread(thread)
@@ -669,21 +668,19 @@ class API(object):
         topology = deployer.instance.topology
         mt_configure = MultiThread()        
         order = topology.get_launch_order(nodes)
-        order.reverse()
-        
+
         for n in node_vm:
             n.state = Node.STATE_STOPPING
         topology.save()
         
         threads = {}
-        for nodeset in order:
-            rest = dict([(n, deployer.NodeConfigureThread(mt_configure, 
-                            "stop-configure-%s" % n.id, 
-                            n, 
-                            node_vm[n], 
-                            deployer, 
-                            depends=threads.get(topology.get_depends(n)))) for n in nodeset])
-            threads.update(rest)
+        for node in order:
+            threads[node] = deployer.NodeConfigureThread(mt_configure, 
+                                                         "stop-configure-%s" % node.id, 
+                                                         node, 
+                                                         node_vm[node], 
+                                                         deployer, 
+                                                         depends=[threads[t] for t in topology.get_depends(node)])            
         
         for thread in threads.values():
             mt_configure.add_thread(thread)
@@ -693,9 +690,9 @@ class API(object):
             message = self.__mt_exceptions_to_text(mt_configure.get_exceptions(), "Globus Provision was unable to configure the instances.")
             return (False, message)        
         
-        
-        for nodeset in order:
-            deployer.stop_vms(nodeset)
+        order.reverse()
+        for node in order:
+            deployer.stop_vms(node)
         
         log.debug("Waiting for instances to stop.")
         mt_instancewait = MultiThread()
