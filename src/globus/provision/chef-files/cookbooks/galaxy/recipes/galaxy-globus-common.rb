@@ -104,7 +104,7 @@ if ! File.exists?(node[:galaxy][:dir])
     group "galaxy"
     variables(
       :db_connect => "postgres:///galaxy?user=galaxy&password=galaxy&host=/var/run/postgresql",
-      :go_endpoint => "#{node[:go_username]}##{node[:instance_id]}_#{node[:gp_domain]}"
+      :go_endpoint => go_endpoint
     )
   end  
 

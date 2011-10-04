@@ -149,13 +149,18 @@ class Deployer(BaseDeployer):
             if len(image) == 0:
                 raise DeploymentException, "AMI %s does not exist" % ami
             else:
-                image = image[0]
+                image = image[0]         
+        
+        user_data = """#cloud-config
+manage_etc_hosts: true
+"""        
         
         log.info(" |- Launching a %s instance for %s." % (instance_type, node.id))
         reservation = image.run(min_count=1, 
                                 max_count=1,
                                 instance_type=instance_type,
                                 security_groups= security_groups,
+                                user_data = user_data,
                                 key_name=self.instance.config.get("ec2-keypair"),
                                 placement = None)
         instance = reservation.instances[0]
@@ -165,7 +170,7 @@ class Deployer(BaseDeployer):
     def resume_vm(self, node):
         ec2_instance_id = node.deploy_data.ec2.instance_id
 
-        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))
+        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))        
         started = self.conn.start_instances([ec2_instance_id])            
         log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
         
@@ -184,7 +189,7 @@ class Deployer(BaseDeployer):
             node.ip = ec2_instance.private_dns_name
 
         node.hostname = ec2_instance.public_dns_name
-        
+
         # TODO: The following won't work on EC2-ish systems behind a firewall.
         node.public_ip = ".".join(ec2_instance.public_dns_name.split(".")[0].split("-")[1:])
 
@@ -257,7 +262,7 @@ class Deployer(BaseDeployer):
             self.ec2_instance = vm.ec2_instance
                         
         def wait(self):
-            if self.state == Node.STATE_RUNNING_UNCONFIGURED:
+            if self.state in (Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_RESUMED_UNCONFIGURED):
                 self.deployer.wait_state(self.ec2_instance, "running")
                 log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
             elif self.state == Node.STATE_STOPPED:
