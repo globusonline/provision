@@ -266,7 +266,7 @@ mounts:
                 if ec2err.error_code == "InvalidInstanceID.NotFound":
                     # If the instance was just created, this is a transient error. 
                     # We just have to wait until the instance appears.
-                    pass
+                    continue
                 else:
                     raise ec2err            
             
