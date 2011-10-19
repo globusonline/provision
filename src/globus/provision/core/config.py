@@ -683,6 +683,7 @@ class SimpleTopologyConfig(Config):
                     # If there is a Galaxy server in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
                     server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                    server_node.add_to_array("run_list", "recipe[galaxy::blast-nfsserver]")
                 if self.get((domain_name,"hadoop")):
                     # If there is a Hadoop cluster in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
@@ -715,10 +716,10 @@ class SimpleTopologyConfig(Config):
                 else:                
                     node.add_to_array("run_list", "role[domain-gridftp-default]")              
             
-            if self.get((domain_name,"galaxy")):
+            if self.get((domain_name,"galaxy")) and not self.get((domain_name,"condor")):
                 node = self.__create_node(domain, "galaxy", nis_server, nfs_server)
 
-                if not nfs:  
+                if nfs_server == None:  
                     node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
 
                 if self.get((domain_name,"go-endpoint")) != None:
@@ -726,17 +727,30 @@ class SimpleTopologyConfig(Config):
                 node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")
 
             if self.get((domain_name,"condor")):
+                galaxy = self.get((domain_name,"galaxy"))
+                
                 if self.get((domain_name,"gram")):
                     head_name = "gram-condor"
                     head_role = "role[domain-gram-condor]"
                 else:
-                    head_name = "condor"
+                    if galaxy:
+                        head_name = "galaxy-condor"
+                    else:
+                        head_name = "condor"
                     head_role = "role[domain-condor]"
                 worker_name = "condor-wn"
                 worker_role = "role[domain-clusternode-condor]"
                 num_workers = self.get((domain.id,"condor-nodes"))
                 
-                self.__gen_cluster(domain, nis_server, nfs_server, None, head_name, head_role, worker_name, worker_role, num_workers)
+                head_node, workers = self.__gen_cluster(domain, nis_server, nfs_server, None, head_name, head_role, worker_name, worker_role, num_workers)
+                
+                if self.get((domain_name,"galaxy")):
+                    if nfs_server == None:  
+                        head_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
+    
+                    if self.get((domain_name,"go-endpoint")) != None:
+                        head_node.add_to_array("run_list", "recipe[globus::go_cert]")
+                    head_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus]")                
                 
             if self.get((domain_name,"hadoop")):
                 head_name = "hadoop-master"
@@ -772,6 +786,7 @@ class SimpleTopologyConfig(Config):
             head_node.add_to_array("run_list", common_recipe)  
         head_node.add_to_array("run_list", head_role)
 
+        workers = []
         for i in range(num_workers):
             wn_name = "%s%i" % (worker_name, i+1)
             wn_node = self.__create_node(domain, wn_name, nis_server, nfs_server)
@@ -783,6 +798,10 @@ class SimpleTopologyConfig(Config):
             if not nfs_server and common_recipe != None:                  
                 head_node.add_to_array("run_list", common_recipe)  
             wn_node.add_to_array("run_list", worker_role)
+            
+            workers.append(wn_node)
+            
+        return (head_node, workers)
 
     def __create_node(self, domain, name, nis_server, nfs_server):
         domain_name = domain.id
