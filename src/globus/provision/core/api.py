@@ -692,7 +692,7 @@ class API(object):
         
         order.reverse()
         for node in order:
-            deployer.stop_vms(node)
+            deployer.stop_vms([node])
         
         log.debug("Waiting for instances to stop.")
         mt_instancewait = MultiThread()
