@@ -22,6 +22,8 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+include_recipe "R"
+
 gp_domain = node[:topology][:domains][node[:domain_id]]
 
 if gp_domain[:nfs_server]
