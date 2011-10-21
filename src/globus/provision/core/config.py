@@ -462,6 +462,14 @@ class SimpleTopologyConfig(Config):
             doc         = """
             The number of Hadoop slave nodes to create.        
             """),     
+     Option(name        = "R",
+            getter      = "R",
+            type        = OPTTYPE_BOOLEAN,
+            default     = False,
+            required    = False,
+            doc         = """
+            Specifies whether to install R in this domain.   
+            """),        
      Option(name        = "galaxy",
             getter      = "galaxy",
             type        = OPTTYPE_BOOLEAN,
@@ -679,6 +687,10 @@ class SimpleTopologyConfig(Config):
                     # If there is no login node, the NFS/NIS server will
                     # effectively act as one. 
                     server_node.add_to_array("run_list", "role[globus]")
+                if self.get((domain_name,"R")):
+                    # If R is installed in the domain, we need to setup the global
+                    # Rlibs directory
+                    server_node.add_to_array("run_list", "recipe[R::Rlibs-dir-common]")                    
                 if self.get((domain_name,"galaxy")):
                     # If there is a Galaxy server in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
@@ -688,6 +700,10 @@ class SimpleTopologyConfig(Config):
                     # If there is a Hadoop cluster in the domain, the "common"
                     # recipe has to be installed on the NFS/NIS server
                     server_node.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
+                    if self.get((domain_name,"R")):
+                        # If R is installed on the cluster, we'll want RHadoop
+                        server_node.add_to_array("run_list", "recipe[hadoop::rhadoop-common]")                    
+
                     
                 domain.add_node(server_node)
                 
@@ -699,7 +715,10 @@ class SimpleTopologyConfig(Config):
             if self.get((domain_name,"login")): 
                 node = self.__create_node(domain, "login", nis_server, nfs_server)
                 node.add_to_array("run_list", "role[globus]")
-
+                if self.get((domain_name,"R")):
+                    node.add_to_array("run_list", "recipe[R]")   
+                    node.add_to_array("run_list", "recipe[R::Rlibs-dir]")
+                         
             if self.get((domain_name,"myproxy")):
                 node = self.__create_node(domain, "myproxy", nis_server, nfs_server)
                 node.add_to_array("run_list", "role[domain-myproxy]")
@@ -759,7 +778,14 @@ class SimpleTopologyConfig(Config):
                 worker_role = "role[domain-hadoop-slave]"
                 num_workers = self.get((domain.id,"hadoop-nodes"))
                                 
-                self.__gen_cluster(domain, nis_server, nfs_server, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
+                head_node, workers = self.__gen_cluster(domain, nis_server, nfs_server, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
+                
+                if self.get((domain_name,"R")):
+                    # If R is installed in the domain, we need to make sure the worker
+                    # nodes have R, and that they are aware of the global Rlibs directory
+                    for n in [head_node] + workers:
+                        n.add_to_array("run_list", "recipe[R]")   
+                        n.add_to_array("run_list", "recipe[R::Rlibs-dir]")                 
 
             if has_go_ep:
                 goep = GOEndpoint()
