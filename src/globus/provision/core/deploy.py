@@ -280,8 +280,10 @@ class ConfigureThread(GPThread):
             self.check_continue() 
 
         for cmd in self.deployer.run_cmds:
-            ssh.run(cmd)
-
+            rc = ssh.run(cmd, exception_on_error = False)
+            if rc != 0:
+                log.warning("Extra command failed with status %i: %s" % (rc, cmd), node)
+                
         log.info("Configuration done.", node)
         
     def configure_stop(self, ssh):      

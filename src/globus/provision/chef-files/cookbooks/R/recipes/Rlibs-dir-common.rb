@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                 #
+# Copyright 2010-2011, University of Chicago                                      #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,16 +14,28 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-"""
-Globus Provision is a tool for deploying fully-configured Globus systems on Amazon EC2
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: R
+##
+## ...
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See http://globus.org/provision/ for more details
-"""
+gp_domain = node[:topology][:domains][node[:domain_id]]
 
-VERSION="0.4"
-RELEASE="0.4.0a1"
-AMI={"us-east-1":
-        {"32-bit": "ami-4f35f826",
-         "64-bit": "ami-375d905e",
-         "HVM": "ami-0b5d9062"}
-     }
+if gp_domain[:nfs_server]
+	softwaredir = "/nfs/software/"
+else
+    softwaredir = "/usr/local/"
+end
+
+rlibs_dir = "#{softwaredir}/Rlibs"
+
+directory "#{rlibs_dir}" do
+  owner "root"
+  group "root"
+  mode "0755"
+  action :create
+end
+

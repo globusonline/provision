@@ -209,7 +209,7 @@ class API(object):
                 # the old topology. We don't need to deploy or
                 # configure any hosts..
                 if topology_json != None:
-                    (success, message, create_hosts, destroy_hosts) = inst.update_topology(topology_json)
+                    (success, message, topology_changes) = inst.update_topology(topology_json)
                     if not success:
                         message = "Error in topology file: %s" % message
                         return (API.STATUS_FAIL, message)
@@ -692,7 +692,7 @@ class API(object):
         
         order.reverse()
         for node in order:
-            deployer.stop_vms(node)
+            deployer.stop_vms([node])
         
         log.debug("Waiting for instances to stop.")
         mt_instancewait = MultiThread()

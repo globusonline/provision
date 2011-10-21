@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                 #
+# Copyright 2010-2011, University of Chicago                                      #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,16 +14,36 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-"""
-Globus Provision is a tool for deploying fully-configured Globus systems on Amazon EC2
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: R
+##
+## ...
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-See http://globus.org/provision/ for more details
-"""
+apt_repository "R" do
+  uri "http://cran.us.r-project.org/bin/linux/ubuntu"
+  distribution "#{node['lsb']['codename']}/"
+  components []
+  action :add
+  keyserver "keyserver.ubuntu.com"
+  key "E084DAB9"
+end
 
-VERSION="0.4"
-RELEASE="0.4.0a1"
-AMI={"us-east-1":
-        {"32-bit": "ami-4f35f826",
-         "64-bit": "ami-375d905e",
-         "HVM": "ami-0b5d9062"}
-     }
+package "r-base" do
+  action :install
+end
+
+ruby_block "add_Rrepo" do
+  file = "/etc/R/Rprofile.site"
+  line = "options( repos= c( CRAN= \"http://cran.r-project.org/\"))"
+  only_if do
+    File.read(file).index(line).nil?
+  end  
+  block do
+    open(file, 'a') do |f|
+      f.puts line
+    end  
+  end
+end
