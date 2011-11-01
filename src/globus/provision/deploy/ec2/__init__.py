@@ -99,12 +99,6 @@ class Deployer(BaseDeployer):
             if self.conn == None:
                 raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
 
-            # TODO: Move this to a get_placement_group method
-            rc = self.conn.create_placement_group(self.instance.id, strategy = "cluster")
-            if rc:
-                pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
-                self.pg = pgs[0]
-
             log.debug("Connected to EC2.")
         except BotoClientError, exc:
             raise DeploymentException, "Could not connect to EC2. %s" % exc.reason
@@ -146,6 +140,14 @@ class Deployer(BaseDeployer):
             # TODO: Validate that the security groups are valid
         
         return sgs
+    
+    def __get_placement_group(self):    
+        pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
+        if len(pgs) == 0:
+            rc = self.conn.create_placement_group(self.instance.id, strategy = "cluster")
+            if rc:
+                pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
+        return pgs[0]
     
     def allocate_vm(self, node):
         topology = self.instance.topology
@@ -193,7 +195,8 @@ manage_etc_hosts: true
 """ + user_data_mounts
 
         if instance_type in ("cc1.4xlarge", "cg1.4xlarge"):
-            placement_group = self.pg.name
+            pg = self.__get_placement_group()
+            placement_group = pg.name
         else:
             placement_group = None
         
