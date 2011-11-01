@@ -54,6 +54,19 @@ class Deployer(BaseDeployer):
     """
     The EC2 deployer.
     """
+    
+    # From http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?instance-storage-concepts.html
+    EPHEMERAL_PARTITIONS = {"m1.small": 1,
+                            "m1.large": 2,
+                            "m1.xlarge": 4,
+                            "t1.micro": 0,
+                            "c1.medium": 1,
+                            "c1.xlarge": 4,
+                            "m2.xlarge": 1,
+                            "m2.2xlarge": 1,
+                            "m2.4xlarge": 2,
+                            "cc1.4xlarge": 2,
+                            "cg1.4xlarge": 2}
   
     def __init__(self, *args, **kwargs):
         BaseDeployer.__init__(self, *args, **kwargs)
@@ -158,31 +171,26 @@ class Deployer(BaseDeployer):
             else:
                 image = image[0]
                 
-        # Enable all possible ephemeral storage
-        map = BlockDeviceMapping()
-        sdb = BlockDeviceType()
-        sdc = BlockDeviceType()
-        sdd = BlockDeviceType()
-        sde = BlockDeviceType()
-        sdb.ephemeral_name = 'ephemeral0'
-        sdc.ephemeral_name = 'ephemeral1'
-        sdd.ephemeral_name = 'ephemeral2'
-        sde.ephemeral_name = 'ephemeral3'
-        map['/dev/sdb'] = sdb
-        map['/dev/sdc'] = sdc
-        map['/dev/sdd'] = sdd
-        map['/dev/sde'] = sde 
+        num_ephemeral = self.EPHEMERAL_PARTITIONS[instance_type]
                 
+        if num_ephemeral == 0:
+            map = None
+            user_data_mounts = ""
+        else:
+            map = BlockDeviceMapping()
+            user_data_mounts = "mounts:\n"
+            for i in range(num_ephemeral):
+                device = BlockDeviceType
+                device_name = "/dev/sd%s" % (chr(ord('b')+i))
+                device.ephemeral_name = "ephemeral%i" % i
+                map[device_name] = device
+                user_data_mounts += """- [ ephemeral%i, /ephemeral/%i, auto, "defaults,noexec" ]\n""" % (i, i)
+
         # The following will only work with Ubuntu AMIs (including the AMI we provide)
         # If using a different AMI, you may need to manually mount the ephemeral partitions.
         user_data = """#cloud-config
 manage_etc_hosts: true        
-mounts:
-- [ ephemeral0, /ephemeral/0, auto, "defaults,noexec" ]
-- [ ephemeral1, /ephemeral/1, auto, "defaults,noexec" ]
-- [ ephemeral2, /ephemeral/2, auto, "defaults,noexec" ]
-- [ ephemeral3, /ephemeral/3, auto, "defaults,noexec" ]
-"""
+""" + user_data_mounts
 
         if instance_type in ("cc1.4xlarge", "cg1.4xlarge"):
             placement_group = self.pg.name
