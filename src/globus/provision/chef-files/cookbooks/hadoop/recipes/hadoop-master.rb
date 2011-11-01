@@ -23,19 +23,14 @@
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
+homedirs  = gp_domain[:filesystem][:dir_homes]
+softdir   = gp_domain[:filesystem][:dir_software]
 
 # The hadoop_master attribute is part of the generated topology.rb file,
 # and contains the FQDN of the master node.
 server = gp_domain[:hadoop_master]
 
-if gp_domain[:nfs_server]
-    hadoop_dir = "/nfs/software/hadoop"
-    homedirs = "/nfs/home"
-else
-    hadoop_dir = "/usr/local/hadoop"
-    homedirs = "/home"
-end
-
+hadoop_dir = "#{softdir}/hadoop"
 hadoop_conf_dir = "#{homedirs}/hduser/conf/"
 
 directory "/ephemeral/0/hadoop" do

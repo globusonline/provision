@@ -1,3 +1,4 @@
-scratch      -fstype=nfs4       <%=@server%>:/ephemeral/0/scratch
-software     -fstype=nfs4       <%=@server%>:/nfs/software
-home         -fstype=nfs4       <%=@server%>:/nfs/home
+<% @gp_domain[:filesystem][:nfs_mounts].each do |m| %>
+<%= m[:mountpoint] %>      -fstype=nfs4       <%= @gp_domain[:nodes][m[:server][5..-1]][:ip]%>:<%= m[:path]%>
+<% end %>
+

@@ -26,6 +26,9 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+gp_domain = node[:topology][:domains][node[:domain_id]]
+softdir   = gp_domain[:filesystem][:dir_software]
+
 include_recipe "postgresql::server"
 
 database_exists = "psql galaxy postgres -c ''"
@@ -103,5 +106,5 @@ execute "galaxy_restart" do
  group "root"
  command "/etc/init.d/galaxy restart"
  action :run
- environment ({'PATH' => "/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}) 
+ environment ({'PATH' => "#{softdir}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}) 
 end
