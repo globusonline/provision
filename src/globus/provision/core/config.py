@@ -28,7 +28,7 @@ Contains the parsers for the two configuration files used in Globus Provision:
 """
 
 from globus.provision.core.topology import Domain, User, Node, Topology,\
-    DeployData, EC2DeployData, GridMapEntry, GOEndpoint
+    DeployData, EC2DeployData, GridMapEntry, GOEndpoint, FileSystem, NFSMount
 from globus.provision.common.config import Config, Section, Option, OPTTYPE_INT, OPTTYPE_FLOAT, OPTTYPE_STRING, OPTTYPE_BOOLEAN, OPTTYPE_FILE
 import os.path
 import getpass
@@ -372,6 +372,17 @@ class SimpleTopologyConfig(Config):
             
             """),   
      
+     Option(name        = "nis",
+            getter      = "nis",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            Specifies whether an NIS server should be setup in this domain. When ``True``, there will be a
+            user account space in the domain. When ``False``, user accounts and home directories will be 
+            created on every individual host. This option can be useful if you are creating a single-host domain.       
+            """),          
+     
      Option(name        = "barebones-nodes",
             getter      = "barebones-nodes",
             type        = OPTTYPE_INT,
@@ -382,26 +393,13 @@ class SimpleTopologyConfig(Config):
             these nodes *will* be configured as NFS/NIS clients. These nodes can be useful for testing.   
             """),            
      
-     Option(name        = "nfs-nis",
-            getter      = "nfs-nis",
-            type        = OPTTYPE_BOOLEAN,
-            required    = False,
-            default     = False,
-            doc         = """
-            Specifies whether an NFS/NIS server should be setup in this domain. When ``True``, there will be a global
-            filesystem and global user account space in the domain. Most notably, the users' home directories will be on an
-            NFS directory, which means they will be able to access the same home directory from any host in the domain
-            (as opposed to having separate home directories in each host).
-            
-            When ``False``, user accounts and home directories will be created on every individual host. This option can
-            be useful if you are creating a single-host domain.       
-            """),     
      
-     Option(name        = "glusterfs",
-            getter      = "glusterfs",
-            type        = OPTTYPE_BOOLEAN,
+     Option(name        = "filesystem",
+            getter      = "filesystem",
+            type        = OPTTYPE_STRING,
             required    = False,
-            default     = False,
+            default     = "local-only",
+            valid       = ["local-only", "nfs", "glusterfs"],
             doc         = """
             TODO       
             """),  
@@ -630,8 +628,7 @@ class SimpleTopologyConfig(Config):
             domain = Domain()
             domain.set_property("id", domain_name)
             topology.add_to_array("domains", domain)
-
-            nfs_server = nis_server = None
+            
             glusterfs_servers = []
 
             has_go_ep = self.get((domain_name,"go-endpoint")) != None
@@ -707,32 +704,61 @@ class SimpleTopologyConfig(Config):
                     gme.set_property("dn", "/C=US/O=Globus Consortium/OU=Globus Connect User/CN=%s" % user.id)
                     gme.set_property("login", user.id)
                     domain.add_to_array("gridmap", gme)  
-                                  
+                    
+            nis_server = None                    
+                    
+            fs = FileSystem()
+            domain.set_property("filesystem", fs)
+                    
+            fs_type = self.get((domain_name,"filesystem")) 
+            fs_headnode = None
             
-            if self.get((domain_name,"nfs-nis")):  
-                nfs = nis = True
+            if self.get((domain_name,"nis")) or fs_type == "nfs":
+                # We need a server node  
                 server_node = Node()
                 server_name = "%s-server" % domain_name
                 server_node.set_property("id", server_name)
-                server_node.add_to_array("run_list", "role[domain-nfsnis]")
+                server_node.add_to_array("run_list", "recipe[provision::gp_node]")
+                server_node.add_to_array("run_list", "recipe[provision::nis_server]")
                 if not self.get((domain_name,"login")):
                     # If there is no login node, the NFS/NIS server will
                     # effectively act as one. 
                     server_node.add_to_array("run_list", "role[globus]")
-                if self.get((domain_name,"galaxy")):
-                    # If there is a Galaxy server in the domain, the "common"
-                    # recipe has to be installed on the NFS/NIS server
-                    server_node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
-                if self.get((domain_name,"hadoop")):
-                    # If there is a Hadoop cluster in the domain, the "common"
-                    # recipe has to be installed on the NFS/NIS server
-                    server_node.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
-                    
+                   
+                fs_headnode = server_node
+                
+                if self.get((domain_name,"nis")):
+                    nis_server = server_node
+                   
                 domain.add_node(server_node)
                 
-                nfs_server = nis_server = server_name
+            if fs_type == "local-only":
+                fs.set_property("dir_homes", "/home")
+                fs.set_property("dir_software", "/usr/local")
+                fs.set_property("dir_scratch", "/var/tmp")
+            
+            if fs_type == "nfs":
+                fs_headnode.add_to_array("run_list", "recipe[provision::nfs_server]")
                 
-            if self.get((domain_name, "glusterfs")):
+                fs.set_property("dir_homes", "/nfs/home")
+                fs.set_property("dir_software", "/nfs/software")
+                fs.set_property("dir_scratch", "/nfs/scratch")
+                
+                mounts = [ ("/nfs/home", "0755", "/nfs/home"), 
+                           ("/nfs/software/", "0755", "/nfs/software"),
+                           ("/ephemeral/0/scratch", "1777", "/nfs/scratch")]
+                
+                for path, mode, mountpoint in mounts:
+                    mount = NFSMount()
+                    mount.set_property("server", "node:%s" % fs_headnode.id)
+                    mount.set_property("owner", "root")
+                    mount.set_property("mode", mode)
+                    mount.set_property("path", path)
+                    mount.set_property("mountpoint", mountpoint)
+                    fs.add_to_array("nfs_mounts", mount)
+                
+                
+            if fs_type == "glusterfs":
                 glusterfs_servers_num = self.get((domain_name, "glusterfs-servers"))
                 glusterfs_type = self.get((domain_name, "glusterfs-type"))
                 glusterfs_setsize = self.get((domain_name, "glusterfs-setsize"))
@@ -745,32 +771,50 @@ class SimpleTopologyConfig(Config):
                 
                 # The first server is arbitrarily the one where we will set up GlusterFS
                 name = "glusterfsd-1"
-                head_node = self.__create_node(domain, name, nis_server, nfs_server, [])
+                head_node = self.__create_node(domain, name, nis_server)
                 head_node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server-head]")
                 glusterfs_servers.append("%s-%s" % (domain_name, name))                
                 
+                fs_headnode = head_node
+                
                 for i in range(1,glusterfs_servers_num):
                     name = "glusterfsd-%i" % (i+1)
-                    node = self.__create_node(domain, name, nis_server, nfs_server, [])
+                    node = self.__create_node(domain, name, nis_server)
                     node.add_to_array("run_list", "recipe[glusterfs::glusterfs-server]")
 
                     node_name = "%s-%s" % (domain_name, name)
                     glusterfs_servers.append(node_name)
                     head_node.add_to_array("depends", "node:%s" % node_name)
+                    
+                # TODO: Add GlusterFSVols to FileSystem
 
+            if self.get((domain_name,"nis")):
+                nis_server.add_to_array("run_list", "recipe[provision::domain_users]")
+
+            if fs_headnode != None:
+                fs_headnode.add_to_array("run_list", "recipe[provision::software_path-common]")                    
+                if self.get((domain_name,"galaxy")):
+                    # If there is a Galaxy server in the domain, the "common"
+                    # recipe has to be installed on the shared filesystem
+                    fs_headnode.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")
+                if self.get((domain_name,"hadoop")):
+                    # If there is a Hadoop cluster in the domain, the "common"
+                    # recipe has to be installed on the shared filesystem
+                    fs_headnode.add_to_array("run_list", "recipe[hadoop::hadoop-common]")                    
+        
             for i in range(self.get((domain_name,"barebones-nodes"))):
-                self.__create_node(domain, "blank-%i" % (i+1), nis_server, nfs_server, glusterfs_servers)
+                self.__create_node(domain, "blank-%i" % (i+1), nis_server)
 
             if self.get((domain_name,"login")): 
-                node = self.__create_node(domain, "login", nis_server, nfs_server, glusterfs_servers)
+                node = self.__create_node(domain, "login", nis_server)
                 node.add_to_array("run_list", "role[globus]")
 
             if self.get((domain_name,"myproxy")):
-                node = self.__create_node(domain, "myproxy", nis_server, nfs_server, glusterfs_servers)
+                node = self.__create_node(domain, "myproxy", nis_server)
                 node.add_to_array("run_list", "role[domain-myproxy]")
 
             if self.get((domain_name,"gridftp")):
-                node = self.__create_node(domain, "gridftp", nis_server, nfs_server, glusterfs_servers)
+                node = self.__create_node(domain, "gridftp", nis_server)
        
                 if has_go_ep:
                     if self.get((domain_name,"go-gc")):
@@ -782,9 +826,9 @@ class SimpleTopologyConfig(Config):
                     node.add_to_array("run_list", "role[domain-gridftp-default]")              
             
             if self.get((domain_name,"galaxy")):
-                node = self.__create_node(domain, "galaxy", nis_server, nfs_server, glusterfs_servers)
+                node = self.__create_node(domain, "galaxy", nis_server)
 
-                if not nfs:  
+                if fs_type == "local-only":  
                     node.add_to_array("run_list", "recipe[galaxy::galaxy-globus-common]")     
 
                 if self.get((domain_name,"go-endpoint")) != None:
@@ -803,7 +847,7 @@ class SimpleTopologyConfig(Config):
                 worker_role = "role[domain-clusternode-condor]"
                 num_workers = self.get((domain.id,"condor-nodes"))
                 
-                self.__gen_cluster(domain, nis_server, nfs_server, glusterfs_servers, None, head_name, head_role, worker_name, worker_role, num_workers)
+                self.__gen_cluster(domain, nis_server, None, head_name, head_role, worker_name, worker_role, num_workers)
                 
             if self.get((domain_name,"hadoop")):
                 head_name = "hadoop-master"
@@ -812,7 +856,12 @@ class SimpleTopologyConfig(Config):
                 worker_role = "role[domain-hadoop-slave]"
                 num_workers = self.get((domain.id,"hadoop-nodes"))
                                 
-                self.__gen_cluster(domain, nis_server, nfs_server, glusterfs_servers, "recipe[hadoop::hadoop-common]", head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
+                if fs_type == "local-only":
+                    common_recipe = "recipe[hadoop::hadoop-common]"
+                else:
+                    common_recipe = None
+                                
+                self.__gen_cluster(domain, nis_server, common_recipe, head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers=True)
 
             if has_go_ep:
                 goep = GOEndpoint()
@@ -833,45 +882,48 @@ class SimpleTopologyConfig(Config):
                 
         return topology
 
-    def __gen_cluster(self, domain, nis_server, nfs_server, glusterfs_servers, common_recipe, head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers = False):
-        head_node = self.__create_node(domain, head_name, nis_server, nfs_server, glusterfs_servers)
-        if not nfs_server and common_recipe != None:                  
+    def __gen_cluster(self, domain, nis_server, common_recipe, head_name, head_role, worker_name, worker_role, num_workers, head_depends_on_workers = False):
+        head_node = self.__create_node(domain, head_name, nis_server)
+        if common_recipe != None:                  
             head_node.add_to_array("run_list", common_recipe)  
         head_node.add_to_array("run_list", head_role)
 
         for i in range(num_workers):
             wn_name = "%s%i" % (worker_name, i+1)
-            wn_node = self.__create_node(domain, wn_name, nis_server, nfs_server, glusterfs_servers)
+            wn_node = self.__create_node(domain, wn_name, nis_server)
             if head_depends_on_workers:
                 head_node.add_to_array("depends", "node:%s" % wn_node.id)
             else:
                 wn_node.add_to_array("depends", "node:%s" % head_node.id)
             
-            if not nfs_server and common_recipe != None:                  
+            if common_recipe != None:                  
                 head_node.add_to_array("run_list", common_recipe)  
             wn_node.add_to_array("run_list", worker_role)
 
-    def __create_node(self, domain, name, nis_server, nfs_server, glusterfs_servers):
+    def __create_node(self, domain, name, nis_server):
         domain_name = domain.id
         node = Node()
         node.set_property("id", "%s-%s" % (domain_name, name))
 
         node.add_to_array("run_list", "recipe[provision::gp_node]")
+        node.add_to_array("run_list", "recipe[provision::software_path]")
         depends = set()
 
         if nis_server != None:
-            depends.add("node:%s" % nis_server)
+            depends.add("node:%s" % nis_server.id)
             node.add_to_array("run_list", "recipe[provision::nis_client]")
         else:
             node.add_to_array("run_list", "recipe[provision::domain_users]")
 
-        if nfs_server != None:
-            depends.add("node:%s" % nfs_server)
-            node.add_to_array("run_list", "recipe[provision::nfs_client]")
+        if domain.filesystem.has_nfs():
+            nfs_servers = set([mount.server for mount in domain.filesystem.nfs_mounts])
+            
+            for nfs_server in nfs_servers:
+                depends.add(nfs_server)
+                node.add_to_array("run_list", "recipe[provision::nfs_client]")
         
-        if len(glusterfs_servers) > 0:
-            for gs in glusterfs_servers:
-                depends.add("node:%s" % gs)
+        if domain.filesystem.has_glusterfs():        
+            # TODO: Add depends
             node.add_to_array("run_list", "recipe[glusterfs::glusterfs-client]")
             
         for d in depends:
