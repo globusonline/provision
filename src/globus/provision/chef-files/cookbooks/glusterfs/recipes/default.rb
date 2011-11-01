@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                 #
+# Copyright 2010-2011, University of Chicago                                      #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,12 +14,10 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-# Default attributes.
-# For now, only directories where software is going to be installed.
-
-gp_domain = node[:topology][:domains][node[:domain_id]]
-softdir   = gp_domain[:filesystem][:dir_software]
-
-default[:galaxy][:dir] = "#{softdir}/galaxy"
-default[:blast][:dir] = "#{softdir}/blast"
-default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#
+# RECIPE: Default recipe.
+#
+# This cookbook has no default recipe.
+#
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

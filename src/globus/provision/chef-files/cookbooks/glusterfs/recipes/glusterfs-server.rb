@@ -14,12 +14,36 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-# Default attributes.
-# For now, only directories where software is going to be installed.
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: GlusterFS server
+##
+## Set up a GlusterFS server
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
-softdir   = gp_domain[:filesystem][:dir_software]
 
-default[:galaxy][:dir] = "#{softdir}/galaxy"
-default[:blast][:dir] = "#{softdir}/blast"
-default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"
+# The "glusterfs-common" recipe handles actions that are common to
+# both servers and clients
+include_recipe "glusterfs::glusterfs-common"
+
+service "glusterd" do
+  action :restart
+end
+
+directory "/ephemeral/0/glusterfs" do
+  owner "root"
+  group "root"
+  mode 01777
+  recursive true
+  action :create
+end
+
+directory "/ephemeral/1/glusterfs" do
+  owner "root"
+  group "root"
+  mode 01777
+  recursive true
+  action :create
+end

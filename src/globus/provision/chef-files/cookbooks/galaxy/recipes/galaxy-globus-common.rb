@@ -27,6 +27,7 @@
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
 gp_node   = gp_domain[:nodes][node[:node_id]]
+homedirs  = gp_domain[:filesystem][:dir_homes]
 
 go_endpoints = gp_domain[:go_endpoints].to_a
 
@@ -37,11 +38,6 @@ else
 	go_endpoint = ""
 end
 
-if gp_domain[:nfs_server]
-    homedirs = "/nfs/home"
-else
-    homedirs = "/home"
-end
 
 group "galaxy" do
   gid 4000

@@ -28,15 +28,10 @@ require "fileutils"
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
 gp_node   = gp_domain[:nodes][node[:node_id]]
+homedirs  = gp_domain[:filesystem][:dir_homes]
+softdir   = gp_domain[:filesystem][:dir_software]
 
-if gp_domain[:nfs_server]
-    hadoop_dir = "/nfs/software/hadoop"
-    homedirs = "/nfs/home"
-else
-    hadoop_dir = "/usr/local/hadoop"
-    homedirs = "/home"
-end
-
+hadoop_dir = "#{softdir}/hadoop"
 hadoop_conf_dir = "#{homedirs}/hduser/conf"
 hadoop_user = "hduser"
 hadoop_rc = "#{homedirs}/hduser/.hadooprc"

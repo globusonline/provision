@@ -88,15 +88,23 @@ ff02::3 ip6-allhosts
         
     def gen_chef_ruby_file(self, filename):
         
-        def gen_topology_line(server_name, domain_id, recipes):
-            server = domain.find_with_recipes(recipes)
-            if len(server) > 0:
-                server_node = server[0]
-                if len(server) > 1:
-                    # TODO: Print a warning saying more than one NFS server has been found
-                    pass
-                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.hostname)
-                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
+        def gen_topology_line(server_name, domain_id, recipes, multi=False):
+            servers = domain.find_with_recipes(recipes)
+            if len(servers) > 0:
+                if not multi:
+                    server_node = servers[0]
+                    if len(servers) > 1:
+                        # TODO: Print a warning saying more than one NFS server has been found
+                        pass
+                    
+                    servers_hostnames = "\"%s\"" % server_node.hostname
+                    servers_ips = "\"%s\"" % server_node.ip
+                else:
+                    servers_hostnames = "[%s]" % ",".join(["\"%s\"" % s.hostname for s in servers])
+                    servers_ips = "[%s]" % ",".join(["\"%s\"" % s.ip for s in servers])
+
+                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = %s\n" % (domain_id, server_name, servers_hostnames)
+                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = %s\n" % (domain_id, server_name, servers_ips)
                 
                 return hostname_line + ip_line
             else:
@@ -105,11 +113,15 @@ ff02::3 ip6-allhosts
         topology = "default[:topology] = %s\n" % self.to_ruby_hash_string()
 
         for domain in self.domains.values():
-            topology += gen_topology_line("nfs_server", domain.id, ["recipe[provision::nfs_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
             topology += gen_topology_line("condor_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
             topology += gen_topology_line("hadoop_master", domain.id, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
+        
+            # Kludge until we add a Filesystem object to the topology
+            if domain.has_property("glusterfs_type"):
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_type] = \"%s\"\n" % (domain.id, domain.glusterfs_type)
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_setsize] = %i\n" % (domain.id, domain.glusterfs_setsize)
         
         topologyfile = open(filename, "w")
         topologyfile.write(topology)
@@ -241,6 +253,27 @@ class Node(PersistentObject):
 class User(PersistentObject):
     pass
 
+class FileSystem(PersistentObject):
+    
+    def has_nfs(self):
+        if not self.has_property("nfs_mounts"):
+            return False
+        else:
+            return len(self.nfs_mounts) > 0
+
+    def has_glusterfs(self):
+        if not self.has_property("glusterfs_vols"):
+            return False
+        else:
+            return len(self.glusterfs_vols) > 0
+
+
+class NFSMount(PersistentObject):
+    pass
+
+class GlusterFSVol(PersistentObject):
+    pass
+
 class GridMapEntry(PersistentObject):
     pass
 
@@ -368,6 +401,15 @@ Domain.properties = {
                               description = """
                               The list of hosts (or *nodes*) in this domain.
                               """),
+
+                     "filesystem":
+                     Property(name="filesystem",
+                              proptype = FileSystem,
+                              required = True,
+                              editable = False,
+                              description = """
+                              TODO
+                              """),                              
                               
                      "go_endpoints":                    
                      Property(name="go_endpoints",
@@ -401,7 +443,7 @@ Domain.properties = {
                               is the gridmap that Globus services running on this
                               domain will use to determine if a given user is
                               authorized to access the service.
-                              """),
+                              """)              
                      }
 
 Node.properties = {
@@ -581,6 +623,92 @@ User.properties = {
                             * ``"none"``: Do not generate a certificate for this user.
                             """),           
                    }            
+
+FileSystem.properties = {                            
+                   "dir_homes":
+                   Property(name="dir_homes",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),
+                         
+                   "dir_software":
+                   Property(name="dir_homes",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),                         
+
+                   "dir_scratch":
+                   Property(name="dir_homes",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),                         
+                            
+                   "nfs_mounts":                    
+                   Property(name="nfs_mounts",
+                            proptype = PropertyTypes.ARRAY,
+                            items = NFSMount,
+                            required = False,
+                            description = """
+                            TODO
+                            """),       
+                         
+                   "glusterfs_vols":                    
+                   Property(name="glusterfs_vols",
+                            proptype = PropertyTypes.ARRAY,
+                            items = GlusterFSVol,
+                            required = False,
+                            description = """
+                            TODO
+                            """),                                                 
+                   }        
+
+NFSMount.properties = {                            
+                   "server":
+                   Property(name="server",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),                         
+
+                   "path":
+                   Property(name="path",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),           
+                       
+                   "mode":
+                   Property(name="mode",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),                               
+
+                   "owner":
+                   Property(name="owner",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """),   
+                    
+                   "mountpoint":
+                   Property(name="mountpoint",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            TODO
+                            """)                      
+                   }
 
 GridMapEntry.properties = {                   
                            "dn": 

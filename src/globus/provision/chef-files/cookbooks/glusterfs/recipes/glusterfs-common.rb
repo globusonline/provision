@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                 #
+# Copyright 2010-2011, University of Chicago                                      #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -14,12 +14,23 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-# Default attributes.
-# For now, only directories where software is going to be installed.
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##
+## RECIPE: GlusterFS common actions
+##
+##
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-gp_domain = node[:topology][:domains][node[:domain_id]]
-softdir   = gp_domain[:filesystem][:dir_software]
+remote_file "#{node[:scratch_dir]}/glusterfs.deb" do
+  action :create_if_missing 
+  source "http://download.gluster.com/pub/gluster/glusterfs/3.2/3.2.3/Ubuntu/glusterfs_3.2.3-1_amd64.deb"
+  owner "root"
+  group "root"    
+  mode "0644"
+end
 
-default[:galaxy][:dir] = "#{softdir}/galaxy"
-default[:blast][:dir] = "#{softdir}/blast"
-default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"
+package "glusterfs" do
+  action :install
+  source "#{node[:scratch_dir]}/glusterfs.deb"
+  provider Chef::Provider::Package::Dpkg
+end

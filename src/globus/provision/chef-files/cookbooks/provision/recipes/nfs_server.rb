@@ -74,45 +74,16 @@ end
 
 # Create directories
 
-# Home directories
-directory "/nfs/home" do
-  owner "root"
-  group "root"
-  mode "0755"
-  recursive true
-  action :create
-end
+nfs_mounts = gp_domain[:filesystem][:nfs_mounts].to_a
 
-# Scratch directory
-# This is still a kludge; it's a temporary fix until GP-5 is implemented.
-directory "/ephemeral/0/scratch" do
-  owner "root"
-  group "root"
-  mode 01777
-  recursive true
-  action :create
-end
+nfs_mounts.each do |m|
 
-
-# Software directories
-directory "/nfs/software" do
-  owner "root"
-  group "root"
-  mode "0755"
-  recursive true
-  action :create
-end
-
-# /nfs/software/bin will be in every user's $PATH
-# For an executable in /nfs/software to be in the user's PATH,
-# the corresponding recipe should create a symbolic link from
-# /nfs/software/bin to the executable
-directory "/nfs/software/bin" do
-  owner "root"
-  group "root"
-  mode "0755"
-  recursive true
-  action :create
+  directory m[:path] do
+    owner m[:owner]
+    mode m[:mode]
+    recursive true
+    action :create
+  end
 end
 
 # Add exports
@@ -122,6 +93,7 @@ template "/etc/exports" do
   owner "root"
   group "root"
   variables(
+    :nfs_mounts => nfs_mounts,
     :subnet => subnet
   )
   notifies :restart, "service[nfs-kernel-server]"

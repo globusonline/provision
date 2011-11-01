@@ -48,11 +48,7 @@ end
 # password, etc.)
 users = gp_domain[:users].to_hash
 
-if gp_domain[:nfs_server]
-    homedirs = "/nfs/home"
-else
-    homedirs = "/home"
-end
+homedirs = gp_domain[:filesystem][:dir_homes]
 
 
 # We start by creating the domain's users.

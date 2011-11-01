@@ -681,7 +681,7 @@ class API(object):
                                                          node_vm[node], 
                                                          deployer, 
                                                          depends=[threads[t] for t in topology.get_depends(node)])            
-        
+
         for thread in threads.values():
             mt_configure.add_thread(thread)
         
