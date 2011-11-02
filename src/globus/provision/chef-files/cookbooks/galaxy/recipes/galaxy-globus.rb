@@ -63,6 +63,8 @@ execute "grant_all" do
   not_if database_exists
 end
 
+package "python-setuptools"
+
 case node.platform
   when "ubuntu"
     if node.platform_version.to_f >= 11.04
@@ -76,6 +78,13 @@ case node.platform
 		end
     end    
 end
+
+execute "install-transfer-api" do
+  user "root"
+  group "root"
+  command "easy_install-2.6 globusonline-transfer-api-client"
+  action :run
+end  
 
 execute "galaxy-setup.sh" do
   user "galaxy"
