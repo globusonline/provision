@@ -270,7 +270,7 @@ class ConfigureThread(GPThread):
                 rc = ssh.run("sudo -i chef-solo -c /tmp/chef.conf -j /tmp/chef.json", exception_on_error = False)    
                 if rc != 0:
                     chef_tries -= 1
-                    log.debug("chef-solo failed. %i attempts left", node)
+                    log.debug("chef-solo failed. %i attempts left" % chef_tries, node)
                 else:
                     break
                     
