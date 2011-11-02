@@ -29,6 +29,8 @@
 gp_domain = node[:topology][:domains][node[:domain_id]]
 softdir   = gp_domain[:filesystem][:dir_software]
 
+galaxy_dir = "#{softdir}/#{node[:galaxy][:dir]}"
+
 include_recipe "postgresql::server"
 
 database_exists = "psql galaxy postgres -c ''"
@@ -89,7 +91,7 @@ end
 execute "galaxy-setup.sh" do
   user "galaxy"
   group "galaxy"
-  cwd node[:galaxy][:dir]
+  cwd galaxy_dir
   command "./galaxy-setup.sh"
   action :run
 end  

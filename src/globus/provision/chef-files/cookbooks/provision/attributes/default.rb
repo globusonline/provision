@@ -17,9 +17,7 @@
 # Default attributes.
 # For now, only directories where software is going to be installed.
 
-gp_domain = node[:topology][:domains][node[:domain_id]]
-softdir   = gp_domain[:filesystem][:dir_software]
-
-default[:galaxy][:dir] = "#{softdir}/galaxy"
-default[:blast][:dir] = "#{softdir}/blast"
+# Relative to software directory
+default[:galaxy][:dir] = "/galaxy"
+default[:blast][:dir] = "/blast"
 default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"

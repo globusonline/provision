@@ -25,14 +25,9 @@
 include_recipe "R"
 
 gp_domain = node[:topology][:domains][node[:domain_id]]
+softdir   = gp_domain[:filesystem][:dir_software]
 
-if gp_domain[:nfs_server]
-    softwaredir = "/nfs/software/"
-else
-    softwaredir = "/usr/local/"
-end
-
-rlibs_dir = "#{softwaredir}/Rlibs"
+rlibs_dir = "#{softdir}/Rlibs"
 
 execute "install_RJSONIO" do
   user "root"

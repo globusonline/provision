@@ -28,6 +28,9 @@
 gp_domain = node[:topology][:domains][node[:domain_id]]
 gp_node   = gp_domain[:nodes][node[:node_id]]
 homedirs  = gp_domain[:filesystem][:dir_homes]
+softdir   = gp_domain[:filesystem][:dir_software]
+
+galaxy_dir = "#{softdir}/#{node[:galaxy][:dir]}"
 
 go_endpoints = gp_domain[:go_endpoints].to_a
 
@@ -63,17 +66,17 @@ execute "ypinit" do
  action :nothing
 end
 
-if ! File.exists?(node[:galaxy][:dir])
+if ! File.exists?(galaxy_dir)
 
-  directory "#{node[:galaxy][:dir]}" do
+  directory "#{galaxy_dir}" do
     owner "galaxy"
     group "galaxy"
     mode "0755"
     action :create
   end
   
-  remote_file "#{node[:scratch_dir]}/galaxy-dist.tip.tar.bz2" do
-    source "https://bitbucket.org/steder/galaxy-globus/get/tip.tar.bz2"
+  remote_file "#{node[:scratch_dir]}/galaxy-dist.tip.tar.gz" do
+    source "https://bitbucket.org/steder/galaxy-globus/get/tip.tar.gz"
     owner "root"
     group "root"    
     mode "0644"
@@ -82,18 +85,18 @@ if ! File.exists?(node[:galaxy][:dir])
   execute "tar" do
     user "galaxy"
     group "galaxy"
-    command "tar xjf #{node[:scratch_dir]}/galaxy-dist.tip.tar.bz2 --strip-components=1 --directory #{node[:galaxy][:dir]}"
+    command "tar xzf #{node[:scratch_dir]}/galaxy-dist.tip.tar.gz --strip-components=1 --directory #{galaxy_dir}"
     action :run
   end  	
 
-  cookbook_file "#{node[:galaxy][:dir]}/galaxy-setup.sh" do
+  cookbook_file "#{galaxy_dir}/galaxy-setup.sh" do
     source "galaxy-setup.sh"
     owner "galaxy"
     group "galaxy"
     mode "0755"
   end
   
-  template "#{node[:galaxy][:dir]}/universe_wsgi.ini" do
+  template "#{galaxy_dir}/universe_wsgi.ini" do
     source "galaxy-universe.erb"
     mode 0644
     owner "galaxy"
