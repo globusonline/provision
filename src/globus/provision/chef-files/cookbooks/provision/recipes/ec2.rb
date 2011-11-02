@@ -30,6 +30,8 @@ package "nfs-common"
 package "autofs"
 package "xinetd"
 package "libssl0.9.8"
+package "python-setuptools"
+package "python2.6"
 
 include_recipe "globus::client-tools"
 package "globus-simple-ca"
