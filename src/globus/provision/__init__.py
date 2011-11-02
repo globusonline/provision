@@ -21,9 +21,9 @@ See http://globus.org/provision/ for more details
 """
 
 VERSION="0.4"
-RELEASE="0.4.0a1"
+RELEASE="0.4.0a2"
 AMI={"us-east-1":
-        {"32-bit": "ami-4f35f826",
-         "64-bit": "ami-375d905e",
-         "HVM": "ami-0b5d9062"}
+        {"32-bit": "ami-b12ee0d8",
+         "64-bit": "ami-652ce20c",
+         "HVM": "ami-6d2ce204"}
      }
