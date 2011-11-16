@@ -182,7 +182,7 @@ class Deployer(BaseDeployer):
             map = BlockDeviceMapping()
             user_data_mounts = "mounts:\n"
             for i in range(num_ephemeral):
-                device = BlockDeviceType
+                device = BlockDeviceType()
                 device_name = "/dev/sd%s" % (chr(ord('b')+i))
                 device.ephemeral_name = "ephemeral%i" % i
                 map[device_name] = device
