@@ -14,6 +14,7 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 from boto.exception import EC2ResponseError
+from globus.provision.core.deploy import DeploymentException
 
 """
 EC2 images utilities.
@@ -50,6 +51,9 @@ class EC2AMICreator(object):
         log.init_logging(2)
 
         conn = create_ec2_connection(hostname=self.hostname, path=self.path, port=self.port)
+
+        if conn == None:
+            raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
 
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
