@@ -576,13 +576,18 @@ class SimpleTopologyConfig(Config):
      Option(name        = "ami",
             getter      = "ec2-ami",
             type        = OPTTYPE_STRING,
-            required    = True,
+            required    = False,
+            default     = AMI["us-east-1"]["32-bit"],
             doc         = """
             This is the AMI (`Amazon Machine Image <http://en.wikipedia.org/wiki/Amazon_Machine_Image>`_) 
-            that Globus Provision will use to create each host in the domani. Any recent Ubuntu or Debian
+            that Globus Provision will use to create each host in the domain. Any recent Ubuntu or Debian
             AMI should work. Nonetheless, take into account that we provide an AMI that has most of the
             necessary software pre-installed in it, considerably speeding up the setup of the machines. 
             The latest Globus Provision AMI is always listed in the Globus Provision website.
+            
+            If "latest-32bit", "latest-64bit", or "latest-hvm" is specified for this value, then the
+            latest AMI (32-bit, 64-bit, or HVM, respectively) known to work with this version of
+            Globus Provision will be used. If no AMI is specified, the latest 32-bit AMI will be used.
             """),
      Option(name        = "instance-type",
             getter      = "ec2-instance-type",
@@ -627,7 +632,16 @@ class SimpleTopologyConfig(Config):
             deploy_data = DeployData()
             ec2_deploy_data = EC2DeployData()
             
-            ec2_deploy_data.set_property("ami", self.get("ec2-ami"))
+            ami = self.get("ec2-ami")
+            
+            if ami == "latest-32bit":
+                ami = AMI["us-east-1"]["32-bit"]
+            elif ami == "latest-64bit":
+                ami = AMI["us-east-1"]["64-bit"]
+            elif ami == "latest-hvm":
+                ami = AMI["us-east-1"]["hvm"]            
+            
+            ec2_deploy_data.set_property("ami", ami)
             ec2_deploy_data.set_property("instance_type", self.get("ec2-instance-type"))
             
             deploy_data.set_property("ec2", ec2_deploy_data)
