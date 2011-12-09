@@ -27,50 +27,16 @@
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 include_recipe "globus::repository"
+include_recipe "globus::myproxy-common"
 
-package "xinetd"
-package "globus-simple-ca"
-package "myproxy-server"
-
-directory "/var/lib/myproxy" do
-  owner "root"
-  group "root"
-  mode "0700"
-  action :create
-end
-
-
-cookbook_file "/etc/myproxy-server.config" do
-  source "myproxy-server.config"
+template "/etc/xinetd.d/myproxy" do
+  source "xinetd.myproxy.erb"
   mode 0644
   owner "root"
   group "root"
-end
-
-template "/var/lib/myproxy/myproxy-certificate-mapapp" do
-  source "myproxy-dnmap.erb"
-  mode 0744
-  owner "root"
-  group "root"
-end
-
-cookbook_file "/etc/xinetd.d/myproxy" do
-  source "xinetd.myproxy"
-  mode 0644
-  owner "root"
-  group "root"
-  notifies :restart, "service[xinetd]"
-end
-
-execute "add_services_entry" do
-  line = "myproxy-server  7512/tcp                        # Myproxy server"
-  only_if do
-    File.read("/etc/services").index(line).nil?
-  end  
-  user "root"
-  group "root"
-  command "echo \"#{line}\" >> /etc/services"
-  action :run
+  variables(
+    :gc        => false
+  )
   notifies :restart, "service[xinetd]"
 end
 

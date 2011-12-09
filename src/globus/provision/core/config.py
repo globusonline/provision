@@ -828,21 +828,38 @@ class SimpleTopologyConfig(Config):
                     node.add_to_array("run_list", "recipe[R]")   
                     node.add_to_array("run_list", "recipe[R::Rlibs-dir]")
                          
-            if self.get((domain_name,"myproxy")):
-                node = self.__create_node(domain, "myproxy", nis_server)
-                node.add_to_array("run_list", "role[domain-myproxy]")
-
-            if self.get((domain_name,"gridftp")):
-                node = self.__create_node(domain, "gridftp", nis_server)
-       
-                if has_go_ep:
-                    if self.get((domain_name,"go-gc")):
-                        node.add_to_array("run_list", "role[domain-gridftp-gc]")
-                    else:
-                        node.add_to_array("run_list", "recipe[globus::go_cert]")
-                        node.add_to_array("run_list", "role[domain-gridftp-default]")
-                else:                
-                    node.add_to_array("run_list", "role[domain-gridftp-default]")              
+            gridftp_node = None
+            myproxy_node = None
+                         
+            if self.get((domain_name,"myproxy")) and self.get((domain_name,"gridftp")) and has_go_ep and self.get((domain_name,"go-gc")):
+                node = self.__create_node(domain, "myproxy-gridftp", nis_server)
+                node.add_to_array("run_list", "role[domain-myproxy-gc]")
+                node.add_to_array("run_list", "role[domain-gridftp-gc]")
+                gridftp_node = myproxy_node = node
+            else:
+                if self.get((domain_name,"myproxy")):
+                    myproxy_node = self.__create_node(domain, "myproxy", nis_server)
+                    
+                    if has_go_ep:
+                        if self.get((domain_name,"go-gc")):
+                            myproxy_node.add_to_array("run_list", "role[domain-myproxy-gc]")
+                        else:
+                            myproxy_node.add_to_array("run_list", "recipe[globus::go_cert]")
+                            myproxy_node.add_to_array("run_list", "role[domain-myproxy-default]")
+                    else:                
+                        myproxy_node.add_to_array("run_list", "role[domain-myproxy-default]")    
+    
+                if self.get((domain_name,"gridftp")):
+                    gridftp_node = self.__create_node(domain, "gridftp", nis_server)
+           
+                    if has_go_ep:
+                        if self.get((domain_name,"go-gc")):
+                            gridftp_node.add_to_array("run_list", "role[domain-gridftp-gc]")
+                        else:
+                            gridftp_node.add_to_array("run_list", "recipe[globus::go_cert]")
+                            gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")
+                    else:                
+                        gridftp_node.add_to_array("run_list", "role[domain-gridftp-default]")              
             
             if self.get((domain_name,"galaxy")) and not self.get((domain_name,"condor")):
                 node = self.__create_node(domain, "galaxy", nis_server)
@@ -908,10 +925,10 @@ class SimpleTopologyConfig(Config):
                 goep.set_property("user", gouser)
                 goep.set_property("name", goname)
                 goep.set_property("public", False)
-                goep.set_property("gridftp", "node:%s-gridftp" % domain_name)
+                goep.set_property("gridftp", "node:%s" % gridftp_node.id)
                 
                 if self.get((domain_name,"go-auth")) == "myproxy":
-                    goep.set_property("myproxy", "node:%s-myproxy" % domain_name)
+                    goep.set_property("myproxy", "node:%s" % myproxy_node.id)
                 else:
                     goep.set_property("myproxy", "myproxy.globusonline.org")
 

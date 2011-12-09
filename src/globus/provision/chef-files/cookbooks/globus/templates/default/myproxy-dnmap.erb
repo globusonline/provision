@@ -7,6 +7,6 @@ if [ X"$username" = X ]; then
 fi
 
 # DN must match the signing policy for your CA.
-echo "/O=Grid/OU=DemoGrid/CN=${username}"
+echo "<%= @subject.select{|k,v| k != "cn"}.collect{|x| "/"+x[0].upcase+"="+x[1]}.join "" %>/CN=${username}"
 
 exit 0
