@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and        #
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
+from globus.provision.common.utils import gen_sha512
+from globus.provision import AMI
 
 """
 Contains the parsers for the two configuration files used in Globus Provision:
@@ -692,9 +694,16 @@ class SimpleTopologyConfig(Config):
                     usernames += [(u, False) for u in users_nocert.split() if u != getpass.getuser()]                
 
                 for username, cert in usernames:
+                    userpass = username.split(":")
+                    login = userpass[0]
+                    if len(userpass) == 1:
+                        password = "!"
+                    elif len(userpass) > 1:
+                        password = gen_sha512(userpass[1])
+                        
                     user = User()
-                    user.set_property("id", username)
-                    user.set_property("password_hash", "!")
+                    user.set_property("id", login)
+                    user.set_property("password_hash", password)
                     user.set_property("ssh_pkey", ssh_pubkey)
                     if cert:
                         user.set_property("certificate", "generated")

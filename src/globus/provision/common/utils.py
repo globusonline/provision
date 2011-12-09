@@ -26,6 +26,7 @@ from os import environ
 from boto.ec2.connection import EC2Connection,RegionInfo
 from boto import connect_ec2
        
+from passlib.hosts import linux_context
 
 def create_ec2_connection(hostname = None, path = None, port = None):
     if hostname == None:
@@ -124,4 +125,5 @@ def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
-
+def gen_sha512(passwd):
+    return linux_context.encrypt(passwd)
