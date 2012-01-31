@@ -308,11 +308,11 @@ class API(object):
     
                     inst.topology.save()
     
-                # Generate certificates
-                inst.gen_certificates()
-    
-                inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
-                inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
+            # Generate certificates
+            inst.gen_certificates()
+
+            inst.topology.gen_chef_ruby_file(inst.instance_dir + "/topology.rb")
+            inst.topology.gen_hosts_file(inst.instance_dir + "/hosts")               
 
             log.info("Setting up Globus Provision on instances")        
             
