@@ -220,7 +220,7 @@ template "#{hadoop_conf_dir}/hdfs-site.xml" do
   owner "hduser"
   group "hadoop"
   variables(
-    :replication => [ 3, hadoop_slaves_hosts.size ]
+    :replication => hadoop_slaves_hosts.size < 3 ? hadoop_slaves_hosts.size : 3 
   )
 end
 
