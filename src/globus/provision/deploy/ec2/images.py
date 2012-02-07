@@ -110,8 +110,6 @@ class EC2AMICreator(object):
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         
-        ssh.run("sudo update-rc.d -f nis remove")
-        ssh.run("sudo update-rc.d -f condor remove")
         ssh.run("sudo update-rc.d -f chef-client remove")
         
         print "Removing private data and authorized keys"

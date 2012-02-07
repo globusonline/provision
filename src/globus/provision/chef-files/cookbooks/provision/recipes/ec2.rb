@@ -42,3 +42,9 @@ include_recipe "condor::condor"
 include_recipe "java"
 include_recipe "R"
 
+execute "update-rc.d -f globus-gridftp-server remove"
+execute "update-rc.d -f globus-gridftp-sshftp remove"
+execute "update-rc.d -f myproxy-server remove"
+execute "update-rc.d -f nis remove"
+execute "update-rc.d -f condor remove"
+
