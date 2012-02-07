@@ -25,7 +25,9 @@
 
 case node.platform
   when "ubuntu"
-    if node.platform_version == "11.04"
+    if node.platform_version == "11.10"
+      distro_id = "oneiric"
+    elsif node.platform_version == "11.04"
       distro_id = "natty"
     elsif node.platform_version == "10.10"
       distro_id = "maverick"
@@ -44,7 +46,7 @@ end
 
 remote_file "#{node[:scratch_dir]}/gt5_repository.deb" do
   action :create_if_missing 
-  source "http://www.globus.org/ftppub/gt5/5.1/5.1.1/installers/repo/globus-repository-#{distro_id}_0.0.1_all.deb"
+  source "http://www.globus.org/ftppub/gt5/5.2/5.2.0/installers/repo/globus-repository-#{distro_id}_0.0.2_all.deb"
   owner "root"
   group "root"    
   mode "0644"

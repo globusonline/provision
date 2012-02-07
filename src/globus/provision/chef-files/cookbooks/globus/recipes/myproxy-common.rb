@@ -31,6 +31,7 @@ include_recipe "globus::repository"
 package "xinetd"
 package "globus-simple-ca"
 package "myproxy-server"
+package "myproxy-admin"
 
 directory "/var/lib/myproxy" do
   owner "root"

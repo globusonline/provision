@@ -26,8 +26,10 @@
 
 include_recipe "globus::repository"
 
-package "globus-gsi-cert-utils-progs"
-package "globus-proxy-utils"
+package "globus-common-progs"
 package "globus-gass-copy-progs"
+package "globus-gss-assist-progs"
+package "globus-proxy-utils"
+package "globus-gsi-cert-utils-progs"
 package "gsi-openssh-clients"
 package "myproxy"

@@ -37,7 +37,6 @@ include_recipe "globus::client-tools"
 package "globus-simple-ca"
 package "myproxy-server"
 package "globus-gridftp-server-progs"
-package "libglobus-xio-gsi-driver-dev"
 
 include_recipe "condor::condor"
 include_recipe "java"
