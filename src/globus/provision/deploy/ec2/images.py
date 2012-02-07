@@ -102,6 +102,8 @@ class EC2AMICreator(object):
         ssh.run("sudo apt-get update")
         ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
         ssh.run("sudo apt-get -q=2 install chef")
+
+        ssh.run("sudo apt-get dist-upgrade -uy")
         
         ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
         ssh.run("echo '{ \"run_list\": \"recipe[provision::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
