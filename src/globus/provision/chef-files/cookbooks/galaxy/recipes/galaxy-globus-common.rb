@@ -76,7 +76,7 @@ if ! File.exists?(galaxy_dir)
   end
   
   remote_file "#{node[:scratch_dir]}/galaxy-dist.tip.tar.gz" do
-    source "https://bitbucket.org/steder/galaxy-globus/get/tip.tar.gz"
+    source "https://bitbucket.org/globusonline/galaxy-globus/get/tip.tar.gz"
     owner "root"
     group "root"    
     mode "0644"
