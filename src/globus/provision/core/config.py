@@ -468,7 +468,23 @@ class SimpleTopologyConfig(Config):
             default     = False,
             doc         = """
             Specifies whether to set up a GridFTP server on this domain.             
-            """),                   
+            """),        
+     Option(name        = "simpleca",
+            getter      = "simpleca",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = False,
+            doc         = """
+            Specifies whether to set up a node with SimpleCA.             
+            """),       
+     Option(name        = "gridmap",
+            getter      = "gridmap",
+            type        = OPTTYPE_BOOLEAN,
+            required    = False,
+            default     = True,
+            doc         = """
+            Specifies whether to set up a gridmap file with all the users in this domain.             
+            """),                     
      Option(name        = "condor",
             getter      = "condor",
             type        = OPTTYPE_BOOLEAN,
@@ -725,14 +741,10 @@ class SimpleTopologyConfig(Config):
                         user.set_property("certificate", "none")
                     domain.add_user(user)
                 
-            for user in domain.users.values():
-                gme = GridMapEntry()
-                gme.set_property("dn", "/O=Grid/OU=Globus Provision (generated)/CN=%s" % user.id)
-                gme.set_property("login", user.id)
-                domain.add_to_array("gridmap", gme)  
-                if self.get((domain_name,"go-auth")) == "go":
+            if self.get((domain_name, "gridmap")):
+                for user in domain.users.values():
                     gme = GridMapEntry()
-                    gme.set_property("dn", "/C=US/O=Globus Consortium/OU=Globus Connect User/CN=%s" % user.id)
+                    gme.set_property("dn", "/O=Grid/OU=Globus Provision (generated)/CN=%s" % user.id)
                     gme.set_property("login", user.id)
                     domain.add_to_array("gridmap", gme)  
                     
@@ -842,7 +854,8 @@ class SimpleTopologyConfig(Config):
                         fs_headnode.add_to_array("run_list", "recipe[hadoop::rhadoop-common]")                    
             
             for i in range(self.get((domain_name,"barebones-nodes"))):
-                self.__create_node(domain, "blank-%i" % (i+1), nis_server)
+                node = self.__create_node(domain, "blank-%i" % (i+1), nis_server)
+                node.add_to_array("run_list", "role[globus]")
 
             if self.get((domain_name,"login")): 
                 node = self.__create_node(domain, "login", nis_server)
@@ -850,6 +863,11 @@ class SimpleTopologyConfig(Config):
                 if self.get((domain_name,"R")):
                     node.add_to_array("run_list", "recipe[R]")   
                     node.add_to_array("run_list", "recipe[R::Rlibs-dir]")
+                    
+            if self.get((domain_name,"simpleca")): 
+                node = self.__create_node(domain, "simpleca", nis_server)
+                node.add_to_array("run_list", "role[globus]")
+                node.add_to_array("run_list", "recipe[provision::simpleca]")
                          
             gridftp_node = None
             myproxy_node = None
@@ -958,6 +976,13 @@ class SimpleTopologyConfig(Config):
                 goep.set_property("globus_connect_cert", self.get((domain_name,"go-gc")))
                     
                 domain.add_to_array("go_endpoints", goep)
+                
+                for user in domain.users.values():
+                    if self.get((domain_name,"go-auth")) == "go":
+                        gme = GridMapEntry()
+                        gme.set_property("dn", "/C=US/O=Globus Consortium/OU=Globus Connect User/CN=%s" % user.id)
+                        gme.set_property("login", user.id)
+                        domain.add_to_array("gridmap", gme)                  
                 
         return topology
 
