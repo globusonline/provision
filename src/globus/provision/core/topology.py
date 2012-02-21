@@ -658,14 +658,14 @@ FileSystem.properties = {
                             TODO
                             """),       
                          
-                   "glusterfs_vols":                    
-                   Property(name="glusterfs_vols",
-                            proptype = PropertyTypes.ARRAY,
-                            items = GlusterFSVol,
-                            required = False,
-                            description = """
-                            TODO
-                            """),                                                 
+#                   "glusterfs_vols":                    
+#                   Property(name="glusterfs_vols",
+#                            proptype = PropertyTypes.ARRAY,
+#                            items = GlusterFSVol,
+#                            required = False,
+#                            description = """
+#                            TODO
+#                            """),                                                 
                    }        
 
 NFSMount.properties = {                            
