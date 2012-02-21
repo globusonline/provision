@@ -53,7 +53,8 @@ format too. More specifically, this will be our topology file:
 	
 	[domain-simple]
 	users: user1 user2
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	condor: yes
 	condor-nodes: 2
 	
@@ -108,9 +109,10 @@ own SSH key), you can use the :ref:`users-file option <SimpleTopologyConfig_user
 
 ::
 	
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	
-In this option, we are indicating that we want this domain to be set up with an NFS and NIS
+With these two options, we are indicating that we want this domain to be set up with an NFS and NIS
 server. This means that all the nodes will have access to a shared filesystem, and will be
 in the same authentication domain (i.e., the home directories and passwords will be the same
 in all the hosts in the domain). 
