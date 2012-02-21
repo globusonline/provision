@@ -3,7 +3,7 @@ import re
 import glob
 import os.path
 
-cookbooks = ["provision", "globus", "condor", "galaxy"]
+cookbooks = ["provision", "globus", "condor", "galaxy", "hadoop", "R"]
 
 def print_section(title, marker):
     print title
@@ -28,6 +28,8 @@ for role_file in roles_files:
     print
 
 for cookbook in cookbooks:
+    print ".. _chef_%s:" % (cookbook)
+    print
     print_section("``%s`` cookbook" % cookbook, "=")
     print
     
