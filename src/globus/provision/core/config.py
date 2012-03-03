@@ -335,6 +335,8 @@ class SimpleTopologyConfig(Config):
             domain name and ``N`` is a number between 1 and the number specified in this option.
             
             If a list of usernames is specified, users with those login names will be created.
+            Optionally, a password for each user can be specified by adding a colon and the password
+            after the login name (e.g., ``alice:foo bob:bar carol:baz``)
             
             These users will be created with corresponding user certificates. To create users without user certificates
             use option ``users-no-cert``.        
@@ -401,39 +403,43 @@ class SimpleTopologyConfig(Config):
             type        = OPTTYPE_STRING,
             required    = False,
             default     = "local-only",
-            valid       = ["local-only", "nfs", "glusterfs"],
+            valid       = ["local-only", "nfs"],
             doc         = """
-            TODO       
+            Specifies what type of filesystem the nodes in the instance will have:
+            
+            * ``local-only``:  Nodes will only have their local filesystems.
+            * ``nfs``: Nodes will share an NFS filesystem (this will create an extra node
+              that will act as the NFS server)     
             """),  
 
-     Option(name        = "glusterfs-servers",
-            getter      = "glusterfs-servers",
-            type        = OPTTYPE_INT,
-            required    = False,
-            default     = 1,
-            doc         = """
-            TODO       
-            """),  
+#     Option(name        = "glusterfs-servers",
+#            getter      = "glusterfs-servers",
+#            type        = OPTTYPE_INT,
+#            required    = False,
+#            default     = 1,
+#            doc         = """
+#            TODO       
+#            """),  
      
-     Option(name        = "glusterfs-type",
-            getter      = "glusterfs-type",
-            type        = OPTTYPE_STRING,
-            valid       = ["distributed", "replicated", "striped",
-                           "distributed-striped", "distributed-replicated"],
-            default     = "distributed",
-            required    = False,
-            doc         = """
-            TODO       
-            """),  
+#     Option(name        = "glusterfs-type",
+#            getter      = "glusterfs-type",
+#            type        = OPTTYPE_STRING,
+#            valid       = ["distributed", "replicated", "striped",
+#                           "distributed-striped", "distributed-replicated"],
+#            default     = "distributed",
+#            required    = False,
+#            doc         = """
+#            TODO       
+#            """),  
      
-     Option(name        = "glusterfs-setsize",
-            getter      = "glusterfs-setsize",
-            type        = OPTTYPE_INT,
-            required    = False,
-            default     = 2,
-            doc         = """
-            TODO       
-            """),       
+#     Option(name        = "glusterfs-setsize",
+#            getter      = "glusterfs-setsize",
+#            type        = OPTTYPE_INT,
+#            required    = False,
+#            default     = 2,
+#            doc         = """
+#            TODO       
+#            """),       
                   
      Option(name        = "login",
             getter      = "login",
