@@ -19,7 +19,7 @@
 ##
 ## RECIPE: Global "bin" directory 
 ##
-## Set up a domain's NFS server and its shared directories.
+## Sets up the node so that all users have the global "bin" directory in their PATH
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
