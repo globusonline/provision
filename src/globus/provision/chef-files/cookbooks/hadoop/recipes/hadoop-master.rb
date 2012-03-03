@@ -48,9 +48,10 @@ execute "ssh-localhost" do
   action :run
 end
 
-execute "#{hadoop_dir}/bin/hdfs namenode -format" do
+execute "#{hadoop_dir}/bin/hadoop namenode -format" do
   not_if do File.exists?("/ephemeral/0/hadoop/dfs") end
   user "hduser"
+  group "hadoop"
   environment ({
   	'HADOOP_CONF_DIR' => hadoop_conf_dir,
   	'HADOOP_HOME' => hadoop_dir
@@ -58,8 +59,9 @@ execute "#{hadoop_dir}/bin/hdfs namenode -format" do
   action :run
 end
 
-execute "#{hadoop_dir}/bin/start-dfs.sh" do
+execute "#{hadoop_dir}/sbin/start-dfs.sh" do
   user "hduser"
+  group "hadoop"
   environment ({
   	'HADOOP_CONF_DIR' => hadoop_conf_dir,
   	'HADOOP_HOME' => hadoop_dir
@@ -67,8 +69,9 @@ execute "#{hadoop_dir}/bin/start-dfs.sh" do
   action :run
 end
 
-execute "#{hadoop_dir}/bin/start-mapred.sh" do
+execute "#{hadoop_dir}/sbin/start-mapred.sh" do
   user "hduser"
+  group "hadoop"
   environment ({
   	'HADOOP_CONF_DIR' => hadoop_conf_dir,
   	'HADOOP_HOME' => hadoop_dir

@@ -408,7 +408,7 @@ Domain.properties = {
                               required = True,
                               editable = False,
                               description = """
-                              TODO
+                              The filesystem type in this domain.
                               """),                              
                               
                      "go_endpoints":                    
@@ -630,23 +630,23 @@ FileSystem.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            The directory containing the home directories.
                             """),
                          
                    "dir_software":
-                   Property(name="dir_homes",
+                   Property(name="dir_software",
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            The directory for additional software.
                             """),                         
 
                    "dir_scratch":
-                   Property(name="dir_homes",
+                   Property(name="dir_scratch",
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            The scratch directory.
                             """),                         
                             
                    "nfs_mounts":                    
@@ -655,17 +655,17 @@ FileSystem.properties = {
                             items = NFSMount,
                             required = False,
                             description = """
-                            TODO
+                            A list of NFS mounts.
                             """),       
                          
-                   "glusterfs_vols":                    
-                   Property(name="glusterfs_vols",
-                            proptype = PropertyTypes.ARRAY,
-                            items = GlusterFSVol,
-                            required = False,
-                            description = """
-                            TODO
-                            """),                                                 
+#                   "glusterfs_vols":                    
+#                   Property(name="glusterfs_vols",
+#                            proptype = PropertyTypes.ARRAY,
+#                            items = GlusterFSVol,
+#                            required = False,
+#                            description = """
+#                            TODO
+#                            """),                                                 
                    }        
 
 NFSMount.properties = {                            
@@ -674,7 +674,7 @@ NFSMount.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            NFS server for this domain.
                             """),                         
 
                    "path":
@@ -682,7 +682,7 @@ NFSMount.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            The path being mounted.
                             """),           
                        
                    "mode":
@@ -690,7 +690,7 @@ NFSMount.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            Mode to set for the mount.
                             """),                               
 
                    "owner":
@@ -698,7 +698,7 @@ NFSMount.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            User that will be set as owner of the mount.
                             """),   
                     
                    "mountpoint":
@@ -706,7 +706,7 @@ NFSMount.properties = {
                             proptype = PropertyTypes.STRING,
                             required = True,
                             description = """
-                            TODO
+                            The directory where this NFS mount will be mounted.
                             """)                      
                    }
 

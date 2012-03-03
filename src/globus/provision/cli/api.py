@@ -681,7 +681,7 @@ class gp_instance_add_host(Command):
             node.set_property("id", self.opt.id)
             node.set_property("run_list", self.opt.runlist.split(","))
             if self.opt.depends != None:
-                node.set_property("depends", "node:%s" % self.opt.depends)
+                node.add_to_array("depends", "node:%s" % self.opt.depends)
 
             domain.add_to_array("nodes", (node))
             

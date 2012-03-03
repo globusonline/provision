@@ -16,9 +16,10 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: R
+## RECIPE: R libraries directory (common)
 ##
-## ...
+## Sets up a shared Rlibs directory. When using an NFS filesystem, this
+## recipe must be run on the NFS server.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -44,7 +44,8 @@ as ``go-condor-ec2.conf``):
 	[domain-simple]
 	users: gp-user
 	gridftp: yes
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	condor: yes
 	condor-nodes: 4
 	go-endpoint: go-user#gp-test
@@ -54,7 +55,7 @@ as ``go-condor-ec2.conf``):
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
 	username: ubuntu
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 	
 	[globusonline]
@@ -73,7 +74,8 @@ instance to include a Condor cluster::
 Since we'll have multiple hosts in our topology, it will be convenient for them to
 have shared accounts and a shared filesystem. We do this with the following option::
 
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	
 Finally, we need to specify a few Globus Online options::
 

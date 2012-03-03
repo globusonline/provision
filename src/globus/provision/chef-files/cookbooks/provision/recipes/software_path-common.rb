@@ -19,7 +19,8 @@
 ##
 ## RECIPE: Global "bin" directory (common)
 ##
-## TODO
+## Sets up a global "bin" directory inside the software directory. 
+## Only makes sense when the software directory is shared via NFS.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

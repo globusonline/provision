@@ -123,7 +123,7 @@ if ! File.exists?(hadoop_dir)
   end
 
   remote_file "#{node[:scratch_dir]}/hadoop.tar.gz" do
-    source "http://mirrors.kahuki.com/apache/hadoop/core/hadoop-0.21.0/hadoop-0.21.0.tar.gz"
+    source "http://www.eng.lsu.edu/mirrors/apache/hadoop/common/hadoop-1.0.0/hadoop-1.0.0-bin.tar.gz"
     owner "root"
     group "root"    
     mode "0644"
@@ -135,6 +135,11 @@ if ! File.exists?(hadoop_dir)
     command "tar xzf #{node[:scratch_dir]}/hadoop.tar.gz --strip-components=1 --directory #{hadoop_dir}"
     action :run
   end  	
+  
+  execute "chmod u+x #{hadoop_dir}/sbin/*.sh" do
+    user "root"
+    action :run
+  end  
 
 end
 
@@ -151,7 +156,7 @@ if ! File.exists?(hadoop_conf_dir)
 
   ruby_block "copy_config_files" do
     block do
-      FileUtils.cp_r Dir.glob("#{hadoop_dir}/conf/*"), hadoop_conf_dir
+      FileUtils.cp_r Dir.glob("#{hadoop_dir}/etc/hadoop/*"), hadoop_conf_dir
     end
   end
 

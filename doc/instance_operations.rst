@@ -53,12 +53,13 @@ format too. More specifically, this will be our topology file:
 	
 	[domain-simple]
 	users: user1 user2
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	condor: yes
 	condor-nodes: 2
 	
 	[ec2]
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 
 As you can see, this looks like a simple configuration file. Let's take a look at what each option means. 
@@ -108,9 +109,10 @@ own SSH key), you can use the :ref:`users-file option <SimpleTopologyConfig_user
 
 ::
 	
-	nfs-nis: yes
+	nis: yes
+	filesystem: nfs
 	
-In this option, we are indicating that we want this domain to be set up with an NFS and NIS
+With these two options, we are indicating that we want this domain to be set up with an NFS and NIS
 server. This means that all the nodes will have access to a shared filesystem, and will be
 in the same authentication domain (i.e., the home directories and passwords will be the same
 in all the hosts in the domain). 
@@ -129,28 +131,28 @@ to specify some EC2-specific options:
 .. parsed-literal::
 
 	[ec2]
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 
 Here, we are specifying what AMI (Amazon Machine Image) we will use to deploy the hosts
-in our topology. The |ami| ami is an Ubuntu 11.04 image with some software preinstalled,
-which will reduce the deployment time considerably.
+in our topology. We provide several Ubuntu 11.04 AMIs with some software preinstalled,
+which will reduce the deployment time considerably. Although you could specify any AMI
+in the ``ami`` option, the ``latest-32bit`` value selects the latest AMI for the version
+of Globus Provision you are using.
 
 .. note::
-	In case you're wondering, the documentation is automatically updated to reflect
-	the latest version of the Globus Provision "golden AMI", so you can use the 
-	configuration files shown here verbatim. 
-	
 	.. ifconfig:: website == "yes"
-	
-		The AMI used in the example files is a 32-bit AMI, but we also provide a 64-bit AMI.
-		The latest versions of our AMIs are listed in the :ref:`ami` page.
+	     
+		You can also specify ``latest-64bit`` and ``latest-hvm`` to use 64-bit and HVM AMIs, respectively. 
+		The actual AMI identifiers are listed in the :ref:`ami` page.
 
 	.. ifconfig:: website != "yes"
+      
+		You can also specify ``latest-64bit`` and ``latest-hvm`` to use 64-bit and HVM
+		AMIs, respectively. The latest versions of our AMIs are listed on the main Globus 
+		Provision website.
+      	
 
-		The AMI used in the example files is a 32-bit AMI, but we also provide a 64-bit AMI.
-		The latest versions of our AMIs are listed on the main Globus Provision website.
-	
 We are also specifying the `EC2 instance type <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/instance-types.html>`_
 to use. We are using the `"micro-instance" <http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?concepts_micro_instances.html>`_
 type, an instance with limited memory and CPU power, but good enough for tinkering around. This is also
@@ -222,7 +224,7 @@ merge both files. The finished file would look like this:
 	condor-nodes: 2
 	
 	[ec2]
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
@@ -545,7 +547,10 @@ In the JSON file, locate the entry corresponding to the ``simple-condor`` host:
           "public_ip": "M.M.M.M",
           "state": 4,
           **"run_list": [
-            "role[domain-nfsnis-client]",
+            "recipe[provision::gp_node]",
+            "recipe[provision::software_path]",
+            "recipe[provision::nis_client]",
+            "recipe[provision::nfs_client]",
             "role[domain-condor]"
           ]**,
           "id": "simple-condor",
@@ -561,7 +566,10 @@ In the ``run_list`` array, add an entry for the ``domain-gridftp-default`` role:
 .. parsed-literal::
 
 	"run_list": [
-            "role[domain-nfsnis-client]",
+            "recipe[provision::gp_node]",
+            "recipe[provision::software_path]",
+            "recipe[provision::nis_client]",
+            "recipe[provision::nfs_client]",
             "role[domain-condor]",
             **"role[domain-gridftp-default]"**
           ]	
@@ -642,8 +650,7 @@ You should see the following::
 
 	Starting instance gpi-02156188... done!	
 
-And ``gp-instance-describe`` should report it as running again:
-::
+And ``gp-instance-describe`` should report it as running again::
 
 	gpi-02156188: Running
 	
