@@ -30,13 +30,21 @@ package "nfs-common"
 package "autofs"
 package "xinetd"
 package "libssl0.9.8"
+package "python-setuptools"
+package "python2.6"
 
 include_recipe "globus::client-tools"
 package "globus-simple-ca"
 package "myproxy-server"
 package "globus-gridftp-server-progs"
-package "libglobus-xio-gsi-driver-dev"
 
 include_recipe "condor::condor"
 include_recipe "java"
+include_recipe "R"
+
+execute "update-rc.d -f globus-gridftp-server remove"
+execute "update-rc.d -f globus-gridftp-sshftp remove"
+execute "update-rc.d -f myproxy-server remove"
+execute "update-rc.d -f nis remove"
+execute "update-rc.d -f condor remove"
 

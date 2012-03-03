@@ -3,6 +3,64 @@
 Changelog and Release Notes
 ***************************
 
+0.4.0
+=====
+Released on *March 2nd, 2012*
+
+* Updated to Globus Toolkit 5.2
+
+* :jira:`4`: The topology now has a "Filesystem" object that allows for a more
+  flexible specification of an instance's shared filesystem, and what mountpoints
+  it will have.
+  
+  As far as the simple topology file is concerned, if you use this option::
+  
+  	nfsnis: yes
+  	
+  You will have to change it to::
+  
+  	nis: yes
+  	filesystem: nfs
+  	
+  Although some GlusterFS recipes are included in the Chef cookbooks,
+  they are not as well tested as the NFS ones (and ``filesystem: glusterfs``
+  is not yet supported).
+  
+* :jira:`10`: Added :ref:`Hadoop recipes <chef_hadoop>`. A Hadoop 1.0 cluster can now be	
+  deployed using the :ref:`hadoop <SimpleTopologyConfig_hadoop>` and :ref:`hadoop-nodes <SimpleTopologyConfig_hadoop-nodes>`
+  options in the simple topology file.
+  
+* Added :ref:`R recipes <chef_R>`. R can be installed on all the nodes of an instance
+  by using the :ref:`R <SimpleTopologyConfig_R>` option in the simple topology file.
+  
+* When deploying an instance with a GridFTP server and a MyProxy server,
+  GP can now set up both to use a Globus Connect certificate requested on the fly.
+  Previously, only GridFTP could be set up with a GC certificate, which means
+  that any GO endpoint created with that GridFTP server had to use
+  ``myproxy.globusonline.org``. 
+  
+* Passwords for users can now be specified in the simple topology file
+  (in the :ref:`users <SimpleTopologyConfig_users>` option).
+  
+* Added a :ref:`gridmap <SimpleTopologyConfig_gridmap>` option to the simple topology file,
+  to control whether a gridmap file (with all the domain users) should be generated or not.
+  
+* Added a :ref:`simpleca <SimpleTopologyConfig_simpleca>` option to the simple topology file.
+  If set to ``yes``, a separate node with a SimpleCA will be added to the instance.
+
+* Many small bug fixes.
+
+0.3.2
+=====
+Released on *October 4, 2011*
+
+* :jira:`7`: Instance stop/resume has been fixed.
+* :jira:`8`: Related to the previous issue, Globus Online endpoints are now properly managed in the the stop/resume lifecycle.
+  When an instance is stopped, the endpoint is associated with the "relay-disconnected.globusonline.org" server. When the
+  instance is resumed, the new GridFTP server is associated with the endpoint.
+* :jira:`9`: `instance_update` will now add new Globus Online endpoints.
+* :jira:`11`: Updated Chef recipes so they will use the Opscode "apt" cookbook.
+
 0.3.1
 =====
 Released on *September 12, 2011*

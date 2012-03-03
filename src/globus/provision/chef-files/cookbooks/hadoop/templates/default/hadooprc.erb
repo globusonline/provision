@@ -1,0 +1,14 @@
+# Set Hadoop-related environment variables
+export HADOOP_CONF_DIR=<%= @hadoop_conf_dir %>
+
+# Set JAVA_HOME (we will also configure JAVA_HOME directly for Hadoop later on)
+export JAVA_HOME=/usr/lib/jvm/default-java
+
+# Some convenient aliases and functions for running Hadoop-related commands
+unalias fs &> /dev/null
+alias fs="hadoop fs"
+unalias hls &> /dev/null
+alias hls="fs -ls"
+
+# Add Hadoop bin/ directory to PATH
+export PATH=$PATH:<%= @hadoop_dir %>/bin

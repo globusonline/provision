@@ -14,6 +14,7 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 from boto.exception import EC2ResponseError
+from globus.provision.core.deploy import DeploymentException
 
 """
 EC2 images utilities.
@@ -31,11 +32,12 @@ class EC2AMICreator(object):
     Used to create a Globus Provision AMI.
     """ 
     
-    def __init__(self, chef_dir, base_ami, ami_name, instance_type, config):
+    def __init__(self, chef_dir, base_ami, ami_name, instance_type, security_groups, config):
         self.chef_dir = chef_dir
         self.base_ami = base_ami
         self.ami_name = ami_name
         self.instance_type = instance_type
+        self.security_groups = security_groups
         self.config = config
 
         self.keypair = config.get("ec2-keypair")
@@ -51,10 +53,14 @@ class EC2AMICreator(object):
 
         conn = create_ec2_connection(hostname=self.hostname, path=self.path, port=self.port)
 
+        if conn == None:
+            raise DeploymentException, "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables are not set."
+
         print "Creating instance"
         reservation = conn.run_instances(self.base_ami, 
                                          min_count=1, max_count=1,
                                          instance_type=self.instance_type, 
+                                         security_groups=self.security_groups,
                                          key_name=self.keypair)
         instance = reservation.instances[0]
         print "Instance %s created. Waiting for it to start..." % instance.id
@@ -96,14 +102,14 @@ class EC2AMICreator(object):
         ssh.run("sudo apt-get update")
         ssh.run("echo 'chef chef/chef_server_url string http://127.0.0.1:4000' | sudo debconf-set-selections")
         ssh.run("sudo apt-get -q=2 install chef")
+
+        ssh.run("sudo apt-get dist-upgrade -uy")
         
         ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf")        
         ssh.run("echo '{ \"run_list\": \"recipe[provision::ec2]\", \"scratch_dir\": \"%s\" }' > /tmp/chef.json" % self.scratch_dir)
 
         ssh.run("sudo chef-solo -c /tmp/chef.conf -j /tmp/chef.json")    
         
-        ssh.run("sudo update-rc.d -f nis remove")
-        ssh.run("sudo update-rc.d -f condor remove")
         ssh.run("sudo update-rc.d -f chef-client remove")
         
         print "Removing private data and authorized keys"

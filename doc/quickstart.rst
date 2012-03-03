@@ -104,11 +104,11 @@ You will need to add the following to the topology file:
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
 	username: ubuntu
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 
 Notice how we are telling Globus Provision to use your ``gp-key`` keypair, to use ``t1.micro`` instances
-(which only cost $0.02 per hour), and to use Globus Provision's AMI (|ami|). This is an Ubuntu
+(which only cost $0.02 per hour), and to use Globus Provision's latest 32-bit AMI. This is an Ubuntu
 11.04 AMI that we provide with many software packages preinstalled, which considerably speeds up
 the deployment of topologies. The latest AMI is always listed on the Globus Provision website.
 

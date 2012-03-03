@@ -77,7 +77,7 @@ class MultiThread(object):
 
     def run(self):
         self.done_threads = 0
-        for t in [th for th in self.threads.values() if th.depends == None]:
+        for t in [th for th in self.threads.values() if len(th.depends) == 0]:
             t.start()
         self.all_done.wait()
         
@@ -86,8 +86,10 @@ class MultiThread(object):
             self.done_threads += 1
             log.debug("%s thread has finished successfully." % thread.name)
             log.debug("%i threads are done. Remaining: %s" % (self.done_threads, ",".join([t.name for t in self.threads.values() if t.status == -1])))
-            for t in [th for th in self.threads.values() if th.depends == thread]:
-                t.start()            
+            dependents = [th for th in self.threads.values() if thread in th.depends]
+            for t in dependents:
+                if set(t.depends) <= set([th for th in self.threads.values() if th.status == 0]):
+                    t.start()            
             if self.done_threads == self.num_threads:
                 self.all_done.set()            
 
@@ -106,7 +108,7 @@ class MultiThread(object):
                 self.all_done.set()           
                 
     def abort_dependents(self, thread):
-        dep = [th for th in self.threads.values() if th.depends == thread]
+        dep = [th for th in self.threads.values() if thread in th.depends and th.status != 3]
         for th in dep:
             log.debug("%s thread is being aborted because it depends on failed %s thread." % (th.name, thread.name))
             th.status = 3

@@ -36,23 +36,19 @@ when "ubuntu"
   
 end
 
-file "/etc/apt/sources.list.d/condor.list" do
-  owner "root"
-  group "root"
-  mode "0644"
-  action :create
-  content "deb http://www.cs.wisc.edu/condor/debian/stable/ lenny contrib\n"  
-  notifies :run, "execute[apt-get update]", :immediately
-end
-
-execute "apt-get update" do
- user "root"
- group "root"
- command "apt-get update"
- action :nothing
+apt_repository "condor" do
+  uri "http://www.cs.wisc.edu/condor/debian/stable/"
+  distribution "lenny"
+  components ["contrib"]
+  action :add
 end
 
 package "condor" do
   action :install
   options "--force-yes"  
 end
+
+execute "update-rc.d condor defaults" do
+  user "root"
+  group "root"
+end  

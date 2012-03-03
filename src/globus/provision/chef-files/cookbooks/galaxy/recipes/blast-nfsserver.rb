@@ -14,9 +14,13 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
-if ! File.exists?(node[:blast][:dir])
+gp_domain = node[:topology][:domains][node[:domain_id]]
+softdir   = gp_domain[:filesystem][:dir_software]
+blast_dir = "#{softdir}/#{node[:blast][:dir]}"
 
-  directory "#{node[:blast][:dir]}" do
+if ! File.exists?(blast_dir)
+
+  directory "#{blast_dir}" do
     owner "root"
     group "root"
     mode "0755"
@@ -33,12 +37,12 @@ if ! File.exists?(node[:blast][:dir])
   execute "tar" do
     user "root"
     group "root"
-    command "tar xzf #{node[:scratch_dir]}/blast.tar.gz --strip-components=1 --directory #{node[:blast][:dir]}"
+    command "tar xzf #{node[:scratch_dir]}/blast.tar.gz --strip-components=1 --directory #{blast_dir}"
     action :run
   end  	
   
   link "/nfs/software/bin/blastp" do
-    to "#{node[:blast][:dir]}/bin/blastp"
+    to "#{blast_dir}/bin/blastp"
   end
 
 end

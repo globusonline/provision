@@ -25,13 +25,7 @@
 gp_domain = node[:topology][:domains][node[:domain_id]]
 gp_node   = gp_domain[:nodes][node[:node_id]]
 
-# The nfs_server attribute is part of the generated topology.rb file,
-# and contains the IP of the domain's NFS server.
-server = gp_domain[:nfs_server_ip]
-
-
 # Packages we need
-
 package "nfs-common"
 package "autofs"
 
@@ -45,64 +39,13 @@ cookbook_file "/etc/default/nfs-common" do
 end
 
 
-# Set up the home directories so they will be automounted.
-
-if ! File.exists?("/nfs")
-	# Create the directory where the NFS directories will be mounted
-	directory "/nfs" do
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	  action :create
-	  recursive true
-	end
-	
-	# Create the directory where home directories will be mounted
-	directory "/nfs/home" do
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	  action :create
-	  recursive true
-	end
-	
-	# Create the directory where scratch directory will be mounted
-	directory "/nfs/scratch" do
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	  action :create
-	  recursive true
-	end
-	
-	# Create the directory where software directory will be mounted
-	directory "/nfs/software" do
-	  owner "root"
-	  group "root"
-	  mode "0755"
-	  action :create
-	  recursive true
-	end		
-end
-
+nfs_mounts = gp_domain[:filesystem][:nfs_mounts].to_a
 
 cookbook_file "/etc/auto.master" do
   source "auto.master"
   mode 0644
   owner "root"
   group "root"
-  notifies :restart, "service[autofs]", :immediately
-end
-
-template "/etc/auto.home" do
-  source "auto.home.erb"
-  mode 0644
-  owner "root"
-  group "root"
-  variables(
-    :server => server
-  )
-  notifies :restart, "service[autofs]", :immediately  
 end
 
 template "/etc/auto.nfs" do
@@ -111,7 +54,7 @@ template "/etc/auto.nfs" do
   owner "root"
   group "root"
   variables(
-    :server => server
+    :gp_domain => gp_domain
   )
   notifies :restart, "service[autofs]", :immediately  
 end
@@ -130,16 +73,3 @@ end
 
 service "autofs"
 
-# Add /nfs/software/bin to everyone's environment (we do this in /etc/enviroment
-# instead of /etc/profile.d/ (which is BASH-specific) because daemons started by
-# init scripts don't necessarily load BASH environment information.
-# Note that if this file is modified and /nfs/software/bin is removed from the path,
-# subsequent runs of Chef will replace it will a file with just the PATH variable
-file "/etc/environment" do
-  only_if do
-    File.read("/etc/environment").index(/PATH=.*\/nfs\/software\/bin.*/).nil?
-  end
-  owner "root"
-  mode "0644"
-  content "PATH=\"/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games\"\n"
-end  

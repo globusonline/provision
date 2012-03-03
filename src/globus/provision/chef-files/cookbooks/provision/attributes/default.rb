@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                      #
+# Copyright 2010-2011, University of Chicago                                 #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -17,6 +17,7 @@
 # Default attributes.
 # For now, only directories where software is going to be installed.
 
-default[:galaxy][:dir] = "/nfs/software/galaxy"
-default[:blast][:dir] = "/nfs/software/blast"
+# Relative to software directory
+default[:galaxy][:dir] = "/galaxy"
+default[:blast][:dir] = "/blast"
 default[:globus][:simpleCA] = "/var/lib/globus/simple_ca"

@@ -20,10 +20,10 @@ Globus Provision is a tool for deploying fully-configured Globus systems on Amaz
 See http://globus.org/provision/ for more details
 """
 
-VERSION="0.3"
-RELEASE="0.3.1"
+VERSION="0.4"
+RELEASE="0.4.0"
 AMI={"us-east-1":
-        {"32-bit": "ami-d377b4ba",
-         "64-bit": "ami-b575b6dc",
-         "HVM": "ami-9175b6f8"}
+        {"32-bit": "ami-8ea37ee7",
+         "64-bit": "ami-baa37ed3",
+         "HVM": "ami-a2da07cb"}
      }

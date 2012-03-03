@@ -51,7 +51,7 @@ setup(name='globus-provision',
       packages=find_packages("src", exclude=["dg_paraproxy"]),
       
       install_requires = ['boto>=2.0', 'paramiko>=1.7.7.1', 'colorama>=0.2.4', 'pyOpenSSL>=0.10',
-                          'globusonline-transfer-api-client>=0.10.7'],
+                          'globusonline-transfer-api-client>=0.10.7', 'passlib>=1.5.3'],
       setup_requires = [ "setuptools_git >= 0.4.2", ],
       include_package_data=True,
       

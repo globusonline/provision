@@ -9,16 +9,16 @@ generating user accounts, certificates, setting up NFS/NIS, etc.
 
 Globus Provision currently supports the following Globus software:
 
-* `GridFTP 5.1.1 <http://dev.globus.org/wiki/GridFTP>`_
-* `MyProxy 5.1.1 <http://grid.ncsa.illinois.edu/myproxy/>`_
-* `GRAM <http://dev.globus.org/wiki/GRAM>`_ (coming soon; will be included once version 5.2 
-  of the Globus Toolkit is released)
+* `GridFTP 5.2 <http://dev.globus.org/wiki/GridFTP>`_
+* `MyProxy 5.2 <http://grid.ncsa.illinois.edu/myproxy/>`_
+* `GRAM <http://dev.globus.org/wiki/GRAM>`_ (coming soon)
 
 Globus Provision can also set up the following software:
 
 * A `Condor <http://www.cs.wisc.edu/condor/>`_ pool with any number of worker nodes. The number 
   of worker nodes can be dynamically increased and decreased.
 * `Galaxy <http://galaxy.psu.edu/>`_, with experimental integration with Globus Online Transfer
+* `Hadoop <http://hadoop.apache.org/>`_ clusters.
 
 Globus Provision can deploy these services in any combination you need. For example,
 you could deploy a single GridFTP server, a Condor pool with ten worker nodes and a GRAM server, 

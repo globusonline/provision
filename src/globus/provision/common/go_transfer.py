@@ -48,7 +48,7 @@ class GlobusOnlineHelper(object):
 
         gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject = self._get_hostnames_subjects(ep)
             
-        self._endpoint_create(ep.name, gridftp_hostname, gridftp_subject, myproxy_hostname, ep.public)       
+        self._endpoint_create(ep.name, gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject, ep.public)       
 
     def _get_hostnames_subjects(self, ep):
         ca_dn = self.inst.config.get("ca-dn")
@@ -61,8 +61,14 @@ class GlobusOnlineHelper(object):
         if ep.gridftp.startswith("node:"):
             gridftp_node = self.inst.topology.get_node_by_id(ep.gridftp[5:])
             gridftp_hostname = gridftp_node.hostname
-
-            gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp_hostname)
+            
+            if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                if ep.has_property("globus_connect_cert_dn"):
+                    gridftp_subject = ep.globus_connect_cert_dn
+                else:
+                    gridftp_subject = None
+            else:
+                gridftp_subject = "%s/CN=host/%s" % (ca_dn, gridftp_hostname)
         else:
             # Note: If user specifies an arbitrary GridFTP hostname, it
             # will only work if it uses a valid host certificate that
@@ -73,7 +79,14 @@ class GlobusOnlineHelper(object):
         if ep.myproxy.startswith("node:"):
             myproxy_node = self.inst.topology.get_node_by_id(ep.myproxy[5:])
             myproxy_hostname = myproxy_node.hostname
-            myproxy_subject = "%s/CN=host/%s" % (ca_dn, gridftp_hostname)
+            
+            if ep.has_property("globus_connect_cert") and ep.globus_connect_cert:
+                if ep.has_property("globus_connect_cert_dn"):
+                    myproxy_subject = ep.globus_connect_cert_dn
+                else:
+                    myproxy_subject = None
+            else:            
+                myproxy_subject = "%s/CN=host/%s" % (ca_dn, myproxy_hostname)
         else:
             myproxy_hostname = ep.myproxy  
             myproxy_subject = None
@@ -229,7 +242,13 @@ class GlobusOnlineCLIHelper(GlobusOnlineHelper):
 
     def endpoint_remove(self, ep):
         rc = self.ssh.run("endpoint-remove %s" % (ep.name), exception_on_error=False)
-        return (rc == 0)
+        if rc != 0:
+            raise GlobusOnlineException, "Could not remove endpoint %s" % ep.name        
+
+    def endpoint_remove_server(self, ep, server):
+        rc = self.ssh.run("endpoint-remove %s -p %s" % (ep.name, server), exception_on_error=False)
+        if rc != 0:
+            raise GlobusOnlineException, "Could not remove server for endpoint %s" % ep.name
 
     def endpoint_gc_create(self, ep, replace):
         if self.endpoint_exists(ep):
@@ -260,13 +279,32 @@ class GlobusOnlineCLIHelper(GlobusOnlineHelper):
             raise GlobusOnlineException, "Could not create endpoint %s" % ep.name
 
         gridftp_subject = outf.getvalue().strip()      
+        ep.set_property("globus_connect_cert_dn", gridftp_subject)
+        
+        if ep.myproxy.startswith("node:"):
+            myproxy_subject = gridftp_subject
         
         self.endpoint_remove(ep)
            
-        self._endpoint_create(ep.name, gridftp_hostname, gridftp_subject, myproxy_hostname, ep.public)
+        self._endpoint_create(ep.name, gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject, ep.public)
 
+    def endpoint_stop(self, ep):
+        gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject = self._get_hostnames_subjects(ep)
+        
+        self.endpoint_remove_server(ep, gridftp_hostname)        
+        
+        # Create a disconnected endpoint
+        self._endpoint_create(ep.name, "relay-disconnected.globusonline.org", gridftp_subject, "myproxy.globusonline.org", None, ep.public)
 
-    def _endpoint_create(self, ep_name, gridftp_hostname, gridftp_subject, myproxy_hostname, public):   
+    def endpoint_resume(self, ep):
+        gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject = self._get_hostnames_subjects(ep)
+        
+        # Remove disconnected server
+        self.endpoint_remove_server(ep, "relay-disconnected.globusonline.org") 
+        
+        self._endpoint_create(ep.name, gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject, ep.public)
+
+    def _endpoint_create(self, ep_name, gridftp_hostname, gridftp_subject, myproxy_hostname, myproxy_subject, public):   
         rc = self.ssh.run("endpoint-add %s -p %s -s \"%s\"" % (ep_name, gridftp_hostname, gridftp_subject), exception_on_error=False)
         if rc != 0:
             raise GlobusOnlineException, "Could not create endpoint %s" % ep_name
@@ -275,6 +313,11 @@ class GlobusOnlineCLIHelper(GlobusOnlineHelper):
         if rc != 0:
             raise GlobusOnlineException, "Could not set MyProxy server for endpoint %s" % ep_name
 
+        if myproxy_subject != None:
+            rc = self.ssh.run("endpoint-modify --myproxy-dn=\"%s\" %s" % (myproxy_subject, ep_name), exception_on_error=False)
+            if rc != 0:
+                raise GlobusOnlineException, "Could not set MyProxy subject for endpoint %s" % ep_name
+            
         if public:
             rc = self.ssh.run("endpoint-modify --public %s" % (ep_name), exception_on_error=False)
             if rc != 0:

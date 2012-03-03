@@ -88,15 +88,23 @@ ff02::3 ip6-allhosts
         
     def gen_chef_ruby_file(self, filename):
         
-        def gen_topology_line(server_name, domain_id, recipes):
-            server = domain.find_with_recipes(recipes)
-            if len(server) > 0:
-                server_node = server[0]
-                if len(server) > 1:
-                    # TODO: Print a warning saying more than one NFS server has been found
-                    pass
-                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = \"%s\"\n" % (domain_id, server_name, server_node.hostname)
-                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = \"%s\"\n" % (domain_id, server_name, server_node.ip)
+        def gen_topology_line(server_name, domain_id, recipes, multi=False):
+            servers = domain.find_with_recipes(recipes)
+            if len(servers) > 0:
+                if not multi:
+                    server_node = servers[0]
+                    if len(servers) > 1:
+                        # TODO: Print a warning saying more than one NFS server has been found
+                        pass
+                    
+                    servers_hostnames = "\"%s\"" % server_node.hostname
+                    servers_ips = "\"%s\"" % server_node.ip
+                else:
+                    servers_hostnames = "[%s]" % ",".join(["\"%s\"" % s.hostname for s in servers])
+                    servers_ips = "[%s]" % ",".join(["\"%s\"" % s.ip for s in servers])
+
+                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = %s\n" % (domain_id, server_name, servers_hostnames)
+                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = %s\n" % (domain_id, server_name, servers_ips)
                 
                 return hostname_line + ip_line
             else:
@@ -105,10 +113,15 @@ ff02::3 ip6-allhosts
         topology = "default[:topology] = %s\n" % self.to_ruby_hash_string()
 
         for domain in self.domains.values():
-            topology += gen_topology_line("nfs_server", domain.id, ["recipe[provision::nfs_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
             topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
-            topology += gen_topology_line("lrm_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("condor_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("hadoop_master", domain.id, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
+        
+            # Kludge until we add a Filesystem object to the topology
+            if domain.has_property("glusterfs_type"):
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_type] = \"%s\"\n" % (domain.id, domain.glusterfs_type)
+                topology += "default[:topology][:domains][\"%s\"][:glusterfs_setsize] = %i\n" % (domain.id, domain.glusterfs_setsize)
         
         topologyfile = open(filename, "w")
         topologyfile.write(topology)
@@ -116,16 +129,22 @@ ff02::3 ip6-allhosts
     
     def get_depends(self, node):
         if not hasattr(node, "depends"):
-            return None
+            return []
         else:
-            return self.get_node_by_id(node.depends[5:])
+            return [self.get_node_by_id(d[5:]) for d in node.depends]
         
     def get_launch_order(self, nodes):
         order = []
-        parents = [n for n in nodes if self.get_depends(n) == None or self.get_depends(n) not in nodes]
-        while len(parents) > 0:
-            order.append(parents)
-            parents = [n for n in nodes if self.get_depends(n) in parents]   
+        no_depends = [n for n in nodes if len(self.get_depends(n)) == 0 or len(set(self.get_depends(n)) & set(nodes)) == 0]
+        while len(no_depends) > 0:
+            node = no_depends.pop()
+            order.append(node)
+            dependents = [n for n in nodes if node in self.get_depends(n)]
+            for dependent in dependents:
+                parents = self.get_depends(dependent)
+                if set(parents) <= set(order):
+                    no_depends.append(dependent)
+            
         return order        
     
     def get_node_by_id(self, node_id):
@@ -149,6 +168,13 @@ ff02::3 ip6-allhosts
                 return deploy_data.get_property(p_name)
             
         return None
+    
+    def get_go_endpoints(self):    
+        eps = []
+        for domain_name, domain in self.domains.items():
+            if domain.has_property("go_endpoints"):
+                eps += domain.go_endpoints
+        return eps   
     
     def add_domain(self, domain):
         self.add_to_array("domains", domain)
@@ -190,9 +216,14 @@ class Node(PersistentObject):
     STATE_RUNNING_UNCONFIGURED = 2
     STATE_CONFIGURING = 3
     STATE_RUNNING = 4
+    STATE_RECONFIGURING = 11
     STATE_STOPPING = 5
+    STATE_STOPPING_CONFIGURING = 12
+    STATE_STOPPING_CONFIGURED = 13
     STATE_STOPPED = 6
     STATE_RESUMING = 7
+    STATE_RESUMED_UNCONFIGURED = 14
+    STATE_RESUMED_RECONFIGURING = 15
     STATE_TERMINATING = 8
     STATE_TERMINATED = 9
     STATE_FAILED = 10
@@ -203,15 +234,44 @@ class Node(PersistentObject):
                  STATE_RUNNING_UNCONFIGURED : "Running (unconfigured)",
                  STATE_CONFIGURING : "Configuring",
                  STATE_RUNNING : "Running",
+                 STATE_RECONFIGURING : "Running (reconfiguring)",
                  STATE_STOPPING : "Stopping",
+                 STATE_STOPPING_CONFIGURING : "Stopping (configuring)",
+                 STATE_STOPPING_CONFIGURED : "Stopping (configured)",
                  STATE_STOPPED : "Stopped",
                  STATE_RESUMING : "Resuming",
+                 STATE_RESUMED_UNCONFIGURED : "Resumed (unconfigured)",
+                 STATE_RESUMED_RECONFIGURING : "Resumed (reconfiguring)",
                  STATE_TERMINATING : "Terminating",
                  STATE_TERMINATED : "Terminated",
                  STATE_FAILED : "Failed"}   
+    
+    def __repr__(self):
+        return "<Node %s>" % self.id
 
 
 class User(PersistentObject):
+    pass
+
+class FileSystem(PersistentObject):
+    
+    def has_nfs(self):
+        if not self.has_property("nfs_mounts"):
+            return False
+        else:
+            return len(self.nfs_mounts) > 0
+
+    def has_glusterfs(self):
+        if not self.has_property("glusterfs_vols"):
+            return False
+        else:
+            return len(self.glusterfs_vols) > 0
+
+
+class NFSMount(PersistentObject):
+    pass
+
+class GlusterFSVol(PersistentObject):
     pass
 
 class GridMapEntry(PersistentObject):
@@ -341,6 +401,15 @@ Domain.properties = {
                               description = """
                               The list of hosts (or *nodes*) in this domain.
                               """),
+
+                     "filesystem":
+                     Property(name="filesystem",
+                              proptype = FileSystem,
+                              required = True,
+                              editable = False,
+                              description = """
+                              The filesystem type in this domain.
+                              """),                              
                               
                      "go_endpoints":                    
                      Property(name="go_endpoints",
@@ -374,7 +443,7 @@ Domain.properties = {
                               is the gridmap that Globus services running on this
                               domain will use to determine if a given user is
                               authorized to access the service.
-                              """),
+                              """)              
                      }
 
 Node.properties = {
@@ -420,11 +489,12 @@ Node.properties = {
                             
                    "depends":
                    Property(name="depends",
-                            proptype = PropertyTypes.STRING,
+                            proptype = PropertyTypes.ARRAY,
+                            items = PropertyTypes.STRING,
                             required = False,
                             editable = True,
                             description = """
-                            Sometimes, a host cannot be configured until another host
+                            Sometimes, a host cannot be configured until others hosts
                             in the topology is configured. For example, NFS clients cannot
                             start until the NFS server is starting. This property is
                             used to specify such dependencies. The value of this property
@@ -432,7 +502,7 @@ Node.properties = {
                             the identifier of another node in the domain.
                             
                             For example, if this node depends on ``simple-nfs`` the value
-                            of this property would be ``node:simple-nfs``.
+                            of this property would be a list with a single entry: ``node:simple-nfs``.
                             """),
                             
                    "hostname":
@@ -554,6 +624,92 @@ User.properties = {
                             """),           
                    }            
 
+FileSystem.properties = {                            
+                   "dir_homes":
+                   Property(name="dir_homes",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The directory containing the home directories.
+                            """),
+                         
+                   "dir_software":
+                   Property(name="dir_software",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The directory for additional software.
+                            """),                         
+
+                   "dir_scratch":
+                   Property(name="dir_scratch",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The scratch directory.
+                            """),                         
+                            
+                   "nfs_mounts":                    
+                   Property(name="nfs_mounts",
+                            proptype = PropertyTypes.ARRAY,
+                            items = NFSMount,
+                            required = False,
+                            description = """
+                            A list of NFS mounts.
+                            """),       
+                         
+#                   "glusterfs_vols":                    
+#                   Property(name="glusterfs_vols",
+#                            proptype = PropertyTypes.ARRAY,
+#                            items = GlusterFSVol,
+#                            required = False,
+#                            description = """
+#                            TODO
+#                            """),                                                 
+                   }        
+
+NFSMount.properties = {                            
+                   "server":
+                   Property(name="server",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            NFS server for this domain.
+                            """),                         
+
+                   "path":
+                   Property(name="path",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The path being mounted.
+                            """),           
+                       
+                   "mode":
+                   Property(name="mode",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            Mode to set for the mount.
+                            """),                               
+
+                   "owner":
+                   Property(name="owner",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            User that will be set as owner of the mount.
+                            """),   
+                    
+                   "mountpoint":
+                   Property(name="mountpoint",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The directory where this NFS mount will be mounted.
+                            """)                      
+                   }
+
 GridMapEntry.properties = {                   
                            "dn": 
                            Property(name="dn",
@@ -653,6 +809,14 @@ GOEndpoint.properties = {
                                     Globus Online, it must use a certificate trusted by Globus Online.
                                     Unless you used a CA trusted by Globus Online to generate the certificates
                                     for the topology, you must use a Globus Connect certificate.
-                                    """)                               
+                                    """),
+                         
+                           "globus_connect_cert_dn":
+                           Property(name="globus_connect_cert",
+                                    proptype = PropertyTypes.STRING,
+                                    required = False,
+                                    description = """
+                                    The DN of the Globus Connect certificate for this endpoint.
+                                    """)                                                               
                            
                         }                                                                                                                 

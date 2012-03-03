@@ -22,6 +22,7 @@ This deployer will create and manage hosts for a topology using Amazon EC2.
 
 from cPickle import load
 from boto.exception import BotoClientError, EC2ResponseError
+from boto.ec2.blockdevicemapping import BlockDeviceType, BlockDeviceMapping
 from globus.provision.common.utils import create_ec2_connection 
 from globus.provision.common.ssh import SSH, SSHCommandFailureException
 from globus.provision.common.threads import MultiThread, GPThread, SIGINTWatcher
@@ -53,6 +54,19 @@ class Deployer(BaseDeployer):
     """
     The EC2 deployer.
     """
+    
+    # From http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/index.html?instance-storage-concepts.html
+    EPHEMERAL_PARTITIONS = {"m1.small": 1,
+                            "m1.large": 2,
+                            "m1.xlarge": 4,
+                            "t1.micro": 0,
+                            "c1.medium": 1,
+                            "c1.xlarge": 4,
+                            "m2.xlarge": 1,
+                            "m2.2xlarge": 1,
+                            "m2.4xlarge": 2,
+                            "cc1.4xlarge": 2,
+                            "cg1.4xlarge": 2}
   
     def __init__(self, *args, **kwargs):
         BaseDeployer.__init__(self, *args, **kwargs)
@@ -127,6 +141,14 @@ class Deployer(BaseDeployer):
         
         return sgs
     
+    def __get_placement_group(self):    
+        pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
+        if len(pgs) == 0:
+            rc = self.conn.create_placement_group(self.instance.id, strategy = "cluster")
+            if rc:
+                pgs = self.conn.get_all_placement_groups(groupnames=[self.instance.id])
+        return pgs[0]
+    
     def allocate_vm(self, node):
         topology = self.instance.topology
         
@@ -150,13 +172,43 @@ class Deployer(BaseDeployer):
                 raise DeploymentException, "AMI %s does not exist" % ami
             else:
                 image = image[0]
+                
+        num_ephemeral = self.EPHEMERAL_PARTITIONS[instance_type]
+                
+        if num_ephemeral == 0:
+            map = None
+            user_data_mounts = ""
+        else:
+            map = BlockDeviceMapping()
+            user_data_mounts = "mounts:\n"
+            for i in range(num_ephemeral):
+                device = BlockDeviceType()
+                device_name = "/dev/sd%s" % (chr(ord('b')+i))
+                device.ephemeral_name = "ephemeral%i" % i
+                map[device_name] = device
+                user_data_mounts += """- [ ephemeral%i, /ephemeral/%i, auto, "defaults,noexec" ]\n""" % (i, i)
+
+        # The following will only work with Ubuntu AMIs (including the AMI we provide)
+        # If using a different AMI, you may need to manually mount the ephemeral partitions.
+        user_data = """#cloud-config
+manage_etc_hosts: true        
+""" + user_data_mounts
+
+        if instance_type in ("cc1.4xlarge", "cg1.4xlarge"):
+            pg = self.__get_placement_group()
+            placement_group = pg.name
+        else:
+            placement_group = None
         
         log.info(" |- Launching a %s instance for %s." % (instance_type, node.id))
         reservation = image.run(min_count=1, 
                                 max_count=1,
                                 instance_type=instance_type,
-                                security_groups= security_groups,
+                                security_groups=security_groups,
                                 key_name=self.instance.config.get("ec2-keypair"),
+                                user_data=user_data,
+                                block_device_map=map,
+                                placement_group = placement_group,
                                 placement = None)
         instance = reservation.instances[0]
         
@@ -165,7 +217,7 @@ class Deployer(BaseDeployer):
     def resume_vm(self, node):
         ec2_instance_id = node.deploy_data.ec2.instance_id
 
-        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))
+        log.info(" |- Resuming instance %s for %s." % (ec2_instance_id, node.id))        
         started = self.conn.start_instances([ec2_instance_id])            
         log.info(" |- Resumed instance %s." % ",".join([i.id for i in started]))
         
@@ -184,7 +236,7 @@ class Deployer(BaseDeployer):
             node.ip = ec2_instance.private_dns_name
 
         node.hostname = ec2_instance.public_dns_name
-        
+
         # TODO: The following won't work on EC2-ish systems behind a firewall.
         node.public_ip = ".".join(ec2_instance.public_dns_name.split(".")[0].split("-")[1:])
 
@@ -237,7 +289,7 @@ class Deployer(BaseDeployer):
                 if ec2err.error_code == "InvalidInstanceID.NotFound":
                     # If the instance was just created, this is a transient error. 
                     # We just have to wait until the instance appears.
-                    pass
+                    continue
                 else:
                     raise ec2err            
             
@@ -252,12 +304,12 @@ class Deployer(BaseDeployer):
         return self.NodeConfigureThread
             
     class NodeWaitThread(WaitThread):
-        def __init__(self, multi, name, node, vm, deployer, state, depends = None):
+        def __init__(self, multi, name, node, vm, deployer, state, depends = []):
             WaitThread.__init__(self, multi, name, node, vm, deployer, state, depends)
             self.ec2_instance = vm.ec2_instance
                         
         def wait(self):
-            if self.state == Node.STATE_RUNNING_UNCONFIGURED:
+            if self.state in (Node.STATE_RUNNING_UNCONFIGURED, Node.STATE_RESUMED_UNCONFIGURED):
                 self.deployer.wait_state(self.ec2_instance, "running")
                 log.info("Instance %s is running. Hostname: %s" % (self.ec2_instance.id, self.ec2_instance.public_dns_name))
             elif self.state == Node.STATE_STOPPED:
@@ -267,7 +319,7 @@ class Deployer(BaseDeployer):
             
             
     class NodeConfigureThread(ConfigureThread):
-        def __init__(self, multi, name, node, vm, deployer, depends = None, basic = True, chef = True):
+        def __init__(self, multi, name, node, vm, deployer, depends = [], basic = True, chef = True):
             ConfigureThread.__init__(self, multi, name, node, vm, deployer, depends, basic, chef)
             self.ec2_instance = self.vm.ec2_instance
             

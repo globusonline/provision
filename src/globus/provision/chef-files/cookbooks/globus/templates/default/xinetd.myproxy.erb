@@ -1,0 +1,13 @@
+service myproxy-server
+{
+ socket_type  = stream
+ protocol     = tcp
+ wait         = no
+ user         = root
+ server       = /usr/sbin/myproxy-server
+ <% if @gc %>
+ env         += X509_USER_CERT=/etc/grid-security/gc-cert-<%= @gc_setupkey %>.pem
+ env         += X509_USER_KEY=/etc/grid-security/gc-key-<%= @gc_setupkey %>.pem
+ <% end %> 
+ disable      = no
+}

@@ -26,6 +26,11 @@
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+gp_domain = node[:topology][:domains][node[:domain_id]]
+softdir   = gp_domain[:filesystem][:dir_software]
+
+galaxy_dir = "#{softdir}/#{node[:galaxy][:dir]}"
+
 include_recipe "postgresql::server"
 
 database_exists = "psql galaxy postgres -c ''"
@@ -60,6 +65,8 @@ execute "grant_all" do
   not_if database_exists
 end
 
+package "python-setuptools"
+
 case node.platform
   when "ubuntu"
     if node.platform_version.to_f >= 11.04
@@ -74,10 +81,17 @@ case node.platform
     end    
 end
 
+execute "install-transfer-api" do
+  user "root"
+  group "root"
+  command "easy_install-2.6 globusonline-transfer-api-client"
+  action :run
+end  
+
 execute "galaxy-setup.sh" do
   user "galaxy"
   group "galaxy"
-  cwd node[:galaxy][:dir]
+  cwd galaxy_dir
   command "./galaxy-setup.sh"
   action :run
 end  
@@ -103,5 +117,5 @@ execute "galaxy_restart" do
  group "root"
  command "/etc/init.d/galaxy restart"
  action :run
- environment ({'PATH' => "/nfs/software/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}) 
+ environment ({'PATH' => "#{softdir}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}) 
 end

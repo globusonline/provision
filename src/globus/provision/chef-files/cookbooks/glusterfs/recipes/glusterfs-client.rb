@@ -1,5 +1,5 @@
 # -------------------------------------------------------------------------- #
-# Copyright 2010-2011, University of Chicago                                      #
+# Copyright 2010-2011, University of Chicago                                 #
 #                                                                            #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may    #
 # not use this file except in compliance with the License. You may obtain    #
@@ -16,62 +16,32 @@
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##
-## RECIPE: Globus Toolkit 5.1.1 MyProxy
+## RECIPE: GlusterFS client
 ##
-## Installs a MyProxy server, and sets is up as a xinetd service.
-##
-## For authentication, the MyProxy server will use the local UNIX accounts
-## through PAM. If the node this recipe is applied to is part of a NIS
-## domain, then the global NIS accounts will be used.
+## Set up a GlusterFS client node.
 ##
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-include_recipe "globus::repository"
+# The "glusterfs-common" recipe handles actions that are common to
+# both servers and clients
+include_recipe "glusterfs::glusterfs-common"
 
-package "xinetd"
-package "globus-simple-ca"
-package "myproxy-server"
+gp_domain = node[:topology][:domains][node[:domain_id]]
+head_server = gp_domain[:glusterfs_head]
+peer_servers = gp_domain[:glusterfs_servers]
+glusterfs_servers = [head_server] + peer_servers
 
-directory "/var/lib/myproxy" do
+
+directory "/glusterfs" do
   owner "root"
   group "root"
-  mode "0700"
+  mode "0755"
   action :create
 end
 
-
-cookbook_file "/etc/myproxy-server.config" do
-  source "myproxy-server.config"
-  mode 0644
-  owner "root"
-  group "root"
-end
-
-template "/var/lib/myproxy/myproxy-certificate-mapapp" do
-  source "myproxy-dnmap.erb"
-  mode 0744
-  owner "root"
-  group "root"
-end
-
-cookbook_file "/etc/xinetd.d/myproxy" do
-  source "xinetd.myproxy"
-  mode 0644
-  owner "root"
-  group "root"
-  notifies :restart, "service[xinetd]"
-end
-
-execute "add_services_entry" do
-  line = "myproxy-server  7512/tcp                        # Myproxy server"
-  only_if do
-    File.read("/etc/services").index(line).nil?
-  end  
+execute "mount_glusterfs" do
   user "root"
   group "root"
-  command "echo \"#{line}\" >> /etc/services"
+  command "mount -t glusterfs #{head_server}:/gp-vol /glusterfs"
   action :run
-  notifies :restart, "service[xinetd]"
-end
-
-service "xinetd"
+end   
