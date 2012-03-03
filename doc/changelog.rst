@@ -5,7 +5,7 @@ Changelog and Release Notes
 
 0.4.0
 =====
-Released on *February 2X, 2012*
+Released on *March 2nd, 2012*
 
 * Updated to Globus Toolkit 5.2
 
