@@ -55,7 +55,7 @@ as ``go-condor-ec2.conf``):
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
 	username: ubuntu
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 	
 	[globusonline]

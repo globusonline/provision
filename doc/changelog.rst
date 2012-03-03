@@ -26,7 +26,7 @@ Released on *February 2X, 2012*
   they are not as well tested as the NFS ones (and ``filesystem: glusterfs``
   is not yet supported).
   
-* :jira:`10`: Added :ref:`Hadoop recipes <chef_hadoop>`. A Hadoop cluster can now be	
+* :jira:`10`: Added :ref:`Hadoop recipes <chef_hadoop>`. A Hadoop 1.0 cluster can now be	
   deployed using the :ref:`hadoop <SimpleTopologyConfig_hadoop>` and :ref:`hadoop-nodes <SimpleTopologyConfig_hadoop-nodes>`
   options in the simple topology file.
   

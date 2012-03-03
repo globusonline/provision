@@ -158,7 +158,7 @@ For example, let's use this configuration file:
 	keypair: gp-key
 	keyfile: ~/.ec2/gp-key.pem
 	username: ubuntu
-	ami: |ami|
+	ami: latest-32bit
 	instance-type: t1.micro
 
 This will deploy the simplest possible endpoint: a single GridFTP server, with a
