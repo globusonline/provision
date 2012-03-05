@@ -133,7 +133,7 @@ That way, any changes you make to the source code will take effect immediately
 
 Take into account that there are, at least, two branches in our GitHub repository: ``master``
 and ``dev``. The former always contains the latest stable release, including bug fixes, and
-the former contains the very latest version of our code (which may not work as reliably
+the latter contains the very latest version of our code (which may not work as reliably
 as the code in the ``master`` branch). By default, your repository will track the ``master``
 branch. To switch to the ``dev`` branch, run the following::
 
