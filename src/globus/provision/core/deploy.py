@@ -254,6 +254,9 @@ class ConfigureThread(GPThread):
             
             self.check_continue()
 
+            # Update APT repositories
+            ssh.run("sudo apt-get update", expectnooutput=True, exception_on_error = False)
+
             # Run chef
             log.debug("Running chef", node)
             ssh.run("echo -e \"cookbook_path \\\"/chef/cookbooks\\\"\\nrole_path \\\"/chef/roles\\\"\" > /tmp/chef.conf", expectnooutput=True)        
