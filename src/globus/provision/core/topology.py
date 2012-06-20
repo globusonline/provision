@@ -88,7 +88,7 @@ ff02::3 ip6-allhosts
         
     def gen_chef_ruby_file(self, filename):
         
-        def gen_topology_line(server_name, domain_id, recipes, multi=False):
+        def gen_topology_line(server_name, domain, recipes, multi=False):
             servers = domain.find_with_recipes(recipes)
             if len(servers) > 0:
                 if not multi:
@@ -103,8 +103,8 @@ ff02::3 ip6-allhosts
                     servers_hostnames = "[%s]" % ",".join(["\"%s\"" % s.hostname for s in servers])
                     servers_ips = "[%s]" % ",".join(["\"%s\"" % s.ip for s in servers])
 
-                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = %s\n" % (domain_id, server_name, servers_hostnames)
-                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = %s\n" % (domain_id, server_name, servers_ips)
+                hostname_line = "default[:topology][:domains][\"%s\"][:%s] = %s\n" % (domain.id, server_name, servers_hostnames)
+                ip_line       = "default[:topology][:domains][\"%s\"][:%s_ip] = %s\n" % (domain.id, server_name, servers_ips)
                 
                 return hostname_line + ip_line
             else:
@@ -113,10 +113,10 @@ ff02::3 ip6-allhosts
         topology = "default[:topology] = %s\n" % self.to_ruby_hash_string()
 
         for domain in self.domains.values():
-            topology += gen_topology_line("nis_server", domain.id, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
-            topology += gen_topology_line("myproxy_server", domain.id, ["recipe[globus::myproxy]"])
-            topology += gen_topology_line("condor_head", domain.id, ["recipe[condor::condor_head]", "role[domain-condor]"])
-            topology += gen_topology_line("hadoop_master", domain.id, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
+            topology += gen_topology_line("nis_server", domain, ["recipe[provision::nis_server]", "role[domain-nfsnis]"])
+            topology += gen_topology_line("myproxy_server", domain, ["recipe[globus::myproxy]"])
+            topology += gen_topology_line("condor_head", domain, ["recipe[condor::condor_head]", "role[domain-condor]"])
+            topology += gen_topology_line("hadoop_master", domain, ["recipe[hadoop::hadoop-master]", "role[domain-hadoop-master]"])
         
             # Kludge until we add a Filesystem object to the topology
             if domain.has_property("glusterfs_type"):
@@ -208,6 +208,9 @@ class DeployData(PersistentObject):
     pass
 
 class EC2DeployData(PersistentObject):
+    pass
+
+class EC2Volume(PersistentObject):
     pass
 
 class Node(PersistentObject):
@@ -378,7 +381,60 @@ EC2DeployData.properties = {
                                          to apply to hosts on EC2. If no security groups are specified,
                                          Globus Provision will create one called ``globus-provision``
                                          that opens the TCP/UDP ports for SSH, GridFTP, and MyProxy. 
-                                         """)                                
+                                         """),                  
+                            
+                            "volumes":
+                                Property(name = "volumes",
+                                         proptype = PropertyTypes.ARRAY,
+                                         items = EC2Volume,                                       
+                                         required = False,
+                                         editable = True,
+                                         description = """
+                                         A list of EBS volumes to be mounted on this instance.
+                                         """)                                               
+                       }
+
+EC2Volume.properties = { 
+                        "id":
+                        Property(name = "id",
+                                 proptype = PropertyTypes.STRING,
+                                 required = False,
+                                 description = """
+                                 EC2 volume ID (e.g., "vol-2766a65c").
+                                 """),
+                        
+                        "mountpoint":
+                        Property(name="mountpoint",
+                            proptype = PropertyTypes.STRING,
+                            required = True,
+                            description = """
+                            The directory where this volume will be mounted.
+                            """),                              
+
+                        "new":
+                        Property(name = "new",
+                                 proptype = PropertyTypes.BOOLEAN,
+                                 required = False,
+                                 description = """
+                                 Is this a new volume?
+                                 """),
+
+                        "size":
+                        Property(name = "size",
+                                 proptype = PropertyTypes.INTEGER,
+                                 required = False,
+                                 description = """
+                                 Size in gigabytes.
+                                 """),
+
+                        "snapshot":
+                        Property(name = "snapshot",
+                                 proptype = PropertyTypes.STRING,
+                                 required = False,
+                                 description = """
+                                 Snapshot ID (if creating this volume from a snapshot) 
+                                 """),
+                      
                        }
 
 
