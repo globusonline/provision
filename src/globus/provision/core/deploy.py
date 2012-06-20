@@ -194,10 +194,10 @@ class ConfigureThread(GPThread):
     def connect(self): pass
 
     @abstractmethod
-    def pre_configure(self): pass
+    def pre_configure(self, ssh): pass
 
     @abstractmethod
-    def post_configure(self): pass
+    def post_configure(self, ssh): pass
         
     def ssh_connect(self, username, hostname, keyfile):
         node = self.node
